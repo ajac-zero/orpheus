@@ -1,0 +1,22 @@
+[project]
+name = "orpheus"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "ajac-zero", email = "ajcardoza2000@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+orpheus = "orpheus:main"
+
+[tool.maturin]
+module-name = "orpheus._core"
+python-packages = ["orpheus"]
+python-source = "src"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
