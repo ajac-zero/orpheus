@@ -1,4 +1,3 @@
-from orpheus._core import hello_from_bin
+from orpheus._core import Orpheus
 
-def main() -> None:
-    print(hello_from_bin())
+__all__ = ["Orpheus"]

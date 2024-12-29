@@ -6,7 +6,7 @@ mod types;
 use pyo3::prelude::*;
 
 #[pymodule]
-fn orpheus(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<client::Orpheus>()?;
     m.add_class::<client::AsyncOrpheus>()?;
     Ok(())
