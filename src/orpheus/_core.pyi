@@ -21,3 +21,5 @@ class Orpheus:
     @property
     def completions(self) -> Orpheus:
         return self
+
+    def create(self): ...

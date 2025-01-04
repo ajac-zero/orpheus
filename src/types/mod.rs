@@ -41,7 +41,6 @@ mod tokens {
 
 mod message {
     use serde::{Deserialize, Serialize};
-    use std::fmt;
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
     struct Function {
@@ -80,8 +79,7 @@ mod message {
         format: String,
     }
 
-    #[pyo3::pyclass]
-    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(pyo3::IntoPyObject, Debug, Clone, Serialize, Deserialize)]
     #[serde(tag = "type", rename_all = "snake_case")]
     enum Part {
         Text { text: String },
@@ -89,62 +87,11 @@ mod message {
         InputAudio { input_audio: InputAudio },
     }
 
-    impl fmt::Display for Part {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match self {
-                Self::Text { text } => write!(f, "Text(text={})", text),
-                Self::ImageUrl { image_url } => write!(
-                    f,
-                    "Image(url={}, detail={})",
-                    image_url.url,
-                    image_url.detail.as_ref().unwrap_or(&"None".to_string())
-                ),
-                Self::InputAudio { input_audio } => write!(
-                    f,
-                    "Audio(data={}, format={})",
-                    input_audio.data, input_audio.format
-                ),
-            }
-        }
-    }
-
-    #[pyo3::pyclass]
-    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(pyo3::IntoPyObject, Debug, Clone, Serialize, Deserialize)]
     #[serde(untagged)]
     enum Content {
         Simple(String),
         Complex(Vec<Part>),
-    }
-
-    impl fmt::Display for Content {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match self {
-                Self::Simple(content) => write!(f, "{}", content),
-                Self::Complex(parts) => {
-                    let mut buffer = String::new();
-                    let mut iter = parts.iter().peekable();
-
-                    buffer.push('[');
-                    while let Some(part) = iter.next() {
-                        buffer.push_str(part.to_string().as_str());
-
-                        if iter.peek().is_some() {
-                            buffer.push_str(", ")
-                        }
-                    }
-                    buffer.push(']');
-
-                    write!(f, "{}", buffer)
-                }
-            }
-        }
-    }
-
-    #[pyo3::pymethods]
-    impl Content {
-        fn __repr__(&self) -> String {
-            format!("{}", self)
-        }
     }
 
     #[pyo3::pyclass(get_all)]

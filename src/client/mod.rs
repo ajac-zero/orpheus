@@ -41,8 +41,6 @@ mod blocking {
         client: HttpClient,
         base_url: Url,
         api_key: String,
-        default_headers: Option<HashMap<String, String>>,
-        default_query: Option<HashMap<String, String>>,
     }
 
     impl Orpheus {
@@ -60,23 +58,21 @@ mod blocking {
                 .pop_if_empty()
                 .extend(path.split('/').filter(|s| !s.is_empty()));
 
-            if let Some(headers) = self.default_query.as_ref() {
-                url.query_pairs_mut().extend_pairs(headers);
-            };
-
             if let Some(headers) = extra_query {
                 url.query_pairs_mut().extend_pairs(headers);
             };
 
-            let builder = Request::builder()
+            let mut builder = Request::builder()
                 .method("POST")
                 .uri(url.as_str())
                 .header("content-type", "application/json")
                 .header("api-key", &self.api_key);
 
-            let builder = apply_header(builder, self.default_headers.to_owned());
-
-            let builder = apply_header(builder, extra_headers);
+            if let Some(headers) = extra_headers {
+                builder = headers
+                    .into_iter()
+                    .fold(builder, |builder, (k, v)| builder.header(k, v));
+            };
 
             let body = serde_json::to_vec(&prompt).unwrap();
 
@@ -96,12 +92,22 @@ mod blocking {
             default_headers: Option<HashMap<String, String>>,
             default_query: Option<HashMap<String, String>>,
         ) -> PyResult<Self> {
-            let client = HttpClient::new().expect("should create http client.");
+            let mut builder = HttpClient::builder();
 
-            let base_url = base_url
+            if let Some(headers) = default_headers {
+                builder = builder.default_headers(headers);
+            }
+
+            let client = builder.build().unwrap();
+
+            let mut base_url = base_url
                 .or_else(|| env::var(BASE_URL_ENV).ok())
                 .and_then(|s| Url::parse(&s).ok())
                 .ok_or_else(|| py_err!("{} environment variable not found.", BASE_URL_ENV))?;
+
+            if let Some(params) = default_query {
+                base_url.query_pairs_mut().extend_pairs(params);
+            };
 
             let api_key = api_key
                 .or_else(|| env::var(API_KEY_ENV).ok())
@@ -111,8 +117,6 @@ mod blocking {
                 client,
                 base_url,
                 api_key,
-                default_headers,
-                default_query,
             })
         }
 
