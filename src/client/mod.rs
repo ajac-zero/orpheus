@@ -1,5 +1,7 @@
-use isahc::http::request::Builder;
+use isahc::{HttpClient, Request};
 use std::collections::HashMap;
+use std::env;
+use url::Url;
 
 use super::types::{Completion, CompletionChunk, Prompt};
 pub use blocking::Orpheus;
@@ -14,25 +16,82 @@ macro_rules! py_err {
     };
 }
 
-fn apply_header(builder: Builder, maybe_headers: Option<HashMap<String, String>>) -> Builder {
-    if let Some(headers) = maybe_headers {
-        headers
+fn build_request(
+    path: &str,
+    prompt: &Prompt,
+    url: &Url,
+    api_key: &str,
+    extra_headers: Option<HashMap<String, String>>,
+    extra_query: Option<HashMap<String, String>>,
+) -> Request<Vec<u8>> {
+    let mut url = url.to_owned();
+
+    url.path_segments_mut()
+        .expect("get path segments")
+        .pop_if_empty()
+        .extend(path.split('/').filter(|s| !s.is_empty()));
+
+    if let Some(headers) = extra_query {
+        url.query_pairs_mut().extend_pairs(headers);
+    };
+
+    let mut builder = Request::builder()
+        .method("POST")
+        .uri(url.as_str())
+        .header("content-type", "application/json")
+        .header("api-key", api_key);
+
+    if let Some(headers) = extra_headers {
+        builder = headers
             .into_iter()
-            .fold(builder, |builder, (k, v)| builder.header(k, v))
-    } else {
-        builder
+            .fold(builder, |builder, (k, v)| builder.header(k, v));
+    };
+
+    let body = serde_json::to_vec(&prompt).expect("should serialize prompt");
+
+    builder.body(body).expect("should build request")
+}
+
+fn new(
+    base_url: Option<String>,
+    api_key: Option<String>,
+    default_headers: Option<HashMap<String, String>>,
+    default_query: Option<HashMap<String, String>>,
+) -> (HttpClient, Url, String) {
+    let mut builder = HttpClient::builder();
+
+    if let Some(headers) = default_headers {
+        builder = builder.default_headers(headers);
     }
+
+    let client = builder.build().expect("should build http client");
+
+    let mut base_url = base_url
+        .or_else(|| env::var(BASE_URL_ENV).ok())
+        .and_then(|s| Url::parse(&s).ok())
+        .ok_or_else(|| py_err!("{} environment variable not found.", BASE_URL_ENV))
+        .expect("should parse base url");
+
+    if let Some(params) = default_query {
+        base_url.query_pairs_mut().extend_pairs(params);
+    };
+
+    let api_key = api_key
+        .or_else(|| env::var(API_KEY_ENV).ok())
+        .ok_or_else(|| py_err!("{} environment variable not found.", API_KEY_ENV))
+        .expect("should get api key");
+
+    (client, base_url, api_key)
 }
 
 mod blocking {
     use super::*;
-    use isahc::{HttpClient, ReadResponseExt, Request, Response};
+    use isahc::{HttpClient, ReadResponseExt, Response};
     use pyo3::exceptions::PyStopIteration;
     use pyo3::prelude::*;
     use pyo3::types::PyDict;
     use pythonize::depythonize;
     use std::collections::VecDeque;
-    use std::env;
     use std::io::Read;
     use url::Url;
 
@@ -47,36 +106,18 @@ mod blocking {
         fn api_request(
             &self,
             path: &str,
-            prompt: Prompt,
+            prompt: &Prompt,
             extra_headers: Option<HashMap<String, String>>,
             extra_query: Option<HashMap<String, String>>,
         ) -> Result<Response<isahc::Body>, isahc::Error> {
-            let mut url = self.base_url.to_owned();
-
-            url.path_segments_mut()
-                .expect("get path segments")
-                .pop_if_empty()
-                .extend(path.split('/').filter(|s| !s.is_empty()));
-
-            if let Some(headers) = extra_query {
-                url.query_pairs_mut().extend_pairs(headers);
-            };
-
-            let mut builder = Request::builder()
-                .method("POST")
-                .uri(url.as_str())
-                .header("content-type", "application/json")
-                .header("api-key", &self.api_key);
-
-            if let Some(headers) = extra_headers {
-                builder = headers
-                    .into_iter()
-                    .fold(builder, |builder, (k, v)| builder.header(k, v));
-            };
-
-            let body = serde_json::to_vec(&prompt).unwrap();
-
-            let request = builder.body(body).unwrap();
+            let request = build_request(
+                path,
+                prompt,
+                &self.base_url,
+                &self.api_key,
+                extra_headers,
+                extra_query,
+            );
 
             self.client.send(request)
         }
@@ -86,32 +127,14 @@ mod blocking {
     impl Orpheus {
         #[new]
         #[pyo3(signature = (base_url=None, api_key=None, default_headers=None, default_query=None))]
-        fn new(
+        fn __init__(
             base_url: Option<String>,
             api_key: Option<String>,
             default_headers: Option<HashMap<String, String>>,
             default_query: Option<HashMap<String, String>>,
         ) -> PyResult<Self> {
-            let mut builder = HttpClient::builder();
-
-            if let Some(headers) = default_headers {
-                builder = builder.default_headers(headers);
-            }
-
-            let client = builder.build().unwrap();
-
-            let mut base_url = base_url
-                .or_else(|| env::var(BASE_URL_ENV).ok())
-                .and_then(|s| Url::parse(&s).ok())
-                .ok_or_else(|| py_err!("{} environment variable not found.", BASE_URL_ENV))?;
-
-            if let Some(params) = default_query {
-                base_url.query_pairs_mut().extend_pairs(params);
-            };
-
-            let api_key = api_key
-                .or_else(|| env::var(API_KEY_ENV).ok())
-                .ok_or_else(|| py_err!("{} environment variable not found.", API_KEY_ENV))?;
+            let (client, base_url, api_key) =
+                new(base_url, api_key, default_headers, default_query);
 
             Ok(Self {
                 client,
@@ -131,13 +154,11 @@ mod blocking {
 
             let prompt = depythonize::<Prompt>(args).map_err(|e| py_err!("{}", e))?;
 
-            let is_stream = prompt.is_stream();
-
             let mut response = self
-                .api_request("/chat/completions", prompt, extra_headers, extra_query)
+                .api_request("/chat/completions", &prompt, extra_headers, extra_query)
                 .map_err(|e| py_err!("{}", e))?;
 
-            if is_stream {
+            if prompt.is_stream() {
                 let stream = Stream::new(response);
 
                 Ok(CompletionResponse::Stream(stream))
@@ -207,7 +228,7 @@ mod blocking {
                     Ok(0) => Err(PyStopIteration::new_err("end of stream")),
                     Ok(_) => {
                         let chunk_str = std::str::from_utf8(&self.chunk)
-                            .unwrap()
+                            .expect("should convert chunk to string")
                             .trim_end_matches('\0');
                         self.buffer.push_str(chunk_str);
 
@@ -239,12 +260,11 @@ mod non_blocking {
     use super::*;
     use async_std::sync::Mutex;
     use futures_lite::AsyncReadExt;
-    use isahc::{AsyncReadResponseExt, HttpClient, Request, Response};
+    use isahc::{AsyncReadResponseExt, HttpClient, Response};
     use pyo3::exceptions::PyStopAsyncIteration;
     use pyo3::prelude::*;
     use pythonize::depythonize;
     use std::collections::VecDeque;
-    use std::env;
     use std::sync::Arc;
     use url::Url;
 
@@ -253,46 +273,24 @@ mod non_blocking {
         client: HttpClient,
         base_url: Url,
         api_key: String,
-        default_headers: Option<HashMap<String, String>>,
-        default_query: Option<HashMap<String, String>>,
     }
 
     impl AsyncOrpheus {
         async fn api_request(
             &self,
             path: &str,
-            prompt: Prompt,
+            prompt: &Prompt,
             extra_headers: Option<HashMap<String, String>>,
             extra_query: Option<HashMap<String, String>>,
         ) -> Result<Response<isahc::AsyncBody>, isahc::Error> {
-            let mut url = self.base_url.to_owned();
-
-            url.path_segments_mut()
-                .expect("get path segments")
-                .pop_if_empty()
-                .extend(path.split('/').filter(|s| !s.is_empty()));
-
-            if let Some(headers) = self.default_query.as_ref() {
-                url.query_pairs_mut().extend_pairs(headers);
-            };
-
-            if let Some(headers) = extra_query {
-                url.query_pairs_mut().extend_pairs(headers);
-            };
-
-            let builder = Request::builder()
-                .method("POST")
-                .uri(url.as_str())
-                .header("content-type", "application/json")
-                .header("api-key", &self.api_key);
-
-            let builder = apply_header(builder, self.default_headers.to_owned());
-
-            let builder = apply_header(builder, extra_headers);
-
-            let body = serde_json::to_vec(&prompt).unwrap();
-
-            let request = builder.body(body).unwrap();
+            let request = build_request(
+                path,
+                prompt,
+                &self.base_url,
+                &self.api_key,
+                extra_headers,
+                extra_query,
+            );
 
             self.client.send_async(request).await
         }
@@ -308,23 +306,13 @@ mod non_blocking {
             default_headers: Option<HashMap<String, String>>,
             default_query: Option<HashMap<String, String>>,
         ) -> PyResult<Self> {
-            let client = HttpClient::new().expect("should create http client.");
-
-            let base_url = base_url
-                .or_else(|| env::var(BASE_URL_ENV).ok())
-                .and_then(|s| Url::parse(&s).ok())
-                .ok_or_else(|| py_err!("{} environment variable not found.", BASE_URL_ENV))?;
-
-            let api_key = api_key
-                .or_else(|| env::var(API_KEY_ENV).ok())
-                .ok_or_else(|| py_err!("{} environment variable not found.", API_KEY_ENV))?;
+            let (client, base_url, api_key) =
+                new(base_url, api_key, default_headers, default_query);
 
             Ok(Self {
                 client,
                 base_url,
                 api_key,
-                default_headers,
-                default_query,
             })
         }
 
@@ -340,14 +328,12 @@ mod non_blocking {
             let prompt = Python::with_gil(|py| depythonize::<Prompt>(&args.into_bound(py)))
                 .map_err(|e| py_err!("{}", e))?;
 
-            let is_stream = prompt.is_stream();
-
             let mut response = self
-                .api_request("/chat/completions", prompt, extra_headers, extra_query)
+                .api_request("/chat/completions", &prompt, extra_headers, extra_query)
                 .await
                 .map_err(|e| py_err!("{}", e))?;
 
-            if is_stream {
+            if prompt.is_stream() {
                 let stream = Stream::new(response);
 
                 Ok(CompletionResponse::Stream(stream))
@@ -409,7 +395,7 @@ mod non_blocking {
                 match stream.body.read(&mut chunk_slice).await {
                     Ok(_) => {
                         let chunk_str = std::str::from_utf8(&chunk_slice)
-                            .unwrap()
+                            .expect("should convert chunk to string")
                             .trim_end_matches('\0');
                         stream.buffer.push_str(chunk_str);
 
