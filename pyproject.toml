@@ -20,4 +20,9 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [dependency-groups]
-dev = ["pytest>=8.3.4"]
+dev = [
+    "langchain-openai>=0.2.14",
+    "openai>=1.59.3",
+    "pytest>=8.3.4",
+    "python-dotenv>=1.0.1",
+]
