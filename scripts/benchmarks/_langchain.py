@@ -2,8 +2,8 @@ import os
 import langchain_openai
 
 client = langchain_openai.ChatOpenAI(
-    api_key=os.getenv("ORPHEUS_API_KEY"),
-    base_url=os.getenv("ORPHEUS_BASE_URL"),
+    api_key=os.getenv("ORPHEUS_API_KEY", "mock"),
+    base_url=os.getenv("ORPHEUS_BASE_URL", "http://localhost:8100/openai"),
 )
 
 messages = [
