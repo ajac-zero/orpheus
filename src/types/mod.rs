@@ -162,7 +162,7 @@ mod generation {
         created: u64,
         model: String,
         service_tier: Option<String>,
-        system_fingerprint: String,
+        system_fingerprint: Option<String>,
         object: String,
         usage: PromptUsage,
     }
