@@ -1,3 +1,3 @@
-from orpheus._core import Orpheus
+from orpheus._core import Orpheus, AsyncOrpheus
 
-__all__ = ["Orpheus"]
+__all__ = ["Orpheus", "AsyncOrpheus"]
