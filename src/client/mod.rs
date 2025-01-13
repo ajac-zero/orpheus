@@ -87,7 +87,7 @@ fn new(
 mod blocking {
     use super::*;
     use isahc::{HttpClient, ReadResponseExt, Response};
-    use pyo3::exceptions::PyStopIteration;
+    use pyo3::exceptions::{PyIOError, PyStopIteration};
     use pyo3::prelude::*;
     use pyo3::types::PyDict;
     use pythonize::depythonize;
@@ -157,6 +157,12 @@ mod blocking {
             let mut response = self
                 .api_request("/chat/completions", &prompt, extra_headers, extra_query)
                 .map_err(|e| py_err!("{}", e))?;
+
+            if response.status() == 401 {
+                return Err(PyIOError::new_err(
+                    "401 (Unauthorized) response; Is the API key valid?",
+                ));
+            };
 
             if prompt.is_stream() {
                 let stream = Stream::new(response);
