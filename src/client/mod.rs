@@ -38,8 +38,8 @@ fn build_request(
     let mut builder = Request::builder()
         .method("POST")
         .uri(url.as_str())
-        .header("content-type", "application/json")
-        .header("api-key", api_key);
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {}", api_key));
 
     if let Some(headers) = extra_headers {
         builder = headers
