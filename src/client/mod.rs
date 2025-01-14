@@ -1,4 +1,6 @@
 mod blocking;
+mod chat;
+mod embeddings;
 mod non_blocking;
 
 pub use blocking::Orpheus;
@@ -7,6 +9,7 @@ pub use non_blocking::AsyncOrpheus;
 use super::types::{Completion, CompletionChunk, Prompt};
 use isahc::{HttpClient, Request};
 use pyo3::exceptions::PyKeyError;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::env;
 use url::Url;
@@ -14,14 +17,19 @@ use url::Url;
 const BASE_URL_ENV: &str = "ORPHEUS_BASE_URL";
 const API_KEY_ENV: &str = "ORPHEUS_API_KEY";
 
-fn build_request(
+pub type ExtrasMap = Option<HashMap<String, String>>;
+
+pub fn build_request<T>(
     path: &str,
-    prompt: &Prompt,
+    prompt: &T,
     url: &Url,
     api_key: &str,
-    extra_headers: Option<HashMap<String, String>>,
-    extra_query: Option<HashMap<String, String>>,
-) -> Request<Vec<u8>> {
+    extra_headers: ExtrasMap,
+    extra_query: ExtrasMap,
+) -> Request<Vec<u8>>
+where
+    T: Serialize,
+{
     let mut url = url.to_owned();
 
     url.path_segments_mut()
@@ -50,7 +58,7 @@ fn build_request(
     builder.body(body).expect("should build request")
 }
 
-fn new(
+pub fn build_base_attributes(
     base_url: Option<String>,
     api_key: Option<String>,
     default_headers: Option<HashMap<String, String>>,

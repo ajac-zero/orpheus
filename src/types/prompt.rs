@@ -103,7 +103,7 @@ enum EmbeddingInput {
 }
 
 #[derive(Debug, Serialize)]
-struct EmbeddingPrompt {
+pub struct EmbeddingPrompt {
     input: EmbeddingInput,
     model: String,
     encoding_format: Option<String>,
@@ -112,7 +112,7 @@ struct EmbeddingPrompt {
 }
 
 #[derive(Debug, Deserialize)]
-struct EmbeddingResponse {
+pub struct EmbeddingResponse {
     index: i32,
     embedding: Vec<f64>,
     object: String,

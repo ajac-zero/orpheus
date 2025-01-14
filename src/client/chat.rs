@@ -1,5 +1,3 @@
-use super::embeddings::SyncEmbeddings;
-
 use super::*;
 use isahc::{HttpClient, Response};
 use pyo3::exceptions::{PyStopIteration, PyValueError};
@@ -9,31 +7,14 @@ use std::io::Read;
 use std::sync::Arc;
 
 #[pyclass]
-pub struct SyncOrpheusCore {
+pub struct SyncChat {
     client: Arc<HttpClient>,
-    embeddings: SyncEmbeddings,
+    url: Url,
+    api_key: String,
 }
 
 #[pymethods]
-impl Orpheus {
-    #[new]
-    #[pyo3(signature = (base_url=None, api_key=None, default_headers=None, default_query=None))]
-    fn __init__(
-        base_url: Option<String>,
-        api_key: Option<String>,
-        default_headers: Option<HashMap<String, String>>,
-        default_query: Option<HashMap<String, String>>,
-    ) -> PyResult<Self> {
-        let (client, base_url, api_key) =
-            build_base_attributes(base_url, api_key, default_headers, default_query);
-
-        let client = Arc::new(client);
-
-        let embeddings = SyncEmbeddings::new(client, base_url, api_key);
-
-        Ok(Self { client, embeddings })
-    }
-
+impl SyncChat {
     #[pyo3(signature = (extra_headers=None, extra_query=None, **py_kwargs))]
     fn create(
         &self,
@@ -70,17 +51,7 @@ impl Orpheus {
     }
 
     #[getter]
-    fn chat(self_: PyRef<Self>) -> PyRef<Self> {
-        self_
-    }
-
-    #[getter]
     fn completions(self_: PyRef<Self>) -> PyRef<Self> {
-        self_
-    }
-
-    #[getter]
-    fn embeddings(self_: PyRef<Self>) -> PyRef<Self> {
         self_
     }
 }

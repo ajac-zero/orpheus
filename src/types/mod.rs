@@ -5,5 +5,5 @@ mod stream;
 mod tokens;
 
 pub use generation::Completion;
-pub use prompt::Prompt;
+pub use prompt::{EmbeddingPrompt, EmbeddingResponse, Prompt};
 pub use stream::CompletionChunk;
