@@ -1,66 +1,49 @@
-use super::*;
-use async_std::sync::Mutex;
-use futures_lite::AsyncReadExt;
-use isahc::{AsyncReadResponseExt, HttpClient, Response};
-use pyo3::exceptions::{PyStopAsyncIteration, PyValueError};
-use pyo3::prelude::*;
-use pythonize::depythonize;
+#![allow(clippy::large_enum_variant)]
+
 use std::collections::VecDeque;
 use std::sync::Arc;
-use url::Url;
 
+use async_std::sync::Mutex;
+use futures_lite::AsyncReadExt;
+use isahc::AsyncReadResponseExt;
+use pyo3::exceptions::{PyIOError, PyStopAsyncIteration, PyValueError};
+use pyo3::prelude::*;
+use pythonize::depythonize;
+
+use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
+use crate::types::prompt::Prompt;
+use crate::types::ExtrasMap;
+
+use super::AsyncRest;
+
+/// A non-blocking client for the chat completion API from OpenAI.
 #[pyclass]
-pub struct AsyncOrpheus {
-    client: HttpClient,
-    base_url: Url,
+pub struct AsyncChat {
+    client: Arc<isahc::HttpClient>,
+    base_url: url::Url,
     api_key: String,
 }
 
-impl AsyncOrpheus {
-    async fn api_request(
-        &self,
-        path: &str,
-        prompt: &Prompt,
-        extra_headers: Option<HashMap<String, String>>,
-        extra_query: Option<HashMap<String, String>>,
-    ) -> Result<Response<isahc::AsyncBody>, isahc::Error> {
-        let request = build_request(
-            path,
-            prompt,
-            &self.base_url,
-            &self.api_key,
-            extra_headers,
-            extra_query,
-        );
-
-        self.client.send_async(request).await
-    }
-}
-
-#[pymethods]
-impl AsyncOrpheus {
-    #[new]
-    #[pyo3(signature = (base_url=None, api_key=None, default_headers=None, default_query=None))]
-    fn new(
-        base_url: Option<String>,
-        api_key: Option<String>,
-        default_headers: Option<HashMap<String, String>>,
-        default_query: Option<HashMap<String, String>>,
-    ) -> PyResult<Self> {
-        let (client, base_url, api_key) = new(base_url, api_key, default_headers, default_query);
-
-        Ok(Self {
+impl AsyncChat {
+    pub fn new(client: Arc<isahc::HttpClient>, base_url: url::Url, api_key: String) -> Self {
+        Self {
             client,
             base_url,
             api_key,
-        })
+        }
     }
+}
 
+// Compose traits to send non-blocking REST requests.
+impl AsyncRest for AsyncChat {}
+
+#[pymethods]
+impl AsyncChat {
     #[pyo3(signature = (extra_headers=None, extra_query=None, **py_kwargs))]
     async fn create(
         &self,
-        extra_headers: Option<HashMap<String, String>>,
-        extra_query: Option<HashMap<String, String>>,
+        extra_headers: ExtrasMap,
+        extra_query: ExtrasMap,
         py_kwargs: Option<PyObject>,
     ) -> PyResult<CompletionResponse> {
         let args = py_kwargs.ok_or(PyValueError::new_err("No keyword arguments passed."))?;
@@ -69,9 +52,17 @@ impl AsyncOrpheus {
             .map_err(|e| PyValueError::new_err(format!("Invalid arguments: {}", e)))?;
 
         let mut response = self
-            .api_request("/chat/completions", &prompt, extra_headers, extra_query)
+            .api_request(
+                &self.client,
+                &self.base_url,
+                &self.api_key,
+                "/chat/completions",
+                &prompt,
+                extra_headers,
+                extra_query,
+            )
             .await
-            .map_err(|e| PyValueError::new_err(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| PyIOError::new_err(format!("Failed to send request: {}", e)))?;
 
         if prompt.is_stream() {
             let stream = Stream::new(response);
@@ -79,7 +70,7 @@ impl AsyncOrpheus {
             Ok(CompletionResponse::Stream(stream))
         } else {
             let completion = response
-                .json::<Completion>()
+                .json::<ChatCompletion>()
                 .await
                 .map_err(|e| PyValueError::new_err(format!("Failed to parse response: {}", e)))?;
 
@@ -88,21 +79,15 @@ impl AsyncOrpheus {
     }
 
     #[getter]
-    fn chat(self_: PyRef<Self>) -> PyRef<Self> {
-        self_
-    }
-
-    #[getter]
     fn completions(self_: PyRef<Self>) -> PyRef<Self> {
         self_
     }
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(pyo3::IntoPyObject)]
 enum CompletionResponse {
     #[pyo3(transparent)]
-    Completion(Completion),
+    Completion(ChatCompletion),
     #[pyo3(transparent)]
     Stream(Stream),
 }
@@ -118,7 +103,7 @@ struct Stream {
     stream: Arc<Mutex<InnerStream>>,
 }
 
-async fn next(stream: Arc<Mutex<InnerStream>>) -> Result<CompletionChunk, PyErr> {
+async fn next(stream: Arc<Mutex<InnerStream>>) -> Result<ChatCompletionChunk, PyErr> {
     let mut stream = stream.lock().await;
     let mut chunk_slice = [0; 1024];
     loop {
@@ -128,7 +113,7 @@ async fn next(stream: Arc<Mutex<InnerStream>>) -> Result<CompletionChunk, PyErr>
             } else {
                 let data = &line[6..];
 
-                return serde_json::from_str::<CompletionChunk>(data)
+                return serde_json::from_str::<ChatCompletionChunk>(data)
                     .map_err(|e| PyValueError::new_err(format!("Failed to parse chunk: {}", e)));
             }
         } else {
@@ -164,7 +149,7 @@ async fn next(stream: Arc<Mutex<InnerStream>>) -> Result<CompletionChunk, PyErr>
 }
 
 impl Stream {
-    fn new(response: Response<isahc::AsyncBody>) -> Self {
+    fn new(response: isahc::Response<isahc::AsyncBody>) -> Self {
         let inner = InnerStream {
             buffer: String::new(),
             body: response.into_body(),

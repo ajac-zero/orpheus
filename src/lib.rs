@@ -1,15 +1,19 @@
 #![allow(dead_code)]
 
-mod client;
+mod blocking;
+mod nonblocking;
 mod types;
 
 use pyo3::exceptions as exc;
 use pyo3::prelude::*;
 
+pub const BASE_URL_ENV: &str = "ORPHEUS_BASE_URL";
+pub const API_KEY_ENV: &str = "ORPHEUS_API_KEY";
+
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<client::Orpheus>()?;
-    m.add_class::<client::AsyncOrpheus>()?;
+    m.add_class::<blocking::Orpheus>()?;
+    m.add_class::<nonblocking::AsyncOrpheus>()?;
     m.add("UnauthorizedError", m.py().get_type::<exc::PyIOError>())?;
     Ok(())
 }

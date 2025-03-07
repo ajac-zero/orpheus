@@ -1,9 +1,8 @@
-mod generation;
-mod message;
-mod prompt;
-mod stream;
-mod tokens;
+pub mod chat;
+pub mod embed;
+pub mod message;
+pub mod prompt;
 
-pub use generation::Completion;
-pub use prompt::{EmbeddingPrompt, EmbeddingResponse, Prompt};
-pub use stream::CompletionChunk;
+use std::collections::HashMap;
+
+pub type ExtrasMap = Option<HashMap<String, String>>;
