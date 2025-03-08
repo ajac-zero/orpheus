@@ -13,7 +13,7 @@ orpheus = "orpheus:main"
 [tool.maturin]
 module-name = "orpheus._core"
 python-packages = ["orpheus"]
-python-source = "src"
+python-source = "python"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
@@ -21,8 +21,8 @@ build-backend = "maturin"
 
 [dependency-groups]
 dev = [
-    "langchain-openai>=0.2.14",
-    "openai>=1.59.3",
-    "pytest>=8.3.4",
-    "python-dotenv>=1.0.1",
+  "langchain-openai>=0.2.14",
+  "openai>=1.59.3",
+  "pytest>=8.3.4",
+  "python-dotenv>=1.0.1",
 ]
