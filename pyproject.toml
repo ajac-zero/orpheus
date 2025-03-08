@@ -7,8 +7,8 @@ authors = [{ name = "ajac-zero", email = "ajcardoza2000@gmail.com" }]
 requires-python = ">=3.11"
 dependencies = []
 
-[project.scripts]
-orpheus = "orpheus:main"
+[dependency-groups]
+dev = ["pytest>=8.3.4"]
 
 [tool.maturin]
 module-name = "orpheus._core"
@@ -18,11 +18,3 @@ python-source = "python"
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
-
-[dependency-groups]
-dev = [
-  "langchain-openai>=0.2.14",
-  "openai>=1.59.3",
-  "pytest>=8.3.4",
-  "python-dotenv>=1.0.1",
-]
