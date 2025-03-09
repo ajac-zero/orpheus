@@ -81,6 +81,21 @@ pub struct ChatCompletionChunk {
     usage: Option<StreamUsage>,
 }
 
+impl ChatCompletionChunk {
+    pub fn new_empty() -> Self {
+        Self {
+            id: String::new(),
+            choices: Vec::new(),
+            created: 0,
+            model: String::new(),
+            service_tier: None,
+            system_fingerprint: None,
+            object: String::new(),
+            usage: None,
+        }
+    }
+}
+
 #[pyclass(get_all)]
 #[derive(Debug, Clone, Deserialize)]
 struct TopLogProbs {

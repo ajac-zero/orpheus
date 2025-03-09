@@ -119,45 +119,44 @@ impl Stream {
             let mut buffer_ptr = buffer.lock().await;
 
             let mut chunk_slice = [0; 1024];
-            loop {
-                if let Some(line) = lines_ptr.pop() {
-                    if line == "data: [DONE]" {
-                        return Err(PyStopAsyncIteration::new_err("end of stream"));
-                    } else {
-                        let data = &line[6..];
 
-                        return serde_json::from_str::<ChatCompletionChunk>(data).map_err(|e| {
-                            PyValueError::new_err(format!("Failed to parse chunk: {}", e))
-                        });
-                    }
+            if let Some(line) = lines_ptr.pop() {
+                if line == "data: [DONE]" {
+                    Err(PyStopAsyncIteration::new_err("end of stream"))
                 } else {
-                    match body_ptr.read(&mut chunk_slice).await {
-                        Ok(_) => {
-                            let chunk_str = std::str::from_utf8(&chunk_slice)
-                                .expect("should convert chunk to string")
-                                .trim_end_matches('\0');
-                            buffer_ptr.push_str(chunk_str);
+                    let data = &line[6..];
 
-                            if let Some(position) = buffer_ptr.find("\n\n") {
-                                let split_point = position + 2;
-                                let moved = buffer_ptr.drain(..split_point).collect::<String>();
-                                let new_lines = moved
-                                    .lines()
-                                    .filter(|l| !l.is_empty())
-                                    .map(|l| l.to_string());
+                    serde_json::from_str::<ChatCompletionChunk>(data)
+                        .map_err(|e| PyValueError::new_err(format!("Failed to parse chunk: {}", e)))
+                }
+            } else {
+                let chunk = body_ptr.read(&mut chunk_slice).await;
 
-                                lines_ptr.extend(new_lines);
-                            };
+                match chunk {
+                    Ok(0) => Err(PyStopAsyncIteration::new_err("end of stream")),
+                    Ok(_) => {
+                        let chunk_str = std::str::from_utf8(&chunk_slice)
+                            .expect("should convert chunk to string")
+                            .trim_end_matches('\0');
+                        buffer_ptr.push_str(chunk_str);
 
-                            continue;
-                        }
-                        Err(e) => {
-                            return Err(PyValueError::new_err(format!(
-                                "Failed to read chunk: {}",
-                                e
-                            )))
-                        }
+                        if let Some(position) = buffer_ptr.find("\n\n") {
+                            let split_point = position + 2;
+                            let moved = buffer_ptr.drain(..split_point).collect::<String>();
+                            let new_lines = moved
+                                .lines()
+                                .filter(|l| !l.is_empty())
+                                .map(|l| l.to_string());
+
+                            lines_ptr.extend(new_lines);
+                        };
+
+                        Ok(ChatCompletionChunk::new_empty())
                     }
+                    Err(e) => Err(PyValueError::new_err(format!(
+                        "Failed to read chunk: {}",
+                        e
+                    ))),
                 }
             }
         })
