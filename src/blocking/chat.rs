@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::io::Read;
 use std::sync::Arc;
 
@@ -100,7 +99,7 @@ struct Stream {
     buffer: String,
     body: isahc::Body,
     chunk: [u8; 1024],
-    lines: VecDeque<String>,
+    lines: Vec<String>,
 }
 
 impl Stream {
@@ -109,7 +108,7 @@ impl Stream {
             buffer: String::new(),
             body: response.into_body(),
             chunk: [0; 1024],
-            lines: VecDeque::new(),
+            lines: Vec::new(),
         }
     }
 }
@@ -117,7 +116,7 @@ impl Stream {
 #[pymethods]
 impl Stream {
     fn __next__(&mut self) -> PyResult<ChatCompletionChunk> {
-        if let Some(line) = self.lines.pop_front() {
+        if let Some(line) = self.lines.pop() {
             if line == "data: [DONE]" {
                 Err(PyStopIteration::new_err("end of stream"))
             } else {
@@ -143,7 +142,7 @@ impl Stream {
                             .lines()
                             .filter(|l| !l.is_empty())
                             .map(|l| l.to_string())
-                            .collect::<VecDeque<String>>();
+                            .collect::<Vec<String>>();
 
                         self.buffer.clear();
                     };
