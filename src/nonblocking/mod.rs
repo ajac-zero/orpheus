@@ -58,8 +58,10 @@ trait AsyncRest {
 #[pyclass]
 pub struct AsyncOrpheus {
     client: Arc<isahc::HttpClient>,
-    chat: chat::AsyncChat,
-    embeddings: embed::AsyncEmbed,
+    #[pyo3(get)]
+    chat: Py<chat::AsyncChat>,
+    #[pyo3(get)]
+    embeddings: Py<embed::AsyncEmbed>,
 }
 
 #[pymethods]
@@ -67,6 +69,7 @@ impl AsyncOrpheus {
     #[new]
     #[pyo3(signature = (base_url=None, api_key=None, default_headers=None, default_query=None))]
     fn __init__(
+        py: Python<'_>,
         base_url: Option<String>,
         api_key: Option<String>,
         default_headers: Option<HashMap<String, String>>,
@@ -110,8 +113,8 @@ impl AsyncOrpheus {
 
         Ok(Self {
             client,
-            chat,
-            embeddings,
+            chat: Py::new(py, chat)?,
+            embeddings: Py::new(py, embeddings)?,
         })
     }
 }

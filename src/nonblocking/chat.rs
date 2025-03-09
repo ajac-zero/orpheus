@@ -1,9 +1,6 @@
 #![allow(clippy::large_enum_variant)]
 
-use std::collections::VecDeque;
-use std::sync::Arc;
-
-use async_std::sync::Mutex;
+use async_std::sync::{Arc, Mutex};
 use futures_lite::AsyncReadExt;
 use isahc::AsyncReadResponseExt;
 use pyo3::exceptions::{PyIOError, PyStopAsyncIteration, PyValueError};
@@ -92,72 +89,19 @@ enum CompletionResponse {
     Stream(Stream),
 }
 
-struct InnerStream {
-    buffer: String,
-    body: isahc::AsyncBody,
-    lines: VecDeque<String>,
-}
-
 #[pyclass]
 struct Stream {
-    stream: Arc<Mutex<InnerStream>>,
-}
-
-async fn next(stream: Arc<Mutex<InnerStream>>) -> Result<ChatCompletionChunk, PyErr> {
-    let mut stream = stream.lock().await;
-    let mut chunk_slice = [0; 1024];
-    loop {
-        if let Some(line) = stream.lines.pop_front() {
-            if line == "data: [DONE]" {
-                return Err(PyStopAsyncIteration::new_err("end of stream"));
-            } else {
-                let data = &line[6..];
-
-                return serde_json::from_str::<ChatCompletionChunk>(data)
-                    .map_err(|e| PyValueError::new_err(format!("Failed to parse chunk: {}", e)));
-            }
-        } else {
-            match stream.body.read(&mut chunk_slice).await {
-                Ok(_) => {
-                    let chunk_str = std::str::from_utf8(&chunk_slice)
-                        .expect("should convert chunk to string")
-                        .trim_end_matches('\0');
-                    stream.buffer.push_str(chunk_str);
-
-                    if let Some(position) = stream.buffer.find("\n\n") {
-                        let split_point = position + 2;
-                        let moved = stream.buffer.drain(..split_point).collect::<String>();
-                        let new_lines = moved
-                            .lines()
-                            .filter(|l| !l.is_empty())
-                            .map(|l| l.to_string());
-
-                        stream.lines.extend(new_lines);
-                    };
-
-                    continue;
-                }
-                Err(e) => {
-                    return Err(PyValueError::new_err(format!(
-                        "Failed to read chunk: {}",
-                        e
-                    )))
-                }
-            }
-        }
-    }
+    buffer: Arc<Mutex<String>>,
+    body: Arc<Mutex<isahc::AsyncBody>>,
+    lines: Arc<Mutex<Vec<String>>>,
 }
 
 impl Stream {
     fn new(response: isahc::Response<isahc::AsyncBody>) -> Self {
-        let inner = InnerStream {
-            buffer: String::new(),
-            body: response.into_body(),
-            lines: VecDeque::new(),
-        };
-
         Self {
-            stream: Arc::new(Mutex::new(inner)),
+            buffer: Arc::new(Mutex::new(String::new())),
+            body: Arc::new(Mutex::new(response.into_body())),
+            lines: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -165,8 +109,58 @@ impl Stream {
 #[pymethods]
 impl Stream {
     fn __anext__<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        let stream = self.stream.clone();
-        pyo3_async_runtimes::async_std::future_into_py(py, next(stream))
+        let lines = self.lines.clone();
+        let body = self.body.clone();
+        let buffer = self.buffer.clone();
+
+        pyo3_async_runtimes::async_std::future_into_py(py, async move {
+            let mut lines_ptr = lines.lock().await;
+            let mut body_ptr = body.lock().await;
+            let mut buffer_ptr = buffer.lock().await;
+
+            let mut chunk_slice = [0; 1024];
+            loop {
+                if let Some(line) = lines_ptr.pop() {
+                    if line == "data: [DONE]" {
+                        return Err(PyStopAsyncIteration::new_err("end of stream"));
+                    } else {
+                        let data = &line[6..];
+
+                        return serde_json::from_str::<ChatCompletionChunk>(data).map_err(|e| {
+                            PyValueError::new_err(format!("Failed to parse chunk: {}", e))
+                        });
+                    }
+                } else {
+                    match body_ptr.read(&mut chunk_slice).await {
+                        Ok(_) => {
+                            let chunk_str = std::str::from_utf8(&chunk_slice)
+                                .expect("should convert chunk to string")
+                                .trim_end_matches('\0');
+                            buffer_ptr.push_str(chunk_str);
+
+                            if let Some(position) = buffer_ptr.find("\n\n") {
+                                let split_point = position + 2;
+                                let moved = buffer_ptr.drain(..split_point).collect::<String>();
+                                let new_lines = moved
+                                    .lines()
+                                    .filter(|l| !l.is_empty())
+                                    .map(|l| l.to_string());
+
+                                lines_ptr.extend(new_lines);
+                            };
+
+                            continue;
+                        }
+                        Err(e) => {
+                            return Err(PyValueError::new_err(format!(
+                                "Failed to read chunk: {}",
+                                e
+                            )))
+                        }
+                    }
+                }
+            }
+        })
     }
 
     fn __aiter__(self_: PyRef<Self>) -> PyRef<Self> {
