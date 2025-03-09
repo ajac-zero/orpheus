@@ -58,8 +58,10 @@ trait SyncRest {
 #[pyclass]
 pub struct Orpheus {
     client: Arc<isahc::HttpClient>,
-    chat: chat::SyncChat,
-    embeddings: embed::SyncEmbed,
+    #[pyo3(get)]
+    chat: Py<chat::SyncChat>,
+    #[pyo3(get)]
+    embeddings: Py<embed::SyncEmbed>,
 }
 
 #[pymethods]
@@ -67,6 +69,7 @@ impl Orpheus {
     #[new]
     #[pyo3(signature = (base_url=None, api_key=None, default_headers=None, default_query=None))]
     fn __init__(
+        py: Python<'_>,
         base_url: Option<String>,
         api_key: Option<String>,
         default_headers: Option<HashMap<String, String>>,
@@ -110,8 +113,8 @@ impl Orpheus {
 
         Ok(Self {
             client,
-            chat,
-            embeddings,
+            chat: Py::new(py, chat)?,
+            embeddings: Py::new(py, embeddings)?,
         })
     }
 }
