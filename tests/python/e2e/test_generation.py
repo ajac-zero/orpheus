@@ -10,6 +10,21 @@ def test_chat_completion(orpheus: Orpheus):
     assert response.choices[0].message.content == "hello"
 
 
+def test_chat_stream_completion(orpheus: Orpheus):
+    response = orpheus.chat.completions.create(
+        model="gpt5", messages=[{"role": "user", "content": "hello"}], stream=True
+    )
+
+    buffer = ""
+
+    for chunk in response:
+        assert chunk.choices[0].delta.content is not None
+
+        buffer += chunk.choices[0].delta.content
+
+    assert buffer == "hello"
+
+
 def test_chat_completion_with_default_header(mockai):
     client = Orpheus(
         api_key="test",
@@ -37,6 +52,24 @@ def test_chat_completion_with_extra_header(orpheus: Orpheus):
     assert response.choices[0].message.content == "hi!"
 
 
+def test_chat_stream_completion_with_extra_header(orpheus: Orpheus):
+    response = orpheus.chat.completions.create(
+        model="gpt5",
+        messages=[{"role": "user", "content": "hello"}],
+        stream=True,
+        extra_headers={"mock-response": "hi!"},
+    )
+
+    buffer = ""
+
+    for chunk in response:
+        assert chunk.choices[0].delta.content is not None
+
+        buffer += chunk.choices[0].delta.content
+
+    assert buffer == "hi!"
+
+
 async def test_async_chat_completion(async_orpheus: AsyncOrpheus):
     response = await async_orpheus.chat.completions.create(
         model="gpt5", messages=[{"role": "user", "content": "hello"}]
@@ -44,6 +77,21 @@ async def test_async_chat_completion(async_orpheus: AsyncOrpheus):
 
     assert response is not None
     assert response.choices[0].message.content == "hello"
+
+
+async def test_async_chat_stream_completion(async_orpheus: AsyncOrpheus):
+    response = await async_orpheus.chat.completions.create(
+        model="gpt5", messages=[{"role": "user", "content": "hello"}], stream=True
+    )
+
+    buffer = ""
+
+    async for chunk in response:
+        assert chunk.choices[0].delta.content is not None
+
+        buffer += chunk.choices[0].delta.content
+
+    assert buffer == "hello"
 
 
 async def test_async_chat_completion_with_default_header(mockai):
@@ -71,3 +119,23 @@ async def test_async_chat_completion_with_extra_header(async_orpheus: AsyncOrphe
 
     assert response is not None
     assert response.choices[0].message.content == "hi!"
+
+
+async def test_async_chat_stream_completion_with_extra_header(
+    async_orpheus: AsyncOrpheus,
+):
+    response = await async_orpheus.chat.completions.create(
+        model="gpt5",
+        messages=[{"role": "user", "content": "hello"}],
+        stream=True,
+        extra_headers={"mock-response": "hi!"},
+    )
+
+    buffer = ""
+
+    async for chunk in response:
+        assert chunk.choices[0].delta.content is not None
+
+        buffer += chunk.choices[0].delta.content
+
+    assert buffer == "hi!"
