@@ -5,7 +5,6 @@ mod embed;
 
 use std::collections::HashMap;
 use std::env;
-use std::sync::Arc;
 
 use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
@@ -58,7 +57,7 @@ trait SyncRest {
 
 #[pyclass]
 pub struct Orpheus {
-    client: Arc<Client>,
+    client: Client,
     #[pyo3(get)]
     chat: Py<chat::SyncChat>,
     #[pyo3(get)]
@@ -106,12 +105,9 @@ impl Orpheus {
             )))
             .expect("should get api key");
 
-        let client = Arc::new(client);
+        let chat = chat::SyncChat::new(client.clone(), base_url.clone(), api_key.clone());
 
-        let chat = chat::SyncChat::new(Arc::clone(&client), base_url.clone(), api_key.clone());
-
-        let embeddings =
-            embed::SyncEmbed::new(Arc::clone(&client), base_url.clone(), api_key.clone());
+        let embeddings = embed::SyncEmbed::new(client.clone(), base_url.clone(), api_key.clone());
 
         Ok(Self {
             client,

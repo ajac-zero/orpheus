@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 use std::io::Read;
-use std::sync::Arc;
 
 use pyo3::exceptions::{PyIOError, PyStopIteration, PyValueError};
 use pyo3::prelude::*;
@@ -17,13 +16,13 @@ use super::SyncRest;
 /// A blocking client for the chat completion API from OpenAI.
 #[pyclass]
 pub struct SyncChat {
-    client: Arc<Client>,
+    client: Client,
     base_url: url::Url,
     api_key: String,
 }
 
 impl SyncChat {
-    pub fn new(client: Arc<Client>, base_url: url::Url, api_key: String) -> Self {
+    pub fn new(client: Client, base_url: url::Url, api_key: String) -> Self {
         Self {
             client,
             base_url,

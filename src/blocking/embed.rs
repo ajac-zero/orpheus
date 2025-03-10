@@ -1,7 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 
-use std::sync::Arc;
-
 use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
 use reqwest::blocking::Client;
@@ -14,13 +12,13 @@ use super::SyncRest;
 /// A blocking client for the chat completion API from OpenAI.
 #[pyclass]
 pub struct SyncEmbed {
-    client: Arc<Client>,
+    client: Client,
     base_url: url::Url,
     api_key: String,
 }
 
 impl SyncEmbed {
-    pub fn new(client: Arc<Client>, base_url: url::Url, api_key: String) -> Self {
+    pub fn new(client: Client, base_url: url::Url, api_key: String) -> Self {
         Self {
             client,
             base_url,
