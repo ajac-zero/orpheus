@@ -9,6 +9,8 @@ use std::sync::Arc;
 
 use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
+use reqwest::blocking::{Client, Response};
+use reqwest::{Error, Method};
 use serde::Serialize;
 
 use crate::{API_KEY_ENV, BASE_URL_ENV};
@@ -16,14 +18,14 @@ use crate::{API_KEY_ENV, BASE_URL_ENV};
 trait SyncRest {
     fn api_request<T: Serialize>(
         &self,
-        client: &isahc::HttpClient,
+        client: &Client,
         base_url: &url::Url,
         api_key: &str,
         path: &str,
         prompt: &T,
         extra_headers: Option<HashMap<String, String>>,
         extra_query: Option<HashMap<String, String>>,
-    ) -> Result<isahc::Response<isahc::Body>, isahc::Error> {
+    ) -> Result<Response, Error> {
         let mut url = base_url.to_owned();
 
         url.path_segments_mut()
@@ -35,11 +37,10 @@ trait SyncRest {
             url.query_pairs_mut().extend_pairs(headers);
         };
 
-        let mut builder = isahc::Request::builder()
-            .method("POST")
-            .uri(url.as_str())
+        let mut builder = client
+            .request(Method::POST, url)
             .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", api_key));
+            .bearer_auth(api_key);
 
         if let Some(headers) = extra_headers {
             builder = headers
@@ -49,15 +50,15 @@ trait SyncRest {
 
         let body = serde_json::to_vec(&prompt).expect("should serialize prompt");
 
-        let request = builder.body(body).expect("should build request");
+        let request = builder.body(body);
 
-        client.send(request)
+        request.send()
     }
 }
 
 #[pyclass]
 pub struct Orpheus {
-    client: Arc<isahc::HttpClient>,
+    client: Arc<Client>,
     #[pyo3(get)]
     chat: Py<chat::SyncChat>,
     #[pyo3(get)]
@@ -75,10 +76,11 @@ impl Orpheus {
         default_headers: Option<HashMap<String, String>>,
         default_query: Option<HashMap<String, String>>,
     ) -> PyResult<Self> {
-        let mut builder = isahc::HttpClient::builder();
+        let mut builder = Client::builder();
 
         if let Some(headers) = default_headers {
-            builder = builder.default_headers(headers);
+            let headermap = (&headers).try_into().expect("valid headers");
+            builder = builder.default_headers(headermap);
         }
 
         let client = builder.build().expect("should build http client");

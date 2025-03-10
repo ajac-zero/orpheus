@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use isahc::ReadResponseExt;
 use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
+use reqwest::blocking::Client;
 
 use crate::types::embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse};
 use crate::types::ExtrasMap;
@@ -14,13 +14,13 @@ use super::SyncRest;
 /// A blocking client for the chat completion API from OpenAI.
 #[pyclass]
 pub struct SyncEmbed {
-    client: Arc<isahc::HttpClient>,
+    client: Arc<Client>,
     base_url: url::Url,
     api_key: String,
 }
 
 impl SyncEmbed {
-    pub fn new(client: Arc<isahc::HttpClient>, base_url: url::Url, api_key: String) -> Self {
+    pub fn new(client: Arc<Client>, base_url: url::Url, api_key: String) -> Self {
         Self {
             client,
             base_url,
@@ -47,7 +47,7 @@ impl SyncEmbed {
     ) -> PyResult<EmbeddingResponse> {
         let prompt = EmbeddingPrompt::new(input, model, encoding_format, dimensions, user);
 
-        let mut response = self
+        let response = self
             .api_request(
                 &self.client,
                 &self.base_url,

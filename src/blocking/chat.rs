@@ -2,11 +2,11 @@ use std::collections::VecDeque;
 use std::io::Read;
 use std::sync::Arc;
 
-use isahc::ReadResponseExt;
 use pyo3::exceptions::{PyIOError, PyStopIteration, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pythonize::depythonize;
+use reqwest::blocking::{Client, Response};
 
 use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
 use crate::types::prompt::Prompt;
@@ -17,13 +17,13 @@ use super::SyncRest;
 /// A blocking client for the chat completion API from OpenAI.
 #[pyclass]
 pub struct SyncChat {
-    client: Arc<isahc::HttpClient>,
+    client: Arc<Client>,
     base_url: url::Url,
     api_key: String,
 }
 
 impl SyncChat {
-    pub fn new(client: Arc<isahc::HttpClient>, base_url: url::Url, api_key: String) -> Self {
+    pub fn new(client: Arc<Client>, base_url: url::Url, api_key: String) -> Self {
         Self {
             client,
             base_url,
@@ -49,7 +49,7 @@ impl SyncChat {
         let prompt = depythonize::<Prompt>(args)
             .map_err(|e| PyValueError::new_err(format!("Invalid arguments: {}", e)))?;
 
-        let mut response = self
+        let response = self
             .api_request(
                 &self.client,
                 &self.base_url,
@@ -98,16 +98,16 @@ enum CompletionResponse {
 #[pyclass]
 struct Stream {
     buffer: String,
-    body: isahc::Body,
+    body: Response,
     chunk: [u8; 1024],
     lines: VecDeque<String>,
 }
 
 impl Stream {
-    fn new(response: isahc::Response<isahc::Body>) -> Self {
+    fn new(response: Response) -> Self {
         Self {
             buffer: String::new(),
-            body: response.into_body(),
+            body: response,
             chunk: [0; 1024],
             lines: VecDeque::new(),
         }
