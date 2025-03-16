@@ -1,8 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 
-use std::sync::Arc;
-
-use isahc::AsyncReadResponseExt;
 use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
 
@@ -11,16 +8,16 @@ use crate::types::ExtrasMap;
 
 use super::AsyncRest;
 
-/// A blocking client for the chat completion API from OpenAI.
+/// A nonblocking client for the chat completion API from OpenAI.
 #[pyclass]
 pub struct AsyncEmbed {
-    client: Arc<isahc::HttpClient>,
+    client: reqwest::Client,
     base_url: url::Url,
     api_key: String,
 }
 
 impl AsyncEmbed {
-    pub fn new(client: Arc<isahc::HttpClient>, base_url: url::Url, api_key: String) -> Self {
+    pub fn new(client: reqwest::Client, base_url: url::Url, api_key: String) -> Self {
         Self {
             client,
             base_url,
@@ -47,7 +44,7 @@ impl AsyncEmbed {
     ) -> PyResult<EmbeddingResponse> {
         let prompt = EmbeddingPrompt::new(input, model, encoding_format, dimensions, user);
 
-        let mut response = self
+        let response = self
             .api_request(
                 &self.client,
                 &self.base_url,

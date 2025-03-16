@@ -1,14 +1,14 @@
 #![allow(clippy::large_enum_variant)]
 
 use std::collections::VecDeque;
+use std::sync::Arc;
 
-use async_std::sync::{Arc, Mutex};
-use futures_lite::AsyncReadExt;
-use isahc::AsyncReadResponseExt;
 use pyo3::exceptions::{PyIOError, PyStopAsyncIteration, PyValueError};
 use pyo3::prelude::*;
 use pythonize::depythonize;
+use tokio::sync::Mutex;
 
+use crate::get_runtime;
 use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
 use crate::types::prompt::Prompt;
 use crate::types::ExtrasMap;
@@ -18,13 +18,13 @@ use super::AsyncRest;
 /// A non-blocking client for the chat completion API from OpenAI.
 #[pyclass]
 pub struct AsyncChat {
-    client: Arc<isahc::HttpClient>,
+    client: reqwest::Client,
     base_url: url::Url,
     api_key: String,
 }
 
 impl AsyncChat {
-    pub fn new(client: Arc<isahc::HttpClient>, base_url: url::Url, api_key: String) -> Self {
+    pub fn new(client: reqwest::Client, base_url: url::Url, api_key: String) -> Self {
         Self {
             client,
             base_url,
@@ -50,7 +50,7 @@ impl AsyncChat {
         let prompt = Python::with_gil(|py| depythonize::<Prompt>(&args.into_bound(py)))
             .map_err(|e| PyValueError::new_err(format!("Invalid arguments: {}", e)))?;
 
-        let mut response = self
+        let response = self
             .api_request(
                 &self.client,
                 &self.base_url,
@@ -94,16 +94,64 @@ enum CompletionResponse {
 #[pyclass]
 struct Stream {
     buffer: Arc<Mutex<String>>,
-    body: Arc<Mutex<isahc::AsyncBody>>,
+    body: Arc<Mutex<reqwest::Response>>,
     lines: Arc<Mutex<VecDeque<String>>>,
 }
 
 impl Stream {
-    fn new(response: isahc::Response<isahc::AsyncBody>) -> Self {
+    fn new(response: reqwest::Response) -> Self {
         Self {
             buffer: Arc::new(Mutex::new(String::new())),
-            body: Arc::new(Mutex::new(response.into_body())),
+            body: Arc::new(Mutex::new(response)),
             lines: Arc::new(Mutex::new(VecDeque::new())),
+        }
+    }
+}
+
+async fn next(
+    buffer: Arc<Mutex<String>>,
+    body: Arc<Mutex<reqwest::Response>>,
+    lines: Arc<Mutex<VecDeque<String>>>,
+) -> PyResult<ChatCompletionChunk> {
+    let mut lines_ptr = lines.lock().await;
+    let mut body_ptr = body.lock().await;
+    let mut buffer_ptr = buffer.lock().await;
+
+    loop {
+        if let Some(line) = lines_ptr.pop_front() {
+            if line == "data: [DONE]" {
+                break Err(PyStopAsyncIteration::new_err("end of stream"));
+            } else {
+                let data = &line[6..];
+
+                break serde_json::from_str::<ChatCompletionChunk>(data)
+                    .map_err(|e| PyValueError::new_err(format!("Failed to parse chunk: {}", e)));
+            }
+        } else {
+            let chunk = body_ptr.chunk().await.expect("chunk methof");
+
+            match chunk {
+                Some(bytes) => {
+                    let chunk_str = std::str::from_utf8(&bytes)
+                        .expect("should convert chunk to string")
+                        .trim_end_matches('\0');
+                    buffer_ptr.push_str(chunk_str);
+
+                    if let Some(position) = buffer_ptr.find("\n\n") {
+                        let split_point = position + 2;
+                        let moved = buffer_ptr.drain(..split_point).collect::<String>();
+                        let new_lines = moved
+                            .lines()
+                            .filter(|l| !l.is_empty())
+                            .map(|l| l.to_string());
+
+                        lines_ptr.extend(new_lines);
+                    };
+
+                    continue;
+                }
+                None => break Err(PyStopAsyncIteration::new_err("end of stream")),
+            }
         }
     }
 }
@@ -115,57 +163,11 @@ impl Stream {
         let body = self.body.clone();
         let buffer = self.buffer.clone();
 
-        pyo3_async_runtimes::async_std::future_into_py(py, async move {
-            let mut lines_ptr = lines.lock().await;
-            let mut body_ptr = body.lock().await;
-            let mut buffer_ptr = buffer.lock().await;
-
-            let mut chunk_slice = [0; 1024];
-
-            loop {
-                if let Some(line) = lines_ptr.pop_front() {
-                    if line == "data: [DONE]" {
-                        break Err(PyStopAsyncIteration::new_err("end of stream"));
-                    } else {
-                        let data = &line[6..];
-
-                        break serde_json::from_str::<ChatCompletionChunk>(data).map_err(|e| {
-                            PyValueError::new_err(format!("Failed to parse chunk: {}", e))
-                        });
-                    }
-                } else {
-                    let chunk = body_ptr.read(&mut chunk_slice).await;
-
-                    match chunk {
-                        Ok(0) => break Err(PyStopAsyncIteration::new_err("end of stream")),
-                        Ok(_) => {
-                            let chunk_str = std::str::from_utf8(&chunk_slice)
-                                .expect("should convert chunk to string")
-                                .trim_end_matches('\0');
-                            buffer_ptr.push_str(chunk_str);
-
-                            if let Some(position) = buffer_ptr.find("\n\n") {
-                                let split_point = position + 2;
-                                let moved = buffer_ptr.drain(..split_point).collect::<String>();
-                                let new_lines = moved
-                                    .lines()
-                                    .filter(|l| !l.is_empty())
-                                    .map(|l| l.to_string());
-
-                                lines_ptr.extend(new_lines);
-                            };
-
-                            continue;
-                        }
-                        Err(e) => {
-                            break Err(PyValueError::new_err(format!(
-                                "Failed to read chunk: {}",
-                                e
-                            )))
-                        }
-                    }
-                }
-            }
+        pyo3_async_runtimes::tokio::future_into_py(py, async {
+            get_runtime()
+                .spawn(next(buffer, body, lines))
+                .await
+                .expect("h")
         })
     }
 

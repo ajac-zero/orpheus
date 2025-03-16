@@ -3,27 +3,26 @@
 mod chat;
 mod embed;
 
-use std::collections::HashMap;
 use std::env;
-use std::sync::Arc;
 
 use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
-use serde::Serialize;
 
+use crate::get_runtime;
+use crate::types::ExtrasMap;
 use crate::{API_KEY_ENV, BASE_URL_ENV};
 
 trait AsyncRest {
-    async fn api_request<T: Serialize>(
+    async fn api_request<T: serde::Serialize>(
         &self,
-        client: &isahc::HttpClient,
+        client: &reqwest::Client,
         base_url: &url::Url,
         api_key: &str,
         path: &str,
         prompt: &T,
-        extra_headers: Option<HashMap<String, String>>,
-        extra_query: Option<HashMap<String, String>>,
-    ) -> Result<isahc::Response<isahc::AsyncBody>, isahc::Error> {
+        extra_headers: ExtrasMap,
+        extra_query: ExtrasMap,
+    ) -> Result<reqwest::Response, reqwest::Error> {
         let mut url = base_url.to_owned();
 
         url.path_segments_mut()
@@ -35,9 +34,8 @@ trait AsyncRest {
             url.query_pairs_mut().extend_pairs(headers);
         };
 
-        let mut builder = isahc::Request::builder()
-            .method("POST")
-            .uri(url.as_str())
+        let mut builder = client
+            .request(reqwest::Method::POST, url)
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", api_key));
 
@@ -49,15 +47,16 @@ trait AsyncRest {
 
         let body = serde_json::to_vec(&prompt).expect("should serialize prompt");
 
-        let request = builder.body(body).expect("should build request");
-
-        client.send_async(request).await
+        get_runtime()
+            .spawn(builder.body(body).send())
+            .await
+            .expect("spawn rt")
     }
 }
 
 #[pyclass]
 pub struct AsyncOrpheus {
-    client: Arc<isahc::HttpClient>,
+    client: reqwest::Client,
     #[pyo3(get)]
     chat: Py<chat::AsyncChat>,
     #[pyo3(get)]
@@ -72,13 +71,14 @@ impl AsyncOrpheus {
         py: Python<'_>,
         base_url: Option<String>,
         api_key: Option<String>,
-        default_headers: Option<HashMap<String, String>>,
-        default_query: Option<HashMap<String, String>>,
+        default_headers: ExtrasMap,
+        default_query: ExtrasMap,
     ) -> PyResult<Self> {
-        let mut builder = isahc::HttpClient::builder();
+        let mut builder = reqwest::Client::builder();
 
         if let Some(headers) = default_headers {
-            builder = builder.default_headers(headers);
+            let headermap = (&headers).try_into().expect("turn to headerrmap");
+            builder = builder.default_headers(headermap);
         }
 
         let client = builder.build().expect("should build http client");
@@ -104,12 +104,9 @@ impl AsyncOrpheus {
             )))
             .expect("should get api key");
 
-        let client = Arc::new(client);
+        let chat = chat::AsyncChat::new(client.clone(), base_url.clone(), api_key.clone());
 
-        let chat = chat::AsyncChat::new(Arc::clone(&client), base_url.clone(), api_key.clone());
-
-        let embeddings =
-            embed::AsyncEmbed::new(Arc::clone(&client), base_url.clone(), api_key.clone());
+        let embeddings = embed::AsyncEmbed::new(client.clone(), base_url.clone(), api_key.clone());
 
         Ok(Self {
             client,
