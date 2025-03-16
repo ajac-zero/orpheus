@@ -8,7 +8,6 @@ use std::env;
 use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
 
-use crate::get_runtime;
 use crate::types::ExtrasMap;
 use crate::{API_KEY_ENV, BASE_URL_ENV};
 
@@ -47,7 +46,7 @@ trait AsyncRest {
 
         let body = serde_json::to_vec(&prompt).expect("should serialize prompt");
 
-        get_runtime()
+        pyo3_async_runtimes::tokio::get_runtime()
             .spawn(builder.body(body).send())
             .await
             .expect("spawn rt")

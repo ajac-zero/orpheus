@@ -8,7 +8,6 @@ use pyo3::prelude::*;
 use pythonize::depythonize;
 use tokio::sync::Mutex;
 
-use crate::get_runtime;
 use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
 use crate::types::prompt::Prompt;
 use crate::types::ExtrasMap;
@@ -164,7 +163,7 @@ impl Stream {
         let buffer = self.buffer.clone();
 
         pyo3_async_runtimes::tokio::future_into_py(py, async {
-            get_runtime()
+            pyo3_async_runtimes::tokio::get_runtime()
                 .spawn(next(buffer, body, lines))
                 .await
                 .expect("h")
