@@ -82,7 +82,11 @@ impl Orpheus {
             builder = builder.default_headers(headermap);
         }
 
-        let client = builder.build().expect("should build http client");
+        let client = builder
+            .user_agent("Orpheus")
+            .use_rustls_tls()
+            .build()
+            .expect("should build http client");
 
         let mut base_url = base_url
             .or_else(|| env::var(BASE_URL_ENV).ok())
