@@ -30,7 +30,7 @@ from rich.console import Console
 from rich.progress import track
 from rich.table import Table
 
-from orpheus import Orpheus
+from orpheus import Orpheus, models
 
 # Constants
 
@@ -52,6 +52,10 @@ MESSAGES = [
         ],
     },
 ]
+NATIVE_MESSAGES = models.Conversation([
+    models.Message("system", "You are a friendly bot"),
+    models.Message("user", "hello, whats in the image")
+])
 
 
 class Runner:
@@ -245,7 +249,7 @@ if __name__ == "__main__":
     )
     langchain_func = functools.partial(langchain.invoke, input=MESSAGES, model=MODEL)
     orpheus_func = functools.partial(
-        orpheus.chat.completions.create, messages=MESSAGES, model=MODEL
+        orpheus.chat.completions.create, messages=NATIVE_MESSAGES, model=MODEL
     )
     litellm_func = functools.partial(
         completion, model=MODEL, messages=MESSAGES, api_key=API_KEY, base_url=BASE_URL

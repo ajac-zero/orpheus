@@ -1,3 +1,4 @@
+use pyo3::{exceptions::PyValueError, prelude::*};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -6,7 +7,7 @@ struct Function {
     arguments: String,
 }
 
-#[pyo3::pyclass]
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCall {
     id: String,
@@ -14,56 +15,112 @@ pub struct ToolCall {
     function: Function,
 }
 
-#[pyo3::pyclass]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Audio {
-    id: String,
-    expires_at: u64,
-    data: String,
-    transcript: String,
-}
-
-#[pyo3::pyclass]
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ImageUrl {
     url: String,
     detail: Option<String>,
 }
 
-#[pyo3::pyclass]
+#[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct InputAudio {
-    data: String,
-    format: String,
-}
-
-#[derive(pyo3::IntoPyObject, Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum Part {
     Text { text: String },
     ImageUrl { image_url: ImageUrl },
-    InputAudio { input_audio: InputAudio },
 }
 
-#[derive(pyo3::IntoPyObject, Debug, Clone, Serialize, Deserialize)]
+#[derive(FromPyObject, IntoPyObject, Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 enum Content {
+    #[pyo3(transparent)]
     Simple(String),
     Complex(Vec<Part>),
 }
 
-#[pyo3::pyclass(get_all)]
+#[pyclass(get_all)]
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     role: String,
     content: Option<Content>,
-    refusal: Option<String>,
+    tool_id: Option<String>,
     tool_calls: Option<Vec<ToolCall>>,
-    audio: Option<Audio>,
 }
 
-#[pyo3::pyclass(get_all)]
+#[pymethods]
+impl Message {
+    #[new]
+    #[pyo3(signature = (role, content=None, tool_calls=None, tool_id=None))]
+    fn __init__(
+        role: String,
+        content: Option<Content>,
+        tool_calls: Option<Vec<ToolCall>>,
+        tool_id: Option<String>,
+    ) -> PyResult<Self> {
+        match role.as_str() {
+            "user" | "system" | "developer" => {
+                if tool_calls.is_some() {
+                    return Err(PyValueError::new_err("If role = 'user' | 'system' | 'developer', tool_calls must be None"))
+                };
+
+                if tool_id.is_some() {
+                    return Err(PyValueError::new_err("If role = 'user' | 'system' | 'developer', tool_id must be None"))
+                };
+
+                if content.is_none() {
+                    return Err(PyValueError::new_err("If role = 'user' | 'system' | 'developer', content must not be None"))
+                };
+
+                Ok(Self {
+                    role,
+                    content,
+                    tool_id: None,
+                    tool_calls: None,
+                })
+            }
+            "assistant" => {
+                if tool_id.is_some() {
+                    return Err(PyValueError::new_err("If role = 'assistant', tool_id must be None"))
+                };
+
+                Ok(Self{
+                    role,
+                    content,
+                    tool_id: None,
+                    tool_calls,
+                })
+            }
+            "tool" => {
+                if tool_id.is_none() {
+                    return Err(PyValueError::new_err("If role = 'tool', tool_id must not be None"))
+                };
+
+                Ok(Self{
+                    role,
+                    content,
+                    tool_id: None,
+                    tool_calls,
+                })
+            }
+            _ => Err(PyValueError::new_err("Invalid role; role can be one of 'user', 'assistant', 'developer', 'system', 'tool'."))
+        }
+    }
+}
+
+#[pyclass(sequence)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct Conversation(Vec<Message>);
+
+#[pymethods]
+impl Conversation {
+    #[new]
+    fn new(messages: Vec<Message>) -> Self {
+        Self(messages)
+    }
+}
+
+#[pyclass(get_all)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct Delta {
     role: Option<String>,

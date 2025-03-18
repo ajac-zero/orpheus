@@ -12,6 +12,7 @@ use reqwest::blocking::{Client, Response};
 use reqwest::{Error, Method};
 use serde::Serialize;
 
+use crate::types::ExtrasMap;
 use crate::{API_KEY_ENV, BASE_URL_ENV};
 
 trait SyncRest {
@@ -69,11 +70,11 @@ impl Orpheus {
     #[new]
     #[pyo3(signature = (base_url=None, api_key=None, default_headers=None, default_query=None))]
     fn __init__(
-        py: Python<'_>,
+        py: Python,
         base_url: Option<String>,
         api_key: Option<String>,
-        default_headers: Option<HashMap<String, String>>,
-        default_query: Option<HashMap<String, String>>,
+        default_headers: ExtrasMap,
+        default_query: ExtrasMap,
     ) -> PyResult<Self> {
         let mut builder = Client::builder();
 

@@ -1,11 +1,11 @@
-use super::message;
+use super::message::{self, Conversation};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Prompt {
-    messages: Vec<message::Message>,
+    messages: message::Conversation,
     model: String,
     store: Option<Value>,
     metadata: Option<Value>,
@@ -34,6 +34,14 @@ pub struct Prompt {
 }
 
 impl Prompt {
+    pub fn new(model: String, messages: Conversation) -> Self {
+        Self {
+            model,
+            messages,
+            ..Default::default()
+        }
+    }
+
     pub fn is_stream(&self) -> bool {
         self.stream.unwrap_or(false)
     }

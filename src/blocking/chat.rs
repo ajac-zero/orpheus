@@ -8,6 +8,7 @@ use pythonize::depythonize;
 use reqwest::blocking::{Client, Response};
 
 use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
+use crate::types::message::Conversation;
 use crate::types::prompt::Prompt;
 use crate::types::ExtrasMap;
 
@@ -36,17 +37,15 @@ impl SyncRest for SyncChat {}
 
 #[pymethods]
 impl SyncChat {
-    #[pyo3(signature = (extra_headers=None, extra_query=None, **py_kwargs))]
+    #[pyo3(signature = (model, messages, extra_headers=None, extra_query=None))]
     fn create(
         &self,
+        model: String,
+        messages: Conversation,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
-        py_kwargs: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<CompletionResponse> {
-        let args = py_kwargs.ok_or(PyValueError::new_err("No keyword arguments passed."))?;
-
-        let prompt = depythonize::<Prompt>(args)
-            .map_err(|e| PyValueError::new_err(format!("Invalid arguments: {}", e)))?;
+        let prompt = Prompt::new(model, messages);
 
         let response = self
             .api_request(

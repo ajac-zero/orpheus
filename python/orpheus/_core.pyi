@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal, TypeAlias, TypedDict
 
 class Orpheus:
     def __init__(
@@ -29,7 +29,7 @@ class Orpheus:
     def create(
         self,
         *,
-        messages: list[dict[str, Any]],
+        messages: list[dict[str, Any]] | Conversation,
         model: str,
         frequency_penalty: float | None = None,
         logit_bias: dict[str, int] | None = None,
@@ -533,3 +533,12 @@ class AsyncOrpheus:
           timeout: Override the client-level default timeout for this request, in seconds
         """
         ...
+
+
+class Message(TypedDict):
+    role: Literal["user", "assistant", "system", "developer", "tool"]
+    content: str | Any
+    tool_calls: Any
+
+Conversation: TypeAlias = list[Message]
+
