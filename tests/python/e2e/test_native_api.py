@@ -1,10 +1,10 @@
 from orpheus import Orpheus
-from orpheus.models import Conversation, Message
+from orpheus.models import Messages, Message
 
 def test_native_chat_completion(orpheus: Orpheus):
     response = orpheus.chat.completions.create(
         model="gpt5",
-        messages=Conversation(messages=[Message(role="user", content="hello")]),
+        messages=Messages(messages=[Message(role="user", content="hello")]),
     )
 
     assert response is not None

@@ -55,7 +55,7 @@ pub struct Delta {
 
 #[pyclass]
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(FromPyObject, Debug, Serialize, Deserialize)]
 pub enum Message {
     System {
         role: String,
@@ -203,6 +203,16 @@ impl Message {
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Messages {
     messages: Vec<Py<Message>>,
+}
+
+impl<'py> FromPyObject<'py> for Messages {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
+        println!("attempting to convert");
+        let messages =  ob.extract::<Vec<Message>>()?;
+
+        println!("complete");
+        todo!()
+    }
 }
 
 #[pymethods]

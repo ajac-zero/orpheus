@@ -51,9 +51,11 @@ impl SyncChat {
         extra_query: ExtrasMap,
         extra: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<CompletionResponse> {
+        println!("hooola");
         let messages = messages
             .map_left(Ok)
-            .left_or_else(|x| x.extract::<Py<Messages>>(py))?;
+            .left_or_else(|x| x.extract::<Messages>(py).map(|x| Py::new(py, x).unwrap()))?;
+        print!("listo");
 
         let extra = extra.map(|x| depythonize::<Kwargs>(x)).transpose()?;
 
