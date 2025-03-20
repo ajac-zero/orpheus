@@ -56,24 +56,39 @@ pub struct Delta {
 #[pyclass]
 #[skip_serializing_none]
 #[derive(FromPyObject, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum Message {
+    #[pyo3(constructor=(content, role="system".into()))]
     System {
-        role: String,
+        #[pyo3(item)]
         content: String,
+        #[pyo3(item)]
+        role: String,
     },
+    #[pyo3(constructor=(content, role="user".into()))]
     User {
-        role: String,
+        #[pyo3(item)]
         content: Content,
+        #[pyo3(item)]
+        role: String,
     },
+    #[pyo3(constructor=(content=None, tool_calls=None, role="assistant".into()))]
     Assistant {
-        role: String,
+        #[pyo3(item)]
         content: Option<Content>,
+        #[pyo3(item)]
         tool_calls: Option<Vec<ToolCall>>,
-    },
-    Tool {
+        #[pyo3(item)]
         role: String,
+    },
+    #[pyo3(constructor=(content, tool_id, role="tool".into()))]
+    Tool {
+        #[pyo3(item)]
         content: String,
+        #[pyo3(item)]
         tool_id: String,
+        #[pyo3(item)]
+        role: String,
     },
 }
 
@@ -197,21 +212,52 @@ impl Message {
 
         Ok(message)
     }
+
+    #[getter]
+    fn role(&self) -> &str {
+        match self {
+            Self::System { role, .. } => role,
+            Self::User { role, .. } => role,
+            Self::Assistant { role, .. } => role,
+            Self::Tool { role, .. } => role,
+        }
+    }
+
+    #[getter]
+    fn content(&self) -> &str {
+        match self {
+            Self::System { content, .. } => content,
+            Self::User { content, .. } => match content {
+                Content::Simple(content) => content,
+                Content::Complex(_) => todo!(),
+            },
+            Self::Assistant { content, .. } => match content {
+                Some(content) => match content {
+                    Content::Simple(content) => content,
+                    Content::Complex(_) => todo!(),
+                },
+                None => "",
+            },
+            Self::Tool { content, .. } => content,
+        }
+    }
 }
 
 #[pyclass(frozen)]
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct Messages {
-    messages: Vec<Py<Message>>,
-}
+pub struct Messages(Vec<Py<Message>>);
 
 impl<'py> FromPyObject<'py> for Messages {
     fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
-        println!("attempting to convert");
-        let messages =  ob.extract::<Vec<Message>>()?;
+        let py = ob.py();
 
-        println!("complete");
-        todo!()
+        let messages = ob
+            .extract::<Vec<Message>>()?
+            .into_iter()
+            .map(|x| Py::new(py, x).expect("bind to GIL"))
+            .collect::<Vec<Py<Message>>>();
+
+        Ok(Self(messages))
     }
 }
 
@@ -219,7 +265,7 @@ impl<'py> FromPyObject<'py> for Messages {
 impl Messages {
     #[new]
     fn new(messages: Vec<Py<Message>>) -> Self {
-        Self { messages }
+        Self(messages)
     }
 }
 
