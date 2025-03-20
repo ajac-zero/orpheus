@@ -1,16 +1,19 @@
-use std::collections::VecDeque;
-use std::io::Read;
+use std::{collections::VecDeque, io::Read};
 
-use pyo3::exceptions::{PyIOError, PyStopIteration, PyValueError};
-use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::{
+    exceptions::{PyIOError, PyStopIteration, PyValueError},
+    prelude::*,
+    types::PyDict,
+};
 use pythonize::depythonize;
 use reqwest::blocking::{Client, Response};
 
-use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
-use crate::types::message::Conversation;
-use crate::types::prompt::Prompt;
-use crate::types::ExtrasMap;
+use crate::types::{
+    chat::{ChatCompletion, ChatCompletionChunk},
+    message::{EitherMessages, Messages},
+    prompt::{Kwargs, Prompt},
+    ExtrasMap,
+};
 
 use super::SyncRest;
 
@@ -37,15 +40,24 @@ impl SyncRest for SyncChat {}
 
 #[pymethods]
 impl SyncChat {
-    #[pyo3(signature = (model, messages, extra_headers=None, extra_query=None))]
+    #[pyo3(signature = (model, messages, stream=false, extra_headers=None, extra_query=None, **extra))]
     fn create(
         &self,
+        py: Python,
         model: String,
-        messages: Conversation,
+        messages: EitherMessages,
+        stream: bool,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
+        extra: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<CompletionResponse> {
-        let prompt = Prompt::new(model, messages);
+        let messages = messages
+            .map_left(Ok)
+            .left_or_else(|x| x.extract::<Py<Messages>>(py))?;
+
+        let extra = extra.map(|x| depythonize::<Kwargs>(x)).transpose()?;
+
+        let prompt = Prompt::new(model, messages.get(), extra);
 
         let response = self
             .api_request(
@@ -65,7 +77,7 @@ impl SyncChat {
             ));
         };
 
-        if prompt.is_stream() {
+        if stream {
             let stream = Stream::new(response);
 
             Ok(CompletionResponse::Stream(stream))

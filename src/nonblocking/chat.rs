@@ -9,7 +9,8 @@ use pythonize::depythonize;
 use tokio::sync::Mutex;
 
 use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
-use crate::types::prompt::Prompt;
+use crate::types::message::{EitherMessages, Messages};
+use crate::types::prompt::{Kwargs, Prompt};
 use crate::types::ExtrasMap;
 
 use super::AsyncRest;
@@ -37,17 +38,25 @@ impl AsyncRest for AsyncChat {}
 
 #[pymethods]
 impl AsyncChat {
-    #[pyo3(signature = (extra_headers=None, extra_query=None, **py_kwargs))]
+    #[pyo3(signature = (model, messages, stream=false, extra_headers=None, extra_query=None, **py_kwargs))]
     async fn create(
         &self,
+        model: String,
+        messages: EitherMessages,
+        stream: bool,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
         py_kwargs: Option<PyObject>,
     ) -> PyResult<CompletionResponse> {
-        let args = py_kwargs.ok_or(PyValueError::new_err("No keyword arguments passed."))?;
+        let messages = messages
+            .map_left(Ok)
+            .left_or_else(|x| Python::with_gil(|py| x.extract::<Py<Messages>>(py)))?;
 
-        let prompt = Python::with_gil(|py| depythonize::<Prompt>(&args.into_bound(py)))
-            .map_err(|e| PyValueError::new_err(format!("Invalid arguments: {}", e)))?;
+        let extra = py_kwargs
+            .map(|x| Python::with_gil(|py| depythonize::<Kwargs>(&x.into_bound(py))))
+            .transpose()?;
+
+        let prompt = Prompt::new(model, messages.get(), extra);
 
         let response = self
             .api_request(
@@ -62,7 +71,7 @@ impl AsyncChat {
             .await
             .map_err(|e| PyIOError::new_err(format!("Failed to send request: {}", e)))?;
 
-        if prompt.is_stream() {
+        if stream {
             let stream = Stream::new(response);
 
             Ok(CompletionResponse::Stream(stream))

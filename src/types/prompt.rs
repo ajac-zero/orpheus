@@ -1,44 +1,34 @@
-use super::message::{self, Conversation};
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::message;
+
+pub type Kwargs = HashMap<String, Value>;
+
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Default)]
-pub struct Prompt {
-    messages: message::Conversation,
+#[derive(Debug, Serialize)]
+pub struct Prompt<'a> {
+    messages: &'a message::Messages,
     model: String,
-    store: Option<Value>,
-    metadata: Option<Value>,
-    frequency_penalty: Option<i8>,
-    logit_bias: Option<Value>,
-    logprobs: Option<bool>,
-    top_logprobs: Option<u8>,
-    max_completion_tokens: Option<u32>,
-    n: Option<u8>,
-    modalities: Option<Vec<String>>,
-    prediction: Option<Value>,
-    audio: Option<Audio>,
-    presence_penalty: Option<i8>,
-    response_format: Option<Value>,
-    seed: Option<u64>,
-    service_tier: Option<String>,
-    stop: Option<Stop>,
     stream: Option<bool>,
-    stream_options: Option<StreamOptions>,
-    temperature: Option<f32>,
-    top_p: Option<f32>,
     tools: Option<Vec<Tool>>,
     tool_choice: Option<ToolChoice>,
-    parallel_tool_calls: Option<bool>,
-    user: Option<String>,
+
+    #[serde(flatten)]
+    extra: Option<Kwargs>,
 }
 
-impl Prompt {
-    pub fn new(model: String, messages: Conversation) -> Self {
+impl<'a> Prompt<'a> {
+    pub fn new(model: String, messages: &'a message::Messages, extra: Option<Kwargs>) -> Self {
         Self {
             model,
             messages,
-            ..Default::default()
+            extra,
+            stream: None,
+            tools: None,
+            tool_choice: None,
         }
     }
 

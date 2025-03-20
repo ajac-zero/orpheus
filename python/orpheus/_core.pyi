@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal, TypeAlias, TypedDict
+from typing import Any, Literal, TypeAlias
 
 class Orpheus:
     def __init__(
@@ -29,7 +29,7 @@ class Orpheus:
     def create(
         self,
         *,
-        messages: list[dict[str, Any]] | Conversation,
+        messages: list[dict[str, Any]] | Messages,
         model: str,
         frequency_penalty: float | None = None,
         logit_bias: dict[str, int] | None = None,
@@ -534,11 +534,10 @@ class AsyncOrpheus:
         """
         ...
 
+ROLES = Literal["user"] | Literal["assistant"] | Literal["system"] | Literal["tool"]
 
-class Message(TypedDict):
-    role: Literal["user", "assistant", "system", "developer", "tool"]
-    content: str | Any
-    tool_calls: Any
+class Message:
+    def __init__(self, role: ROLES, content: str, tool_calls: Any = None) -> None: ...
 
-Conversation: TypeAlias = list[Message]
+Messages: TypeAlias = list[Message]
 

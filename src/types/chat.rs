@@ -29,20 +29,20 @@ struct PromptUsage {
     prompt_tokens_details: Option<PromptTokensDetails>,
 }
 
-#[pyclass(get_all)]
-#[derive(Debug, Clone, Deserialize)]
+#[pyclass(frozen, get_all)]
+#[derive(Debug, Deserialize)]
 struct Choice {
     finish_reason: String,
-    message: message::Message,
+    message: Py<message::Message>,
     index: u32,
     logprobs: Option<LogProbs>,
 }
 
-#[pyclass(get_all)]
+#[pyclass(frozen, get_all)]
 #[derive(Debug, Deserialize)]
 pub struct ChatCompletion {
     id: String,
-    choices: Vec<Choice>,
+    choices: Vec<Py<Choice>>,
     created: u64,
     model: String,
     service_tier: Option<String>,

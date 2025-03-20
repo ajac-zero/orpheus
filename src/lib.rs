@@ -13,7 +13,7 @@ pub const API_KEY_ENV: &str = "ORPHEUS_API_KEY";
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<blocking::Orpheus>()?;
     m.add_class::<nonblocking::AsyncOrpheus>()?;
+    m.add_class::<types::message::Messages>()?;
     m.add_class::<types::message::Message>()?;
-    m.add_class::<types::message::Conversation>()?;
     Ok(())
 }
