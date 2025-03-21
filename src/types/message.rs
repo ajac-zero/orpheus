@@ -1,9 +1,5 @@
 use either::Either;
-use pyo3::{
-    exceptions::PyValueError,
-    prelude::*,
-    types::{PyDict, PyList},
-};
+use pyo3::{exceptions::PyValueError, prelude::*, types::PyList};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -269,5 +265,4 @@ impl Messages {
     }
 }
 
-pub type EitherMessage = Either<Message, PyDict>;
 pub type EitherMessages = Either<Py<Messages>, Py<PyList>>;

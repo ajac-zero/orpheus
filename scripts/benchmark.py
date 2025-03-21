@@ -52,10 +52,12 @@ MESSAGES = [
         ],
     },
 ]
-NATIVE_MESSAGES = models.Conversation([
-    models.Message("system", "You are a friendly bot"),
-    models.Message("user", "hello, whats in the image")
-])
+NATIVE_MESSAGES = models.Messages(
+    [
+        models.Message("system", "You are a friendly bot"),
+        models.Message("user", "hello, whats in the image"),
+    ]
+)
 
 
 class Runner:

@@ -540,4 +540,3 @@ class Message:
     def __init__(self, role: ROLES, content: str, tool_calls: Any = None) -> None: ...
 
 Messages: TypeAlias = list[Message]
-

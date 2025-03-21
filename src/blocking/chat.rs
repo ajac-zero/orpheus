@@ -1,4 +1,6 @@
-use std::{collections::VecDeque, io::Read};
+#![allow(clippy::large_enum_variant)]
+
+use std::io::{BufRead, BufReader, Lines};
 
 use pyo3::{
     exceptions::{PyIOError, PyStopIteration, PyValueError},
@@ -40,13 +42,13 @@ impl SyncRest for SyncChat {}
 
 #[pymethods]
 impl SyncChat {
-    #[pyo3(signature = (model, messages, stream=false, extra_headers=None, extra_query=None, **extra))]
+    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, **extra))]
     fn create(
         &self,
         py: Python,
         model: String,
         messages: EitherMessages,
-        stream: bool,
+        stream: Option<bool>,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
         extra: Option<&Bound<'_, PyDict>>,
@@ -58,7 +60,7 @@ impl SyncChat {
 
         let extra = extra.map(|x| depythonize::<Kwargs>(x)).transpose()?;
 
-        let prompt = Prompt::new(model, messages.get(), extra);
+        let prompt = Prompt::new(model, messages.get(), stream, extra);
 
         let response = self
             .api_request(
@@ -78,8 +80,9 @@ impl SyncChat {
             ));
         };
 
-        if stream {
-            let stream = Stream::new(response);
+        if stream.is_some_and(|x| x) {
+            let buffer = BufReader::new(response).lines();
+            let stream = Stream::new(buffer);
 
             Ok(CompletionResponse::Stream(stream))
         } else {
@@ -97,8 +100,7 @@ impl SyncChat {
     }
 }
 
-#[allow(clippy::large_enum_variant)]
-#[derive(pyo3::IntoPyObject)]
+#[derive(IntoPyObject)]
 enum CompletionResponse {
     #[pyo3(transparent)]
     Completion(ChatCompletion),
@@ -108,63 +110,37 @@ enum CompletionResponse {
 
 #[pyclass]
 struct Stream {
-    buffer: String,
-    body: Response,
-    chunk: [u8; 1024],
-    lines: VecDeque<String>,
+    buffer: Lines<BufReader<Response>>,
 }
 
 impl Stream {
-    fn new(response: Response) -> Self {
-        Self {
-            buffer: String::new(),
-            body: response,
-            chunk: [0; 1024],
-            lines: VecDeque::new(),
-        }
+    fn new(buffer: Lines<BufReader<Response>>) -> Self {
+        Self { buffer }
     }
 }
 
 #[pymethods]
 impl Stream {
     fn __next__(&mut self) -> PyResult<ChatCompletionChunk> {
-        if let Some(line) = self.lines.pop_front() {
-            if line == "data: [DONE]" {
-                Err(PyStopIteration::new_err("end of stream"))
-            } else {
-                let data = &line[6..];
+        loop {
+            match self.buffer.next() {
+                Some(chunk) => {
+                    let line = chunk.unwrap();
 
-                serde_json::from_str::<ChatCompletionChunk>(data)
-                    .map_err(|e| PyValueError::new_err(format!("Failed to parse chunk: {}", e)))
-            }
-        } else {
-            let chunk = self.body.read(&mut self.chunk);
+                    if line.is_empty() {
+                        continue;
+                    }
 
-            match chunk {
-                Ok(0) => Err(PyStopIteration::new_err("end of stream")),
-                Ok(_) => {
-                    let chunk_str = std::str::from_utf8(&self.chunk)
-                        .expect("should convert chunk to string")
-                        .trim_end_matches('\0');
-                    self.buffer.push_str(chunk_str);
+                    let data = &line[6..];
 
-                    if self.buffer.ends_with("\n\n") {
-                        self.lines = self
-                            .buffer
-                            .lines()
-                            .filter(|l| !l.is_empty())
-                            .map(|l| l.to_string())
-                            .collect::<VecDeque<String>>();
+                    if data == "[DONE]" {
+                        break Err(PyStopIteration::new_err("end of stream"));
+                    }
 
-                        self.buffer.clear();
-                    };
-
-                    self.__next__()
+                    break serde_json::from_str::<ChatCompletionChunk>(data)
+                        .map_err(|e| PyValueError::new_err(format!("{e}")));
                 }
-                Err(e) => Err(PyValueError::new_err(format!(
-                    "Failed to read chunk: {}",
-                    e
-                ))),
+                None => break Err(PyStopIteration::new_err("end of stream")),
             }
         }
     }

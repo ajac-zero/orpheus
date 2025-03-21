@@ -21,23 +21,20 @@ pub struct Prompt<'a> {
 }
 
 impl<'a> Prompt<'a> {
-    pub fn new(model: String, messages: &'a message::Messages, extra: Option<Kwargs>) -> Self {
+    pub fn new(
+        model: String,
+        messages: &'a message::Messages,
+        stream: Option<bool>,
+        extra: Option<Kwargs>,
+    ) -> Self {
         Self {
             model,
             messages,
-            extra,
-            stream: None,
+            stream,
             tools: None,
             tool_choice: None,
+            extra,
         }
-    }
-
-    pub fn is_stream(&self) -> bool {
-        self.stream.unwrap_or(false)
-    }
-
-    pub fn set_stream(&mut self, on: bool) {
-        self.stream = Some(on)
     }
 }
 
