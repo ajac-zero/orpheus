@@ -1,5 +1,7 @@
+use futures_lite::stream::Stream;
 use pyo3::prelude::*;
 use serde::Deserialize;
+use std::pin::Pin;
 
 use super::message;
 
@@ -120,3 +122,6 @@ pub struct LogProbs {
     content: Option<Vec<Content>>,
     refusal: Option<Vec<Refusal>>,
 }
+
+pub type BytesStream =
+    Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send + Sync>>;

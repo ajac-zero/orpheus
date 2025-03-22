@@ -3,12 +3,13 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+use futures_lite::stream::StreamExt;
 use pyo3::exceptions::{PyIOError, PyStopAsyncIteration, PyValueError};
 use pyo3::prelude::*;
 use pythonize::depythonize;
 use tokio::sync::Mutex;
 
-use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
+use crate::types::chat::{BytesStream, ChatCompletion, ChatCompletionChunk};
 use crate::types::message::{EitherMessages, Messages};
 use crate::types::prompt::{Kwargs, Prompt};
 use crate::types::ExtrasMap;
@@ -38,25 +39,28 @@ impl AsyncRest for AsyncChat {}
 
 #[pymethods]
 impl AsyncChat {
-    #[pyo3(signature = (model, messages, stream=false, extra_headers=None, extra_query=None, **py_kwargs))]
+    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, **py_kwargs))]
     async fn create(
         &self,
         model: String,
         messages: EitherMessages,
-        stream: bool,
+        stream: Option<bool>,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
         py_kwargs: Option<PyObject>,
     ) -> PyResult<CompletionResponse> {
-        let messages = messages
-            .map_left(Ok)
-            .left_or_else(|x| Python::with_gil(|py| x.extract::<Py<Messages>>(py)))?;
+        let messages = messages.map_left(Ok).left_or_else(|x| {
+            Python::with_gil(|py| {
+                x.extract::<Messages>(py)
+                    .map(|x| Py::new(py, x).expect("bind to GIL"))
+            })
+        })?;
 
         let extra = py_kwargs
             .map(|x| Python::with_gil(|py| depythonize::<Kwargs>(&x.into_bound(py))))
             .transpose()?;
 
-        let prompt = Prompt::new(model, messages.get(), extra);
+        let prompt = Prompt::new(model, messages.get(), stream, extra);
 
         let response = self
             .api_request(
@@ -71,8 +75,9 @@ impl AsyncChat {
             .await
             .map_err(|e| PyIOError::new_err(format!("Failed to send request: {}", e)))?;
 
-        if stream {
-            let stream = Stream::new(response);
+        if stream.is_some_and(|x| x) {
+            let bytes_steam = Box::pin(response.bytes_stream());
+            let stream = StreamCompletion::new(bytes_steam);
 
             Ok(CompletionResponse::Stream(stream))
         } else {
@@ -96,22 +101,38 @@ enum CompletionResponse {
     #[pyo3(transparent)]
     Completion(ChatCompletion),
     #[pyo3(transparent)]
-    Stream(Stream),
+    Stream(StreamCompletion),
 }
 
 #[pyclass]
-struct Stream {
-    buffer: Arc<Mutex<String>>,
-    body: Arc<Mutex<reqwest::Response>>,
-    lines: Arc<Mutex<VecDeque<String>>>,
+struct StreamCompletion {
+    bytes_stream: Arc<Mutex<BytesStream>>,
 }
 
-impl Stream {
-    fn new(response: reqwest::Response) -> Self {
+impl StreamCompletion {
+    fn new(bytes_stream: BytesStream) -> Self {
         Self {
-            buffer: Arc::new(Mutex::new(String::new())),
-            body: Arc::new(Mutex::new(response)),
-            lines: Arc::new(Mutex::new(VecDeque::new())),
+            bytes_stream: Arc::new(Mutex::new(bytes_stream)),
+        }
+    }
+
+    async fn next(bytes_stream: Arc<Mutex<BytesStream>>) -> PyResult<ChatCompletionChunk> {
+        let mut stream_guard = bytes_stream.lock().await;
+
+        if let Some(Ok(bytes)) = stream_guard.next().await {
+            let line = String::from_utf8(bytes.to_vec())
+                .map_err(|x| PyValueError::new_err(x.to_string()))?;
+
+            let data = &line[6..];
+
+            if data == "[DONE]\n\n" {
+                return Err(PyStopAsyncIteration::new_err("end of stream"));
+            }
+
+            serde_json::from_str::<ChatCompletionChunk>(data)
+                .map_err(|x| PyValueError::new_err(x.to_string()))
+        } else {
+            Err(PyStopAsyncIteration::new_err("end of stream"))
         }
     }
 }
@@ -165,15 +186,13 @@ async fn next(
 }
 
 #[pymethods]
-impl Stream {
+impl StreamCompletion {
     fn __anext__<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        let lines = self.lines.clone();
-        let body = self.body.clone();
-        let buffer = self.buffer.clone();
+        let bytes_stream = Arc::clone(&self.bytes_stream);
 
         pyo3_async_runtimes::tokio::future_into_py(py, async {
             pyo3_async_runtimes::tokio::get_runtime()
-                .spawn(next(buffer, body, lines))
+                .spawn(StreamCompletion::next(bytes_stream))
                 .await
                 .expect("h")
         })
