@@ -1,5 +1,9 @@
 use either::Either;
-use pyo3::{exceptions::PyValueError, prelude::*, types::PyList};
+use pyo3::{
+    exceptions::{PyIndexError, PyValueError},
+    prelude::*,
+    types::{PyList, PyTuple},
+};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -37,6 +41,7 @@ pub enum Part {
 pub enum Content {
     #[pyo3(transparent)]
     Simple(String),
+    #[pyo3(transparent)]
     Complex(Vec<Part>),
 }
 
@@ -239,7 +244,7 @@ impl Message {
     }
 }
 
-#[pyclass(frozen)]
+#[pyclass(frozen, sequence)]
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Messages(Vec<Py<Message>>);
 
@@ -260,8 +265,24 @@ impl<'py> FromPyObject<'py> for Messages {
 #[pymethods]
 impl Messages {
     #[new]
-    fn new(messages: Vec<Py<Message>>) -> Self {
-        Self(messages)
+    #[pyo3(signature = (*args))]
+    fn new(args: &Bound<'_, PyTuple>) -> PyResult<Self> {
+        let messages = args.extract::<Vec<Py<Message>>>()?;
+
+        Ok(Self(messages))
+    }
+
+    fn __len__(&self) -> usize {
+        self.0.len()
+    }
+
+    fn __getitem__(&self, py: Python, index: usize) -> PyResult<Py<Message>> {
+        let message = self
+            .0
+            .get(index)
+            .ok_or_else(|| PyIndexError::new_err("Index out of range"))?;
+
+        Ok(message.clone_ref(py))
     }
 }
 

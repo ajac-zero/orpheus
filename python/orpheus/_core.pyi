@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 class Orpheus:
     def __init__(
@@ -537,6 +537,28 @@ class AsyncOrpheus:
 ROLES = Literal["user"] | Literal["assistant"] | Literal["system"] | Literal["tool"]
 
 class Message:
-    def __init__(self, role: ROLES, content: str, tool_calls: Any = None) -> None: ...
+    def __init__(
+        self, role: ROLES, content: str | None, tool_calls: Any = None
+    ) -> None: ...
+    @staticmethod
+    def User(content: str) -> Message: ...
+    @staticmethod
+    def Assistant(content: str | None, tool_calls: Any = None) -> Message: ...
+    @staticmethod
+    def System(content: str) -> Message: ...
+    @staticmethod
+    def Tool(content: str, tool_id: str) -> Message: ...
+    @property
+    def role(self) -> ROLES: ...
+    @property
+    def content(self) -> str: ...
 
-Messages: TypeAlias = list[Message]
+class Messages:
+    def __init__(self, *message: Message) -> None:
+        self.messages = list(message)
+
+    def __len__(self) -> int:
+        return len(self.messages)
+
+    def __getitem__(self, index: int) -> Message:
+        return self.messages[index]

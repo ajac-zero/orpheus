@@ -24,14 +24,32 @@ def test_user_messages_validation_no_content():
         assert Message(role="user") is not None  # type: ignore
 
 
-def test_none_conversation():
-    with pytest.raises(TypeError):
-        assert Messages() is not None
-
-
 def test_empty_conversation():
-    assert Messages([]) is not None
+    messages = Messages()
+
+    assert messages is not None
+    assert len(messages) == 0
 
 
 def test_conversation():
-    assert Messages([Message(role="user", content="hi!")]) is not None
+    messages = Messages(
+        Message.System(content="You are a helpful assistant."),
+        Message(role="user", content="hi!"),
+        Message.Assistant(content="hello!"),
+        Message.User(content="bye!"),
+    )
+
+    assert messages is not None
+    assert len(messages) == 4
+
+    assert messages[0].role == "system"
+    assert messages[0].content == "You are a helpful assistant."
+
+    assert messages[1].role == "user"
+    assert messages[1].content == "hi!"
+
+    assert messages[2].role == "assistant"
+    assert messages[2].content == "hello!"
+
+    assert messages[3].role == "user"
+    assert messages[3].content == "bye!"
