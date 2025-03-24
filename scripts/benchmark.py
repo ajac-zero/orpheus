@@ -1,22 +1,3 @@
-# /// script
-# requires-python = ">=3.12"
-# dependencies = [
-#     "pyperf",
-#     "langchain-openai",
-#     "litellm",
-#     "openai",
-#     "rich",
-#     "matplotlib",
-#     "argparse",
-#     "orpheus",
-# ]
-#
-# [tool.uv.sources]
-# orpheus = { path = "../", editable = true }
-#
-# [tool.ruff]
-# line-length = 120
-# ///
 import argparse
 import functools
 import statistics
@@ -30,7 +11,8 @@ from rich.console import Console
 from rich.progress import track
 from rich.table import Table
 
-from orpheus import Orpheus, models
+from orpheus import Orpheus
+from orpheus.models import Messages, Message
 
 # Constants
 
@@ -52,11 +34,9 @@ MESSAGES = [
         ],
     },
 ]
-NATIVE_MESSAGES = models.Messages(
-    [
-        models.Message("system", "You are a friendly bot"),
-        models.Message("user", "hello, whats in the image"),
-    ]
+NATIVE_MESSAGES = Messages(
+    Message.System(content="You are a friendly bot"),
+    Message.User(content="hello, whats in the image"),
 )
 
 
@@ -242,7 +222,7 @@ if __name__ == "__main__":
 
     # Initialize clients
     openai = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-    langchain = ChatOpenAI(api_key=API_KEY, base_url=BASE_URL)
+    langchain = ChatOpenAI(api_key=API_KEY, base_url=BASE_URL)  # type: ignore
     orpheus = Orpheus(api_key=API_KEY, base_url=BASE_URL)
 
     # Setup function calls
@@ -250,11 +230,14 @@ if __name__ == "__main__":
         openai.chat.completions.create, messages=MESSAGES, model=MODEL
     )
     langchain_func = functools.partial(langchain.invoke, input=MESSAGES, model=MODEL)
-    orpheus_func = functools.partial(
-        orpheus.chat.completions.create, messages=NATIVE_MESSAGES, model=MODEL
-    )
     litellm_func = functools.partial(
         completion, model=MODEL, messages=MESSAGES, api_key=API_KEY, base_url=BASE_URL
+    )
+    orpheus_func = functools.partial(
+        orpheus.chat.completions.create, messages=MESSAGES, model=MODEL
+    )
+    native_orpheus_func = functools.partial(
+        orpheus.chat.create, messages=NATIVE_MESSAGES, model=MODEL
     )
 
     console = Console()
@@ -270,7 +253,8 @@ if __name__ == "__main__":
         ("OpenAI", openai_func),
         ("LangChain", langchain_func),
         ("LiteLLM", litellm_func),
-        ("Orpheus", orpheus_func),
+        # ("Orpheus", orpheus_func),
+        ("Native Orpheus", native_orpheus_func),
     ]
 
     # Run benchmark
