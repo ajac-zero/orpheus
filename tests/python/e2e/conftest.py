@@ -6,7 +6,7 @@ from testcontainers.core.waiting_utils import wait_for_logs
 from orpheus import Orpheus, AsyncOrpheus
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def mockai():
     with ServerContainer(8100, "ajaczero/mock-ai") as container:
         wait_for_logs(container, "Uvicorn running")
