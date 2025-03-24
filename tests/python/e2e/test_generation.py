@@ -10,6 +10,30 @@ def test_chat_completion(orpheus: Orpheus):
     assert response.choices[0].message.content == "hello"
 
 
+def test_complex_chat_completion(orpheus: Orpheus):
+    response = orpheus.chat.completions.create(
+        model="gpt5",
+        messages=[
+            {"role": "system", "content": "You are a friendly bot"},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "hello, whats in the image"},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": "https://www.pawlovetreats.com/cdn/shop/articles/pembroke-welsh-corgi-puppy_2000x.jpg?v=1628638716"
+                        },
+                    },
+                ],
+            },
+        ],
+    )
+
+    assert response is not None
+    assert response.choices[0].message.content == "hello, whats in the image"
+
+
 def test_chat_stream_completion(orpheus: Orpheus):
     response = orpheus.chat.completions.create(
         model="gpt5", messages=[{"role": "user", "content": "hello"}], stream=True

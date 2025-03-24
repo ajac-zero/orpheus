@@ -21,19 +21,42 @@ pub struct ToolCall {
     function: Function,
 }
 
-#[pyclass]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, IntoPyObject, Clone, Serialize, Deserialize)]
 pub struct ImageUrl {
+    #[pyo3(item)]
     url: String,
+    #[pyo3(item)]
     detail: Option<String>,
 }
 
-#[pyclass]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+impl<'py> FromPyObject<'py> for ImageUrl {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
+        let url = ob.get_item("url")?.extract::<String>()?;
+        let detail = ob
+            .get_item("detail")
+            .ok()
+            .map(|x| x.extract::<String>())
+            .transpose()?;
+
+        Ok(Self { url, detail })
+    }
+}
+
+#[derive(Debug, FromPyObject, IntoPyObject, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum Part {
-    Text { text: String },
-    ImageUrl { image_url: ImageUrl },
+    Text {
+        #[pyo3(item("type"))]
+        r#type: String,
+        #[pyo3(item)]
+        text: String,
+    },
+    ImageUrl {
+        #[pyo3(item("type"))]
+        r#type: String,
+        #[pyo3(item)]
+        image_url: ImageUrl,
+    },
 }
 
 #[derive(FromPyObject, IntoPyObject, Debug, Clone, Serialize, Deserialize)]
