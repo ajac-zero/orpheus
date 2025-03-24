@@ -42,21 +42,39 @@ impl<'py> FromPyObject<'py> for ImageUrl {
     }
 }
 
-#[derive(Debug, FromPyObject, IntoPyObject, Clone, Serialize, Deserialize)]
+#[derive(Debug, IntoPyObject, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Part {
     Text {
-        #[pyo3(item("type"))]
-        r#type: String,
         #[pyo3(item)]
         text: String,
     },
     ImageUrl {
-        #[pyo3(item("type"))]
-        r#type: String,
         #[pyo3(item)]
         image_url: ImageUrl,
     },
+}
+
+impl<'py> FromPyObject<'py> for Part {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
+        let type_ = ob.get_item("type")?.extract::<String>()?;
+
+        let part = match type_.as_str() {
+            "text" => {
+                let text = ob.get_item("text")?.extract::<String>()?;
+
+                Part::Text { text }
+            }
+            "image_url" => {
+                let image_url = ob.get_item("image_url")?.extract::<ImageUrl>()?;
+
+                Part::ImageUrl { image_url }
+            }
+            unknown => return Err(PyValueError::new_err(format!("Unknown type: {unknown}"))),
+        };
+
+        Ok(part)
+    }
 }
 
 #[derive(FromPyObject, IntoPyObject, Debug, Clone, Serialize, Deserialize)]
