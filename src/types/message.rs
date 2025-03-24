@@ -5,7 +5,6 @@ use pyo3::{
     types::{PyList, PyTuple},
 };
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Function {
@@ -43,23 +42,17 @@ impl<'py> FromPyObject<'py> for ImageUrl {
 }
 
 #[derive(Debug, IntoPyObject, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Part {
-    Text {
-        #[pyo3(item)]
-        text: String,
-    },
-    ImageUrl {
-        #[pyo3(item)]
-        image_url: ImageUrl,
-    },
+    Text { text: String },
+    ImageUrl { image_url: ImageUrl },
 }
 
 impl<'py> FromPyObject<'py> for Part {
     fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
-        let type_ = ob.get_item("type")?.extract::<String>()?;
+        let part_type = ob.get_item("type")?.extract::<String>()?;
 
-        let part = match type_.as_str() {
+        let part = match part_type.as_str() {
             "text" => {
                 let text = ob.get_item("text")?.extract::<String>()?;
 
@@ -96,7 +89,6 @@ pub struct Delta {
 }
 
 #[pyclass]
-#[skip_serializing_none]
 #[derive(FromPyObject, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Message {
@@ -117,8 +109,10 @@ pub enum Message {
     #[pyo3(constructor=(content=None, tool_calls=None, role="assistant".into()))]
     Assistant {
         #[pyo3(item)]
+        #[serde(skip_serializing_if = "Option::is_none")]
         content: Option<Content>,
         #[pyo3(item)]
+        #[serde(skip_serializing_if = "Option::is_none")]
         tool_calls: Option<Vec<ToolCall>>,
         #[pyo3(item)]
         role: String,
