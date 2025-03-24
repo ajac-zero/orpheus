@@ -1,6 +1,5 @@
 #![allow(clippy::large_enum_variant)]
 
-use std::collections::VecDeque;
 use std::sync::Arc;
 
 use futures_lite::stream::StreamExt;
@@ -133,54 +132,6 @@ impl StreamCompletion {
                 .map_err(|x| PyValueError::new_err(x.to_string()))
         } else {
             Err(PyStopAsyncIteration::new_err("end of stream"))
-        }
-    }
-}
-
-async fn next(
-    buffer: Arc<Mutex<String>>,
-    body: Arc<Mutex<reqwest::Response>>,
-    lines: Arc<Mutex<VecDeque<String>>>,
-) -> PyResult<ChatCompletionChunk> {
-    let mut lines_ptr = lines.lock().await;
-    let mut body_ptr = body.lock().await;
-    let mut buffer_ptr = buffer.lock().await;
-
-    loop {
-        if let Some(line) = lines_ptr.pop_front() {
-            if line == "data: [DONE]" {
-                break Err(PyStopAsyncIteration::new_err("end of stream"));
-            } else {
-                let data = &line[6..];
-
-                break serde_json::from_str::<ChatCompletionChunk>(data)
-                    .map_err(|e| PyValueError::new_err(format!("Failed to parse chunk: {}", e)));
-            }
-        } else {
-            let chunk = body_ptr.chunk().await.expect("chunk methof");
-
-            match chunk {
-                Some(bytes) => {
-                    let chunk_str = std::str::from_utf8(&bytes)
-                        .expect("should convert chunk to string")
-                        .trim_end_matches('\0');
-                    buffer_ptr.push_str(chunk_str);
-
-                    if let Some(position) = buffer_ptr.find("\n\n") {
-                        let split_point = position + 2;
-                        let moved = buffer_ptr.drain(..split_point).collect::<String>();
-                        let new_lines = moved
-                            .lines()
-                            .filter(|l| !l.is_empty())
-                            .map(|l| l.to_string());
-
-                        lines_ptr.extend(new_lines);
-                    };
-
-                    continue;
-                }
-                None => break Err(PyStopAsyncIteration::new_err("end of stream")),
-            }
         }
     }
 }
