@@ -253,7 +253,7 @@ if __name__ == "__main__":
         ("OpenAI", openai_func),
         ("LangChain", langchain_func),
         ("LiteLLM", litellm_func),
-        # ("Orpheus", orpheus_func),
+        ("Orpheus", orpheus_func),
         ("Native Orpheus", native_orpheus_func),
     ]
 
