@@ -1,11 +1,7 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::message;
-
-pub type Kwargs = HashMap<String, Value>;
 
 #[derive(Debug, Serialize)]
 pub struct Prompt<'a> {
@@ -19,7 +15,7 @@ pub struct Prompt<'a> {
     tool_choice: Option<ToolChoice>,
 
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    extra: Option<Kwargs>,
+    extra: Option<Value>,
 }
 
 impl<'a> Prompt<'a> {
@@ -27,7 +23,7 @@ impl<'a> Prompt<'a> {
         model: String,
         messages: &'a message::Messages,
         stream: Option<bool>,
-        extra: Option<Kwargs>,
+        extra: Option<Value>,
     ) -> Self {
         Self {
             model,

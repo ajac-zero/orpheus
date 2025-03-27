@@ -6,11 +6,12 @@ use futures_lite::stream::StreamExt;
 use pyo3::exceptions::{PyIOError, PyStopAsyncIteration, PyValueError};
 use pyo3::prelude::*;
 use pythonize::depythonize;
+use serde_json::Value;
 use tokio::sync::Mutex;
 
 use crate::types::chat::{BytesStream, ChatCompletion, ChatCompletionChunk};
 use crate::types::message::{EitherMessages, Messages};
-use crate::types::prompt::{Kwargs, Prompt};
+use crate::types::prompt::Prompt;
 use crate::types::ExtrasMap;
 
 use super::AsyncRest;
@@ -56,7 +57,7 @@ impl AsyncChat {
         })?;
 
         let extra = py_kwargs
-            .map(|x| Python::with_gil(|py| depythonize::<Kwargs>(&x.into_bound(py))))
+            .map(|x| Python::with_gil(|py| depythonize::<Value>(&x.into_bound(py))))
             .transpose()?;
 
         let prompt = Prompt::new(model, messages.get(), stream, extra);

@@ -9,11 +9,12 @@ use pyo3::{
 };
 use pythonize::depythonize;
 use reqwest::blocking::{Client, Response};
+use serde_json::Value;
 
 use crate::types::{
     chat::{ChatCompletion, ChatCompletionChunk},
     message::{EitherMessages, Messages},
-    prompt::{Kwargs, Prompt},
+    prompt::Prompt,
     ExtrasMap,
 };
 
@@ -58,7 +59,7 @@ impl SyncChat {
                 .map(|x| Py::new(py, x).expect("bind to GIL"))
         })?;
 
-        let extra = extra.map(|x| depythonize::<Kwargs>(x)).transpose()?;
+        let extra = extra.map(|x| depythonize::<Value>(x)).transpose()?;
 
         let prompt = Prompt::new(model, messages.get(), stream, extra);
 
