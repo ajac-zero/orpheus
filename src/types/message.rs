@@ -5,6 +5,7 @@ use pyo3::{
     types::{PyList, PyTuple},
 };
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Function {
@@ -279,9 +280,11 @@ impl Message {
     }
 }
 
+const MESSAGES_LIMIT: usize = 24;
+
 #[pyclass(frozen, sequence)]
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct Messages(Vec<Py<Message>>);
+pub struct Messages(SmallVec<[Py<Message>; MESSAGES_LIMIT]>);
 
 impl<'py> FromPyObject<'py> for Messages {
     fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
@@ -291,7 +294,7 @@ impl<'py> FromPyObject<'py> for Messages {
             .extract::<Vec<Message>>()?
             .into_iter()
             .map(|x| Py::new(py, x).expect("bind to GIL"))
-            .collect::<Vec<Py<Message>>>();
+            .collect::<SmallVec<[Py<Message>; MESSAGES_LIMIT]>>();
 
         Ok(Self(messages))
     }
@@ -302,7 +305,7 @@ impl Messages {
     #[new]
     #[pyo3(signature = (*args))]
     fn new(args: &Bound<'_, PyTuple>) -> PyResult<Self> {
-        let messages = args.extract::<Vec<Py<Message>>>()?;
+        let messages = args.extract::<SmallVec<[Py<Message>; MESSAGES_LIMIT]>>()?;
 
         Ok(Self(messages))
     }
