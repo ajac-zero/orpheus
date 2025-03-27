@@ -9,3 +9,7 @@ run = "uv run maturin develop --uv"
 [tasks.test]
 description = "Run all tests"
 run = "uv run pytest -v"
+
+[tasks.benchmark]
+description = "Run sync benchmark"
+run = 'uv run scripts/benchmark.py -r {{option(name="runs", default="1000")}}'
