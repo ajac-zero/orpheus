@@ -3,9 +3,11 @@ description = "Build with maturin"
 run = "uv run maturin develop --uv"
 
 [tasks.test]
+depends = ["dev"]
 description = "Run specificied tests"
 run = 'uv run pytest -v {{arg(name="path", default="tests")}}'
 
 [tasks.benchmark]
+depends = ["dev"]
 description = "Run sync benchmark"
 run = 'uv run scripts/benchmark.py -r {{option(name="runs", default="1000")}}'
