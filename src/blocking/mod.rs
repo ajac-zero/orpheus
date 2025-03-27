@@ -13,7 +13,7 @@ use reqwest::{Error, Method};
 use serde::Serialize;
 
 use crate::types::ExtrasMap;
-use crate::{API_KEY_ENV, BASE_URL_ENV};
+use crate::{API_KEY_ENVS, BASE_URL_ENVS};
 
 trait SyncRest {
     fn api_request<T: Serialize>(
@@ -90,23 +90,24 @@ impl Orpheus {
             .expect("should build http client");
 
         let mut base_url = base_url
-            .or_else(|| env::var(BASE_URL_ENV).ok())
+            .or_else(|| env::var(BASE_URL_ENVS[0]).ok())
+            .or_else(|| env::var(BASE_URL_ENVS[1]).ok())
             .and_then(|s| url::Url::parse(&s).ok())
             .ok_or(PyKeyError::new_err(format!(
-                "{} environment variable not found.",
-                BASE_URL_ENV
-            )))
-            .expect("should parse base url");
+                "{:?} environment variable not found.",
+                BASE_URL_ENVS
+            )))?;
 
         if let Some(params) = default_query {
             base_url.query_pairs_mut().extend_pairs(params);
         };
 
         let api_key = api_key
-            .or_else(|| env::var(API_KEY_ENV).ok())
+            .or_else(|| env::var(API_KEY_ENVS[0]).ok())
+            .or_else(|| env::var(API_KEY_ENVS[1]).ok())
             .ok_or(PyKeyError::new_err(format!(
-                "{} environment variable not found.",
-                API_KEY_ENV
+                "{:?} environment variable not found.",
+                API_KEY_ENVS
             )))
             .expect("should get api key");
 

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, clippy::too_many_arguments)]
 
 mod blocking;
 mod nonblocking;
@@ -6,8 +6,8 @@ mod types;
 
 use pyo3::prelude::*;
 
-pub const BASE_URL_ENV: &str = "ORPHEUS_BASE_URL";
-pub const API_KEY_ENV: &str = "ORPHEUS_API_KEY";
+pub const BASE_URL_ENVS: [&str; 2] = ["ORPHEUS_BASE_URL", "OPENAI_BASE_URL"];
+pub const API_KEY_ENVS: [&str; 2] = ["ORPHEUS_API_KEY", "OPENAI_API_KEY"];
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {

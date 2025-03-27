@@ -17,7 +17,7 @@ use crate::types::ExtrasMap;
 use super::AsyncRest;
 
 /// A non-blocking client for the chat completion API from OpenAI.
-#[pyclass]
+#[pyclass(frozen)]
 pub struct AsyncChat {
     client: reqwest::Client,
     base_url: url::Url,

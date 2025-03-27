@@ -7,8 +7,8 @@ description = "Build with maturin"
 run = "uv run maturin develop --uv"
 
 [tasks.test]
-description = "Run all tests"
-run = "uv run pytest -v"
+description = "Run specificied tests"
+run = 'uv run pytest -v {{arg(name="path", default="tests")}}'
 
 [tasks.benchmark]
 description = "Run sync benchmark"

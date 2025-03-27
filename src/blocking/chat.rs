@@ -21,7 +21,7 @@ use crate::types::{
 use super::SyncRest;
 
 /// A blocking client for the chat completion API from OpenAI.
-#[pyclass]
+#[pyclass(frozen)]
 pub struct SyncChat {
     client: Client,
     base_url: url::Url,
