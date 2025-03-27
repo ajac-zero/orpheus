@@ -108,8 +108,7 @@ impl Orpheus {
             .ok_or(PyKeyError::new_err(format!(
                 "{:?} environment variable not found.",
                 API_KEY_ENVS
-            )))
-            .expect("should get api key");
+            )))?;
 
         let chat = chat::SyncChat::new(client.clone(), base_url.clone(), api_key.clone());
 

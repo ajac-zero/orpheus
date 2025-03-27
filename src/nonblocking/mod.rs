@@ -93,8 +93,7 @@ impl AsyncOrpheus {
             .ok_or(PyKeyError::new_err(format!(
                 "{:?} environment variable not found.",
                 BASE_URL_ENVS
-            )))
-            .expect("should parse base url");
+            )))?;
 
         if let Some(params) = default_query {
             base_url.query_pairs_mut().extend_pairs(params);
@@ -106,8 +105,7 @@ impl AsyncOrpheus {
             .ok_or(PyKeyError::new_err(format!(
                 "{:?} environment variable not found.",
                 API_KEY_ENVS
-            )))
-            .expect("should get api key");
+            )))?;
 
         let chat = chat::AsyncChat::new(client.clone(), base_url.clone(), api_key.clone());
 

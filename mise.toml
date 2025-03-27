@@ -1,7 +1,3 @@
-[tasks.develop_and_test]
-description = "Build with maturin and run all tests"
-run = "uv run maturin develop --uv && uv run pytest -v"
-
 [tasks.dev]
 description = "Build with maturin"
 run = "uv run maturin develop --uv"
