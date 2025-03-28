@@ -5,24 +5,30 @@ description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "ajac-zero", email = "ajcardoza2000@gmail.com" }]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["orpheus-core"]
+
+[tool.uv.sources]
+orpheus-core = { workspace = true }
+
+[tool.uv.workspace]
+members = ["orpheus-core"]
 
 [dependency-groups]
 dev = [
-    "ai-mock>=0.3.1",
-    "pytest>=8.3.4",
-    "pytest-asyncio>=0.25.3",
-    "pytest-sugar>=1.0.0",
-    "testcontainers>=4.9.2",
+  "ai-mock>=0.3.1",
+  "pytest>=8.3.4",
+  "pytest-asyncio>=0.25.3",
+  "pytest-sugar>=1.0.0",
+  "testcontainers>=4.9.2",
 ]
 benchmark = [
-    "argparse>=1.4.0",
-    "langchain-openai>=0.3.9",
-    "litellm>=1.63.14",
-    "matplotlib>=3.10.1",
-    "openai>=1.68.2",
-    "pyperf>=2.9.0",
-    "rich>=13.9.4",
+  "argparse>=1.4.0",
+  "langchain-openai>=0.3.9",
+  "litellm>=1.63.14",
+  "matplotlib>=3.10.1",
+  "openai>=1.68.2",
+  "pyperf>=2.9.0",
+  "rich>=13.9.4",
 ]
 
 [tool.pyright]
@@ -33,11 +39,6 @@ venv = ".venv"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
-[tool.maturin]
-module-name = "orpheus._core"
-python-packages = ["orpheus"]
-python-source = "python"
-
 [build-system]
-requires = ["maturin>=1.0,<2.0"]
-build-backend = "maturin"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,6 +1,7 @@
 [tasks.dev]
 description = "Build with maturin"
 run = "uv run maturin develop --uv"
+dir = "./orpheus-core"
 
 [tasks.test]
 depends = ["dev"]
