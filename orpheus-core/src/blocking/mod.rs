@@ -56,8 +56,8 @@ trait SyncRest {
     }
 }
 
-#[pyclass]
-pub struct Orpheus {
+#[pyclass(frozen, subclass)]
+pub struct OrpheusCore {
     client: Client,
     #[pyo3(get)]
     chat: Py<chat::SyncChat>,
@@ -66,7 +66,7 @@ pub struct Orpheus {
 }
 
 #[pymethods]
-impl Orpheus {
+impl OrpheusCore {
     #[new]
     #[pyo3(signature = (base_url=None, api_key=None, default_headers=None, default_query=None))]
     fn __init__(
