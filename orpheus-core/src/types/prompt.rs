@@ -34,6 +34,10 @@ impl<'a> Prompt<'a> {
             extra,
         }
     }
+
+    pub fn is_stream(&self) -> bool {
+        self.stream.is_some_and(|x| x)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

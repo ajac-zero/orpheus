@@ -2,107 +2,47 @@
 
 use std::io::{BufRead, BufReader, Lines};
 
-use pyo3::{
-    exceptions::{PyIOError, PyStopIteration, PyValueError},
-    prelude::*,
-    types::PyDict,
-};
-use pythonize::depythonize;
-use reqwest::blocking::{Client, Response};
-use serde_json::Value;
+use pyo3::exceptions::{PyStopIteration, PyValueError};
+use pyo3::prelude::*;
 
-use crate::types::{
-    chat::{ChatCompletion, ChatCompletionChunk},
-    message::{EitherMessages, Messages},
-    prompt::Prompt,
-    ExtrasMap,
-};
+use reqwest::blocking::Response;
+
+use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
+use crate::types::prompt::Prompt;
+use crate::types::ExtrasMap;
 
 use super::SyncRest;
 
-/// A blocking client for the chat completion API from OpenAI.
-#[pyclass(frozen)]
-pub struct SyncChat {
-    client: Client,
-    base_url: url::Url,
-    api_key: String,
-}
+const CHAT_COMPLETION_PATH: &str = "/chat/completions";
 
-impl SyncChat {
-    pub fn new(client: Client, base_url: url::Url, api_key: String) -> Self {
-        Self {
-            client,
-            base_url,
-            api_key,
-        }
-    }
-}
-
-// Compose traits to send REST requests.
-impl SyncRest for SyncChat {}
-
-#[pymethods]
-impl SyncChat {
-    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, **extra))]
-    fn create(
+pub trait SyncChat: SyncRest {
+    fn chat_completion(
         &self,
-        py: Python,
-        model: String,
-        messages: EitherMessages,
-        stream: Option<bool>,
+        prompt: &Prompt,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
-        extra: Option<&Bound<'_, PyDict>>,
-    ) -> PyResult<CompletionResponse> {
-        let messages = messages.map_left(Ok).left_or_else(|x| {
-            x.extract::<Messages>(py)
-                .map(|x| Py::new(py, x).expect("bind to GIL"))
-        })?;
-
-        let extra = extra.map(|x| depythonize::<Value>(x)).transpose()?;
-
-        let prompt = Prompt::new(model, messages.get(), stream, extra);
-
+    ) -> Result<CompletionResponse, reqwest::Error> {
         let response = self
-            .api_request(
-                &self.client,
-                &self.base_url,
-                &self.api_key,
-                "/chat/completions",
-                &prompt,
-                extra_headers,
-                extra_query,
-            )
-            .map_err(|e| PyIOError::new_err(format!("Failed to send request: {}", e)))?;
+            .api_request(CHAT_COMPLETION_PATH, prompt, extra_headers, extra_query)?
+            .error_for_status()?;
 
-        if response.status() == 401 {
-            return Err(PyIOError::new_err(
-                "401 (Unauthorized) response; Is the API key valid?",
-            ));
-        };
-
-        if stream.is_some_and(|x| x) {
+        let completion = if prompt.is_stream() {
             let buffer = BufReader::new(response).lines();
             let stream = Stream::new(buffer);
 
-            Ok(CompletionResponse::Stream(stream))
+            CompletionResponse::Stream(stream)
         } else {
-            let completion = response
-                .json::<ChatCompletion>()
-                .map_err(|e| PyValueError::new_err(format!("Failed to parse response: {}", e)))?;
+            let completion = response.json::<ChatCompletion>()?;
 
-            Ok(CompletionResponse::Completion(completion))
-        }
-    }
+            CompletionResponse::Completion(completion)
+        };
 
-    #[getter]
-    fn completions(self_: PyRef<Self>) -> PyRef<Self> {
-        self_
+        Ok(completion)
     }
 }
 
 #[derive(IntoPyObject)]
-enum CompletionResponse {
+pub enum CompletionResponse {
     #[pyo3(transparent)]
     Completion(ChatCompletion),
     #[pyo3(transparent)]
@@ -110,7 +50,7 @@ enum CompletionResponse {
 }
 
 #[pyclass]
-struct Stream {
+pub struct Stream {
     buffer: Lines<BufReader<Response>>,
 }
 
