@@ -5,8 +5,6 @@ use std::env;
 
 use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
-use pythonize::depythonize;
 use reqwest::blocking::{Client, Response};
 use reqwest::{Error, Method};
 use serde::Serialize;
@@ -161,7 +159,7 @@ impl OrpheusCore {
         Ok(completion)
     }
 
-    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, **extra))]
+    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
     fn create_chat_completion(
         &self,
         py: Python,
@@ -170,14 +168,17 @@ impl OrpheusCore {
         stream: Option<bool>,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
-        extra: Option<&Bound<'_, PyDict>>,
+        extra: Option<&[u8]>,
     ) -> PyResult<CompletionResponse> {
         let messages = messages.map_left(Ok).left_or_else(|x| {
             x.extract::<Messages>(py)
                 .map(|x| Py::new(py, x).expect("bind to GIL"))
         })?;
 
-        let extra = extra.map(|x| depythonize::<Value>(x)).transpose()?;
+        let extra = extra
+            .map(serde_json::from_slice::<Value>)
+            .transpose()
+            .expect("Serialize bytes to json");
 
         let prompt = Prompt::new(model, messages.get(), stream, extra);
 

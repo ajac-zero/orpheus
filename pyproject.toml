@@ -5,7 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "ajac-zero", email = "ajcardoza2000@gmail.com" }]
 requires-python = ">=3.11"
-dependencies = ["orpheus-core"]
+dependencies = [
+    "orjson>=3.10.15",
+    "orpheus-core",
+]
 
 [tool.uv.sources]
 orpheus-core = { workspace = true }

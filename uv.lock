@@ -1268,6 +1268,7 @@ name = "orpheus"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "orjson" },
     { name = "orpheus-core" },
 ]
 
@@ -1290,7 +1291,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "orpheus-core", editable = "orpheus-core" }]
+requires-dist = [
+    { name = "orjson", specifier = ">=3.10.15" },
+    { name = "orpheus-core", editable = "orpheus-core" },
+]
 
 [package.metadata.requires-dev]
 benchmark = [
