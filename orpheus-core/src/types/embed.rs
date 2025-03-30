@@ -1,4 +1,4 @@
-use pyo3::{FromPyObject, IntoPyObject};
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, FromPyObject)]
@@ -36,7 +36,8 @@ impl EmbeddingPrompt {
     }
 }
 
-#[derive(Debug, Deserialize, IntoPyObject)]
+#[pyclass(name = "Embeddings")]
+#[derive(Debug, Deserialize)]
 pub struct EmbeddingResponse {
     index: i32,
     embedding: Vec<f64>,

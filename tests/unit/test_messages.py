@@ -1,6 +1,6 @@
 import pytest
 
-from orpheus.models import Messages, Message
+from orpheus.models import Message, Messages
 
 
 def test_generic_messages():

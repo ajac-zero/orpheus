@@ -237,7 +237,7 @@ if __name__ == "__main__":
         orpheus.chat.completions.create, messages=MESSAGES, model=MODEL
     )
     native_orpheus_func = functools.partial(
-        orpheus.chat.create, messages=NATIVE_MESSAGES, model=MODEL
+        orpheus.chat.completions.create, messages=NATIVE_MESSAGES, model=MODEL
     )
 
     console = Console()

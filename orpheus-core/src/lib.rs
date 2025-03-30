@@ -15,5 +15,8 @@ fn orpheus_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<nonblocking::AsyncOrpheus>()?;
     m.add_class::<types::message::Messages>()?;
     m.add_class::<types::message::Message>()?;
+    m.add_class::<types::chat::ChatCompletion>()?;
+    m.add_class::<types::embed::EmbeddingResponse>()?;
+    m.add_class::<blocking::chat::Stream>()?;
     Ok(())
 }

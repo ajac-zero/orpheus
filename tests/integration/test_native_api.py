@@ -1,5 +1,5 @@
 from orpheus import Orpheus
-from orpheus.models import Messages, Message
+from orpheus.models import Message, Messages
 
 
 def test_native_chat_completion(orpheus: Orpheus):

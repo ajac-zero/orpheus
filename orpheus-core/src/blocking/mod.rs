@@ -1,4 +1,4 @@
-mod chat;
+pub mod chat;
 mod embed;
 
 use std::env;
@@ -19,13 +19,13 @@ use crate::{API_KEY_ENVS, BASE_URL_ENVS};
 use chat::{CompletionResponse, SyncChat};
 use embed::SyncEmbed;
 
-struct Params<'a> {
+pub struct Params<'a> {
     client: &'a Client,
     url: &'a url::Url,
     key: &'a str,
 }
 
-trait SyncRest {
+pub trait SyncRest {
     fn get_params(&self) -> Params;
 
     fn api_request<T: Serialize>(

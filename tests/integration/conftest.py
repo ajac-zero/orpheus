@@ -1,9 +1,8 @@
 import pytest
-
-from testcontainers.generic import ServerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.generic import ServerContainer
 
-from orpheus import Orpheus, AsyncOrpheus
+from orpheus import AsyncOrpheus, Orpheus
 
 
 @pytest.fixture(scope="session")
