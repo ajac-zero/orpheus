@@ -1,14 +1,29 @@
-[tasks.dev]
+[tasks.develop]
 description = "Build with maturin"
 run = "uv run maturin develop --uv"
 dir = "./orpheus-core"
+alias = ["d", "dev"]
+
+[tasks.synchronize]
+depends = "develop"
+description = "Synchronize uv packages"
+run = "uv sync --refresh-package orpheus-core --all-groups"
+alias = ["s", "sync"]
 
 [tasks.test]
-depends = ["dev"]
+wait_for = "synchronize"
 description = "Run specificied tests"
 run = 'uv run pytest -v {{arg(name="path", default="tests")}}'
+alias = ["t"]
 
 [tasks.benchmark]
-depends = ["dev"]
+wait_for = "synchronize"
 description = "Run sync benchmark"
 run = 'uv run scripts/benchmark.py -r {{option(name="runs", default="1000")}}'
+alias = ["b", "bench"]
+
+[tasks.async-benchmark]
+wait_for = "synchronize"
+description = "Run async benchmark"
+run = 'uv run scripts/async_benchmark.py -r {{option(name="runs", default="1000")}}'
+alias = ["ab", "abench"]
