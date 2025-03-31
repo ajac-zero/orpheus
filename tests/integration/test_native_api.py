@@ -3,7 +3,7 @@ from orpheus.models import Message, Messages
 
 
 def test_native_chat_completion(orpheus: Orpheus):
-    response = orpheus.chat.completions.create(
+    response = orpheus.message(
         model="gpt5",
         messages=Messages(Message(role="user", content="hello")),
     )

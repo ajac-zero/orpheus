@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generator, Literal
+from typing import Any, Generator, Literal
 
 class OrpheusCore:
     """
@@ -13,7 +13,7 @@ class OrpheusCore:
 
     ...
 
-    def create_embeddings(
+    def native_embeddings_create(
         self,
         input: str | list[str] | list[int] | list[list[int]],
         model: str,
@@ -28,10 +28,10 @@ class OrpheusCore:
         """
         ...
 
-    def create_chat_completion(
+    def native_chat_completions_create(
         self,
         model: str,
-        messages: list[dict[str, str | list[dict[str, str]]]] | Messages,
+        messages: Any | Messages,
         stream: bool | None = None,
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,

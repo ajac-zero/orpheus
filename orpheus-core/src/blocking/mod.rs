@@ -140,7 +140,7 @@ impl OrpheusCore {
     }
 
     #[pyo3(signature = (input, model, dimensions=None, encoding_format=None, user=None, extra_headers=None, extra_query=None))]
-    fn create_embeddings(
+    fn native_embeddings_create(
         &self,
         input: EmbeddingInput,
         model: String,
@@ -160,7 +160,7 @@ impl OrpheusCore {
     }
 
     #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
-    fn create_chat_completion(
+    fn native_chat_completions_create(
         &self,
         py: Python,
         model: String,

@@ -5,6 +5,7 @@ from typing import Literal, overload
 import orjson
 from orpheus_core import ChatCompletion, Embeddings, OrpheusCore, Stream, Messages
 
+from orpheus.types import MappedMessages
 
 class Orpheus(OrpheusCore):
     """
@@ -23,10 +24,10 @@ class Orpheus(OrpheusCore):
         self.chat = self.Chat(orpheus=self)
 
     @overload
-    def chat_completion(
+    def message(
         self,
         model: str,
-        messages: list[dict[str, str | list[dict[str, str]]]] | Messages,
+        messages: MappedMessages | Messages,
         stream: Literal[False] | None = None,
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,
@@ -36,10 +37,10 @@ class Orpheus(OrpheusCore):
         ...
 
     @overload
-    def chat_completion(
+    def message(
         self,
         model: str,
-        messages: list[dict[str, str | list[dict[str, str]]]] | Messages,
+        messages: MappedMessages | Messages,
         stream: Literal[True],
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,
@@ -48,17 +49,17 @@ class Orpheus(OrpheusCore):
         """This is the chat completion method"""
         ...
 
-    def chat_completion(
+    def message(
         self,
         model: str,
-        messages: list[dict[str, str | list[dict[str, str]]]] | Messages,
+        messages: MappedMessages | Messages,
         stream: bool | None = None,
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,
         **kwargs,
     ) -> ChatCompletion | Stream:
         """This is the chat completion method"""
-        return self.create_chat_completion(
+        return self.native_chat_completions_create(
             model=model,
             messages=messages,
             stream=stream,
@@ -67,7 +68,7 @@ class Orpheus(OrpheusCore):
             extra=orjson.dumps(kwargs),
         )
 
-    def embeddings(
+    def embed(
         self,
         input: str | list[str] | list[int] | list[list[int]],
         model: str,
@@ -78,7 +79,7 @@ class Orpheus(OrpheusCore):
         extra_query: dict[str, str] | None = None,
     ) -> Embeddings:
         """This is the embedding completion method"""
-        return self.create_embeddings(
+        return self.native_embeddings_create(
             input=input,
             model=model,
             dimensions=dimensions,
@@ -91,8 +92,8 @@ class Orpheus(OrpheusCore):
     class Chat:
         class Completions:
             def __init__(self, orpheus: Orpheus):
-                self.create = orpheus.chat_completion
+                self.create = orpheus.message
 
         def __init__(self, orpheus: Orpheus):
             self.completions = self.Completions(orpheus=orpheus)
-            self.create = Orpheus.chat_completion
+            self.create = orpheus.message
