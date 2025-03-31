@@ -12,7 +12,7 @@ from rich.progress import track
 from rich.table import Table
 
 from orpheus import Orpheus
-from orpheus.models import Messages, Message
+from orpheus.models import Message, Messages
 
 # Constants
 
@@ -88,7 +88,7 @@ class Runner:
                 results.append(result)
 
             except Exception as e:
-                self.console.print(f"  Run {i+1}: Failed - {str(e)}", style="red")
+                self.console.print(f"  Run {i + 1}: Failed - {str(e)}", style="red")
 
         return {
             "name": name,

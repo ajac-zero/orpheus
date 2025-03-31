@@ -102,7 +102,7 @@ class Runner:
                 results.append(result)
 
             except Exception as e:
-                self.console.print(f"  Run {i+1}: Failed - {str(e)}", style="red")
+                self.console.print(f"  Run {i + 1}: Failed - {str(e)}", style="red")
 
         return {
             "name": name,
