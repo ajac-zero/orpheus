@@ -1,9 +1,10 @@
+pub mod message;
+pub mod prompt;
+
 use futures_lite::stream::Stream;
 use pyo3::prelude::*;
 use serde::Deserialize;
 use std::pin::Pin;
-
-use super::message;
 
 #[pyclass(get_all)]
 #[derive(Debug, Clone, Deserialize)]
@@ -81,13 +82,6 @@ pub struct ChatCompletionChunk {
     system_fingerprint: Option<String>,
     object: String,
     usage: Option<StreamUsage>,
-}
-
-#[pymethods]
-impl ChatCompletionChunk {
-    fn __repr__(&self) -> String {
-        format!("ChatCompletionChunk(id={:?}, choices={:?}, created={:?}, model={:?}, service_tier={:?}, system_fingerprint={:?}, object={:?}, usage={:?})", self.id, self.choices, self.created, self.model, self.service_tier, self.system_fingerprint, self.object, self.usage)
-    }
 }
 
 #[pyclass(get_all)]

@@ -7,8 +7,8 @@ use pyo3::prelude::*;
 
 use reqwest::blocking::Response;
 
+use crate::types::chat::prompt::ChatPrompt;
 use crate::types::chat::{ChatCompletion, ChatCompletionChunk};
-use crate::types::prompt::Prompt;
 use crate::types::ExtrasMap;
 
 use super::SyncRest;
@@ -18,7 +18,7 @@ const CHAT_COMPLETION_PATH: &str = "/chat/completions";
 pub trait SyncChat: SyncRest {
     fn chat_completion(
         &self,
-        prompt: &Prompt,
+        prompt: &ChatPrompt,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
     ) -> Result<CompletionResponse, reqwest::Error> {

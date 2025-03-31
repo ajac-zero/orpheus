@@ -9,9 +9,9 @@ use pythonize::depythonize;
 use serde_json::Value;
 use tokio::sync::Mutex;
 
+use crate::types::chat::message::{EitherMessages, Messages};
+use crate::types::chat::prompt::ChatPrompt;
 use crate::types::chat::{BytesStream, ChatCompletion, ChatCompletionChunk};
-use crate::types::message::{EitherMessages, Messages};
-use crate::types::prompt::Prompt;
 use crate::types::ExtrasMap;
 
 use super::AsyncRest;
@@ -60,7 +60,7 @@ impl AsyncChat {
             .map(|x| Python::with_gil(|py| depythonize::<Value>(&x.into_bound(py))))
             .transpose()?;
 
-        let prompt = Prompt::new(model, messages.get(), stream, extra);
+        let prompt = ChatPrompt::new(model, messages.get(), stream, extra);
 
         let response = self
             .api_request(

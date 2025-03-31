@@ -42,7 +42,6 @@ def test_chat_stream_completion(orpheus: Orpheus):
     buffer = ""
 
     for chunk in response:
-        print(chunk)
         assert chunk.choices[0].delta.content is not None
 
         buffer += chunk.choices[0].delta.content

@@ -10,9 +10,9 @@ use reqwest::{Error, Method};
 use serde::Serialize;
 use serde_json::Value;
 
+use crate::types::chat::message::{EitherMessages, Messages};
+use crate::types::chat::prompt::ChatPrompt;
 use crate::types::embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse};
-use crate::types::message::{EitherMessages, Messages};
-use crate::types::prompt::Prompt;
 use crate::types::ExtrasMap;
 use crate::{API_KEY_ENVS, BASE_URL_ENVS};
 
@@ -180,7 +180,7 @@ impl OrpheusCore {
             .transpose()
             .expect("Serialize bytes to json");
 
-        let prompt = Prompt::new(model, messages.get(), stream, extra);
+        let prompt = ChatPrompt::new(model, messages.get(), stream, extra);
 
         let completion = self
             .chat_completion(&prompt, extra_headers, extra_query)

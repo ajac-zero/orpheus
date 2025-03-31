@@ -4,7 +4,7 @@ use serde_json::Value;
 use super::message;
 
 #[derive(Debug, Serialize)]
-pub struct Prompt<'a> {
+pub struct ChatPrompt<'a> {
     messages: &'a message::Messages,
     model: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -18,7 +18,7 @@ pub struct Prompt<'a> {
     extra: Option<Value>,
 }
 
-impl<'a> Prompt<'a> {
+impl<'a> ChatPrompt<'a> {
     pub fn new(
         model: String,
         messages: &'a message::Messages,
@@ -87,30 +87,4 @@ struct ToolOption {
 enum ToolChoice {
     Mode(String),
     Select(ToolOption),
-}
-
-// Embeddings
-
-#[derive(Debug, Serialize)]
-enum EmbeddingInput {
-    String(String),
-    StringVector(Vec<String>),
-    IntegerVector(Vec<f64>),
-    NestedIntegerVector(Vec<Vec<f64>>),
-}
-
-#[derive(Debug, Serialize)]
-pub struct EmbeddingPrompt {
-    input: EmbeddingInput,
-    model: String,
-    encoding_format: Option<String>,
-    dimensions: Option<i32>,
-    user: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct EmbeddingResponse {
-    index: i32,
-    embedding: Vec<f64>,
-    object: String,
 }

@@ -1,21 +1,13 @@
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, Mapping, Any
 
-class ImageUrl(TypedDict):
-    url: str
-    detail: str | None
+type ImageUrl = Mapping[Literal["url", "detail"], str | None]
 
-class TextPart(TypedDict):
-    text: str
+type Text = Mapping[Literal["text"], str]
 
-class ImagePart(TypedDict):
-    image_url: ImageUrl
+type Image = Mapping[Literal["image"], ImageUrl]
 
-type Part = TextPart | ImagePart
+type Part = Text | Image
 
-class MappedMessage(TypedDict):
-    role: Literal["system", "user", "assistant", "tool"]
-    content: str | list[Part]
-    tool_calls: list[dict[str, str | dict[str, str]]] | None
-    tool_id: str | None
+type MappedMessage = Mapping[Literal["role", "content", "tool_calls", "tool_id"], str | list[Part] | Any | None]
 
 type MappedMessages = list[MappedMessage]
