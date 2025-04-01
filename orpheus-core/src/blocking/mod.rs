@@ -10,7 +10,7 @@ use reqwest::{Error, Method};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::types::chat::message::{EitherMessages, Messages};
+use crate::types::chat::message::{EitherMessages, Message};
 use crate::types::chat::prompt::ChatPrompt;
 use crate::types::embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse};
 use crate::types::ExtrasMap;
@@ -171,8 +171,13 @@ impl OrpheusCore {
         extra: Option<&[u8]>,
     ) -> PyResult<CompletionResponse> {
         let messages = messages.map_left(Ok).left_or_else(|x| {
-            x.extract::<Messages>(py)
-                .map(|x| Py::new(py, x).expect("bind to GIL"))
+            x.into_bound(py)
+                .into_iter()
+                .map(|x| {
+                    x.extract::<Message>()
+                        .map(|x| Py::new(py, x).expect("bind to GIL"))
+                })
+                .collect()
         })?;
 
         let extra = extra
@@ -180,7 +185,7 @@ impl OrpheusCore {
             .transpose()
             .expect("Serialize bytes to json");
 
-        let prompt = ChatPrompt::new(model, messages.get(), stream, extra);
+        let prompt = ChatPrompt::new(model, &messages, stream, extra);
 
         let completion = self
             .chat_completion(&prompt, extra_headers, extra_query)

@@ -1,20 +1,18 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 
 use super::message;
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize)]
 pub struct ChatPrompt<'a> {
     messages: &'a message::Messages,
     model: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     stream: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     tools: Option<Vec<Tool>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     tool_choice: Option<ToolChoice>,
-
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
     extra: Option<Value>,
 }
 

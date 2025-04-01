@@ -1,9 +1,7 @@
 use either::Either;
-use pyo3::{
-    exceptions::{PyIndexError, PyValueError},
-    prelude::*,
-    types::{PyList, PyTuple},
-};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyList;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
@@ -89,36 +87,40 @@ pub struct Delta {
     tool_calls: Option<Vec<ToolCall>>,
 }
 
-#[pyclass]
+const SYSTEM_ROLE: &str = "system";
+const USER_ROLE: &str = "user";
+const ASSISTANT_ROLE: &str = "assistant";
+const TOOL_ROLE: &str = "tool";
+
+#[pyclass(frozen, get_all)]
+#[serde_with::skip_serializing_none]
 #[derive(FromPyObject, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Message {
-    #[pyo3(constructor=(content, role="system".into()))]
+    #[pyo3(constructor=(content, role=SYSTEM_ROLE.into()))]
     System {
         #[pyo3(item)]
         content: String,
         #[pyo3(item)]
         role: String,
     },
-    #[pyo3(constructor=(content, role="user".into()))]
+    #[pyo3(constructor=(content, role=USER_ROLE.into()))]
     User {
         #[pyo3(item)]
         content: Content,
         #[pyo3(item)]
         role: String,
     },
-    #[pyo3(constructor=(content=None, tool_calls=None, role="assistant".into()))]
+    #[pyo3(constructor=(content=None, tool_calls=None, role=ASSISTANT_ROLE.into()))]
     Assistant {
         #[pyo3(item)]
-        #[serde(skip_serializing_if = "Option::is_none")]
         content: Option<Content>,
         #[pyo3(item)]
-        #[serde(skip_serializing_if = "Option::is_none")]
         tool_calls: Option<Vec<ToolCall>>,
         #[pyo3(item)]
         role: String,
     },
-    #[pyo3(constructor=(content, tool_id, role="tool".into()))]
+    #[pyo3(constructor=(content, tool_id, role=TOOL_ROLE.into()))]
     Tool {
         #[pyo3(item)]
         content: String,
@@ -131,125 +133,6 @@ pub enum Message {
 
 #[pymethods]
 impl Message {
-    #[new]
-    #[pyo3(signature = (role, content = None, tool_calls = None, tool_id = None))]
-    fn new(
-        role: String,
-        content: Option<Content>,
-        tool_calls: Option<Vec<ToolCall>>,
-        tool_id: Option<String>,
-    ) -> PyResult<Self> {
-        let message = match role.as_str() {
-            "system" => {
-                if tool_calls.is_some() {
-                    return Err(PyValueError::new_err(
-                        "If role = 'user', tool_calls must be None",
-                    ));
-                };
-
-                if tool_id.is_some() {
-                    return Err(PyValueError::new_err(
-                        "If role = 'user', tool_id must be None",
-                    ));
-                };
-
-                let content = if let Some(content) = content {
-                    content
-                } else {
-                    return Err(PyValueError::new_err(
-                        "If role = 'user', content must not be None",
-                    ));
-                };
-
-                let content = match content {
-                    Content::Simple(content) => content,
-                    Content::Complex(_) => {
-                        return Err(PyValueError::new_err(
-                            "If role = 'system', content must be str",
-                        ))
-                    }
-                };
-
-                Self::System { role, content }
-            }
-            "user" => {
-                if tool_calls.is_some() {
-                    return Err(PyValueError::new_err(
-                        "If role = 'user', tool_calls must be None",
-                    ));
-                };
-
-                if tool_id.is_some() {
-                    return Err(PyValueError::new_err(
-                        "If role = 'user', tool_id must be None",
-                    ));
-                };
-
-                let content = if let Some(content) = content {
-                    content
-                } else {
-                    return Err(PyValueError::new_err(
-                        "If role = 'user', content must not be None",
-                    ));
-                };
-
-                Self::User { role, content }
-            }
-            "assistant" => {
-                if tool_id.is_some() {
-                    return Err(PyValueError::new_err(
-                        "If role = 'assistant', tool_id must be None",
-                    ));
-                };
-
-                Self::Assistant {
-                    role,
-                    content,
-                    tool_calls,
-                }
-            }
-            "tool" => {
-                let tool_id = if let Some(tool_id) = tool_id {
-                    tool_id
-                } else {
-                    return Err(PyValueError::new_err(
-                        "If role = 'tool', tool_id must not be None",
-                    ));
-                };
-
-                let content = if let Some(content) = content {
-                    content
-                } else {
-                    return Err(PyValueError::new_err(
-                        "If role = 'user', content must not be None",
-                    ));
-                };
-
-                let content = match content {
-                    Content::Simple(content) => content,
-                    Content::Complex(_) => {
-                        return Err(PyValueError::new_err(
-                            "If role = 'system', content must be str",
-                        ))
-                    }
-                };
-
-                Self::Tool {
-                    role,
-                    content,
-                    tool_id,
-                }
-            }
-            _ => {
-                return Err(PyValueError::new_err(
-                    "Invalid role; role can be one of 'user', 'assistant', 'system', 'tool'.",
-                ))
-            }
-        };
-
-        Ok(message)
-    }
-
     #[getter]
     fn role(&self) -> &str {
         match self {
@@ -282,46 +165,6 @@ impl Message {
 
 const MESSAGES_LIMIT: usize = 24;
 
-#[pyclass(frozen, sequence)]
-#[derive(Debug, Serialize, Deserialize, Default)]
-pub struct Messages(SmallVec<[Py<Message>; MESSAGES_LIMIT]>);
+pub type Messages = SmallVec<[Py<Message>; MESSAGES_LIMIT]>;
 
-impl<'py> FromPyObject<'py> for Messages {
-    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
-        let py = ob.py();
-
-        let messages = ob
-            .extract::<Vec<Message>>()?
-            .into_iter()
-            .map(|x| Py::new(py, x).expect("bind to GIL"))
-            .collect::<SmallVec<[Py<Message>; MESSAGES_LIMIT]>>();
-
-        Ok(Self(messages))
-    }
-}
-
-#[pymethods]
-impl Messages {
-    #[new]
-    #[pyo3(signature = (*args))]
-    fn new(args: &Bound<'_, PyTuple>) -> PyResult<Self> {
-        let messages = args.extract::<SmallVec<[Py<Message>; MESSAGES_LIMIT]>>()?;
-
-        Ok(Self(messages))
-    }
-
-    fn __len__(&self) -> usize {
-        self.0.len()
-    }
-
-    fn __getitem__(&self, py: Python, index: usize) -> PyResult<Py<Message>> {
-        let message = self
-            .0
-            .get(index)
-            .ok_or_else(|| PyIndexError::new_err("Index out of range"))?;
-
-        Ok(message.clone_ref(py))
-    }
-}
-
-pub type EitherMessages = Either<Py<Messages>, Py<PyList>>;
+pub type EitherMessages = Either<Messages, Py<PyList>>;

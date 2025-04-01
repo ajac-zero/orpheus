@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict, Mapping, Any
+from typing import Literal, Mapping, Any
 
 type ImageUrl = Mapping[Literal["url", "detail"], str | None]
 
@@ -8,6 +8,8 @@ type Image = Mapping[Literal["image"], ImageUrl]
 
 type Part = Text | Image
 
-type MappedMessage = Mapping[Literal["role", "content", "tool_calls", "tool_id"], str | list[Part] | Any | None]
+type MappedMessage = Mapping[
+    Literal["role", "content", "tool_calls", "tool_id"], str | list[Part] | Any | None
+]
 
 type MappedMessages = list[MappedMessage]

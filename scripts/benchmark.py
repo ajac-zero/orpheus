@@ -12,7 +12,7 @@ from rich.progress import track
 from rich.table import Table
 
 from orpheus import Orpheus
-from orpheus.models import Message, Messages
+from orpheus.models import Message
 
 # Constants
 
@@ -34,10 +34,10 @@ MESSAGES = [
         ],
     },
 ]
-NATIVE_MESSAGES = Messages(
+NATIVE_MESSAGES = [
     Message.System(content="You are a friendly bot"),
     Message.User(content="hello, whats in the image"),
-)
+]
 
 
 class Runner:

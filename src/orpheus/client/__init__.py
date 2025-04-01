@@ -3,9 +3,12 @@ from __future__ import annotations
 from typing import Literal, overload
 
 import orjson
-from orpheus_core import ChatCompletion, Embeddings, OrpheusCore, Stream, Messages
+from orpheus_core import ChatCompletion, Embeddings, OrpheusCore, Stream, Message
 
 from orpheus.types import MappedMessages
+
+type Messages = list[Message]
+
 
 class Orpheus(OrpheusCore):
     """

@@ -1,3 +1,3 @@
-from orpheus_core import Message, Messages
+from orpheus_core import Message
 
-__all__ = ["Messages", "Message"]
+__all__ = ["Message"]
