@@ -79,9 +79,9 @@ class Runner:
 
         for i in track(self.runs, description=""):
             try:
-                start_time = time.time()
+                start_time = time.perf_counter()
                 result = func()
-                end_time = time.time()
+                end_time = time.perf_counter()
 
                 execution_time = end_time - start_time
                 times.append(execution_time)
