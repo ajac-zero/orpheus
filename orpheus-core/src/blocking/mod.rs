@@ -10,7 +10,7 @@ use reqwest::{Error, Method};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::types::chat::message::{EitherMessages, Message};
+use crate::types::chat::message::Messages;
 use crate::types::chat::prompt::ChatPrompt;
 use crate::types::embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse};
 use crate::types::ExtrasMap;
@@ -162,24 +162,13 @@ impl OrpheusCore {
     #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
     fn native_chat_completions_create(
         &self,
-        py: Python,
         model: String,
-        messages: EitherMessages,
+        messages: Messages,
         stream: Option<bool>,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
         extra: Option<&[u8]>,
     ) -> PyResult<CompletionResponse> {
-        let messages = messages.map_left(Ok).left_or_else(|x| {
-            x.into_bound(py)
-                .into_iter()
-                .map(|x| {
-                    x.extract::<Message>()
-                        .map(|x| Py::new(py, x).expect("bind to GIL"))
-                })
-                .collect()
-        })?;
-
         let extra = extra
             .map(serde_json::from_slice::<Value>)
             .transpose()

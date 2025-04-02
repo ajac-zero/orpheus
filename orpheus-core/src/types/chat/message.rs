@@ -1,4 +1,3 @@
-use either::Either;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyList;
@@ -165,6 +164,26 @@ impl Message {
 
 const MESSAGES_LIMIT: usize = 24;
 
-pub type Messages = SmallVec<[Py<Message>; MESSAGES_LIMIT]>;
+type MessageArray = SmallVec<[Py<Message>; MESSAGES_LIMIT]>;
 
-pub type EitherMessages = Either<Messages, Py<PyList>>;
+#[derive(Debug, Serialize)]
+pub struct Messages(MessageArray);
+
+impl<'py> FromPyObject<'py> for Messages {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
+        ob.extract::<MessageArray>()
+            .or_else(|_| {
+                ob.downcast::<PyList>()
+                    .map_err(|_| {
+                        PyValueError::new_err("Expected list[Messages] | list[MappedMessages]")
+                    })
+                    .and_then(|list| {
+                        let py = list.py();
+                        list.iter()
+                            .map(|item| item.extract::<Message>().and_then(|msg| Py::new(py, msg)))
+                            .collect::<PyResult<MessageArray>>()
+                    })
+            })
+            .map(Self)
+    }
+}
