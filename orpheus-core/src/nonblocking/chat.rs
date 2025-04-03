@@ -1,12 +1,11 @@
 use either::Either;
 
 use super::AsyncRest;
-use crate::types::{
-    ExtrasMap,
-    chat::{AsyncChunkStream, ChatCompletion, prompt::ChatPrompt},
+use crate::{
+    constants::CHAT_COMPLETION_PATH,
+    models::chat::{AsyncChunkStream, ChatCompletion, prompt::ChatPrompt},
+    types::ExtrasMap,
 };
-
-const CHAT_COMPLETION_PATH: &str = "/chat/completions";
 
 pub type CompletionResponse = Either<ChatCompletion, AsyncChunkStream>;
 

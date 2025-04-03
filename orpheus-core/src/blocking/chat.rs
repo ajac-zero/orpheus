@@ -3,12 +3,11 @@ use std::io::{BufRead, BufReader};
 use either::Either;
 
 use super::SyncRest;
-use crate::types::{
-    ExtrasMap,
-    chat::{ChatCompletion, ChunkStream, prompt::ChatPrompt},
+use crate::{
+    constants::CHAT_COMPLETION_PATH,
+    models::chat::{ChatCompletion, ChunkStream, prompt::ChatPrompt},
+    types::ExtrasMap,
 };
-
-const CHAT_COMPLETION_PATH: &str = "/chat/completions";
 
 pub type CompletionResponse = Either<ChatCompletion, ChunkStream>;
 

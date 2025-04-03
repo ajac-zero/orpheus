@@ -15,12 +15,12 @@ use reqwest::blocking::Client;
 use serde_json::Value;
 
 use crate::{
-    API_KEY_ENVS, BASE_URL_ENVS,
-    types::{
-        ExtrasMap,
+    constants::{API_KEY_ENVS, BASE_URL_ENVS},
+    models::{
         chat::{message::Messages, prompt::ChatPrompt},
         embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse},
     },
+    types::ExtrasMap,
 };
 
 #[pyclass(frozen, subclass)]

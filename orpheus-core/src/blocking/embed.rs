@@ -1,10 +1,9 @@
 use super::SyncRest;
-use crate::types::{
-    ExtrasMap,
-    embed::{EmbeddingPrompt, EmbeddingResponse},
+use crate::{
+    constants::EMBEDDINGS_PATH,
+    models::embed::{EmbeddingPrompt, EmbeddingResponse},
+    types::ExtrasMap,
 };
-
-const EMBEDDINGS_PATH: &str = "/v1/embeddings";
 
 pub trait SyncEmbed: SyncRest {
     fn embeddings(
