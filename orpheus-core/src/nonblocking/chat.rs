@@ -1,17 +1,12 @@
-#![allow(clippy::large_enum_variant)]
-
-use std::sync::Arc;
-
-use futures_lite::stream::StreamExt;
-use pyo3::exceptions::{PyIOError, PyStopAsyncIteration, PyValueError};
+use either::Either;
+use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
 use pythonize::depythonize;
 use serde_json::Value;
-use tokio::sync::Mutex;
 
 use crate::types::chat::message::Messages;
 use crate::types::chat::prompt::ChatPrompt;
-use crate::types::chat::{BytesStream, ChatCompletion, ChatCompletionChunk};
+use crate::types::chat::{AsyncChunkStream, ChatCompletion};
 use crate::types::ExtrasMap;
 
 use super::AsyncRest;
@@ -36,6 +31,8 @@ impl AsyncChat {
 
 // Compose traits to send non-blocking REST requests.
 impl AsyncRest for AsyncChat {}
+
+type CompletionResponse = Either<ChatCompletion, AsyncChunkStream>;
 
 #[pymethods]
 impl AsyncChat {
@@ -68,82 +65,20 @@ impl AsyncChat {
             .await
             .map_err(|e| PyIOError::new_err(format!("Failed to send request: {}", e)))?;
 
-        if stream.is_some_and(|x| x) {
+        let completion = if prompt.is_stream() {
             let bytes_steam = Box::pin(response.bytes_stream());
-            let stream = StreamCompletion::new(bytes_steam);
+            let stream = AsyncChunkStream::new(bytes_steam);
 
-            Ok(CompletionResponse::Stream(stream))
+            Either::Right(stream)
         } else {
             let completion = response
                 .json::<ChatCompletion>()
                 .await
                 .map_err(|e| PyValueError::new_err(format!("Failed to parse response: {}", e)))?;
 
-            Ok(CompletionResponse::Completion(completion))
-        }
-    }
+            Either::Left(completion)
+        };
 
-    #[getter]
-    fn completions(self_: PyRef<Self>) -> PyRef<Self> {
-        self_
-    }
-}
-
-#[derive(pyo3::IntoPyObject)]
-enum CompletionResponse {
-    #[pyo3(transparent)]
-    Completion(ChatCompletion),
-    #[pyo3(transparent)]
-    Stream(StreamCompletion),
-}
-
-#[pyclass]
-struct StreamCompletion {
-    bytes_stream: Arc<Mutex<BytesStream>>,
-}
-
-impl StreamCompletion {
-    fn new(bytes_stream: BytesStream) -> Self {
-        Self {
-            bytes_stream: Arc::new(Mutex::new(bytes_stream)),
-        }
-    }
-
-    async fn next(bytes_stream: Arc<Mutex<BytesStream>>) -> PyResult<ChatCompletionChunk> {
-        let mut stream_guard = bytes_stream.lock().await;
-
-        if let Some(Ok(bytes)) = stream_guard.next().await {
-            let line = String::from_utf8(bytes.to_vec())
-                .map_err(|x| PyValueError::new_err(x.to_string()))?;
-
-            let data = &line[6..];
-
-            if data == "[DONE]\n\n" {
-                return Err(PyStopAsyncIteration::new_err("end of stream"));
-            }
-
-            serde_json::from_str::<ChatCompletionChunk>(data)
-                .map_err(|x| PyValueError::new_err(x.to_string()))
-        } else {
-            Err(PyStopAsyncIteration::new_err("end of stream"))
-        }
-    }
-}
-
-#[pymethods]
-impl StreamCompletion {
-    fn __anext__<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        let bytes_stream = Arc::clone(&self.bytes_stream);
-
-        pyo3_async_runtimes::tokio::future_into_py(py, async {
-            pyo3_async_runtimes::tokio::get_runtime()
-                .spawn(StreamCompletion::next(bytes_stream))
-                .await
-                .expect("h")
-        })
-    }
-
-    fn __aiter__(self_: PyRef<Self>) -> PyRef<Self> {
-        self_
+        Ok(completion)
     }
 }

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Literal, overload
+from typing import Any, Literal, overload
 
 import orjson
-from orpheus_core import ChatCompletion, Embeddings, OrpheusCore, Stream, Message
+from orpheus_core import ChatCompletion, Embeddings, OrpheusCore, Message
 
 from orpheus.types import MappedMessages
 
@@ -48,7 +48,7 @@ class Orpheus(OrpheusCore):
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,
         **kwargs,
-    ) -> Stream:
+    ) -> Any:
         """This is the chat completion method"""
         ...
 
@@ -60,7 +60,7 @@ class Orpheus(OrpheusCore):
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,
         **kwargs,
-    ) -> ChatCompletion | Stream:
+    ) -> ChatCompletion | Any:
         """This is the chat completion method"""
         return self.native_chat_completions_create(
             model=model,
