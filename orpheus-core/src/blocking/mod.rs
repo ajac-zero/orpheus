@@ -1,13 +1,12 @@
 pub mod chat;
+mod common;
 mod embed;
 
 use std::env;
 
 use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::prelude::*;
-use reqwest::blocking::{Client, Response};
-use reqwest::{Error, Method};
-use serde::Serialize;
+use reqwest::blocking::Client;
 use serde_json::Value;
 
 use crate::types::chat::message::Messages;
@@ -17,71 +16,17 @@ use crate::types::ExtrasMap;
 use crate::{API_KEY_ENVS, BASE_URL_ENVS};
 
 use chat::{CompletionResponse, SyncChat};
+use common::{Params, SyncRest};
 use embed::SyncEmbed;
-
-pub struct Params<'a> {
-    client: &'a Client,
-    url: &'a url::Url,
-    key: &'a str,
-}
-
-pub trait SyncRest {
-    fn get_params(&self) -> Params;
-
-    fn api_request<T: Serialize>(
-        &self,
-        path: &str,
-        prompt: &T,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
-    ) -> Result<Response, Error> {
-        let params = self.get_params();
-
-        let mut url = params.url.to_owned();
-
-        url.path_segments_mut()
-            .expect("get path segments")
-            .pop_if_empty()
-            .extend(path.split('/').filter(|s| !s.is_empty()));
-
-        if let Some(headers) = extra_query {
-            url.query_pairs_mut().extend_pairs(headers);
-        };
-
-        let mut builder = params
-            .client
-            .request(Method::POST, url)
-            .header("Content-Type", "application/json")
-            .bearer_auth(params.key);
-
-        if let Some(headers) = extra_headers {
-            builder = headers
-                .into_iter()
-                .fold(builder, |builder, (k, v)| builder.header(k, v));
-        };
-
-        let body = serde_json::to_vec(&prompt).expect("should serialize prompt");
-
-        let request = builder.body(body);
-
-        request.send()
-    }
-}
 
 #[pyclass(frozen, subclass)]
 pub struct OrpheusCore {
-    client: Client,
-    base_url: url::Url,
-    api_key: String,
+    params: Params,
 }
 
 impl SyncRest for OrpheusCore {
-    fn get_params(&self) -> Params {
-        Params {
-            client: &self.client,
-            url: &self.base_url,
-            key: &self.api_key,
-        }
+    fn get_params(&self) -> &Params {
+        &self.params
     }
 }
 
@@ -133,9 +78,7 @@ impl OrpheusCore {
             )))?;
 
         Ok(Self {
-            client,
-            base_url,
-            api_key,
+            params: Params::new(client, base_url, api_key),
         })
     }
 
