@@ -1,13 +1,14 @@
 mod chat;
 mod embed;
 
+use std::collections::HashMap;
+
 use pyo3::prelude::*;
 use pyo3_async_runtimes::tokio::get_runtime;
 
 use crate::{
     build_client,
     constants::USER_AGENT_NAME,
-    types::ExtrasMap,
     utils::{get_api_key, get_base_url},
 };
 
@@ -25,8 +26,8 @@ impl AsyncOrpheusCore {
     fn new(
         base_url: Option<String>,
         api_key: Option<String>,
-        default_headers: ExtrasMap,
-        default_query: ExtrasMap,
+        default_headers: Option<HashMap<String, String>>,
+        default_query: Option<HashMap<String, String>>,
     ) -> PyResult<Self> {
         Ok(Self {
             client: build_client!(reqwest, default_headers)?,
@@ -41,8 +42,8 @@ impl AsyncOrpheusCore {
         &self,
         path: &str,
         prompt: &T,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
+        extra_headers: Option<HashMap<String, String>>,
+        extra_query: Option<HashMap<String, String>>,
     ) -> Result<reqwest::Response, reqwest::Error> {
         let mut url = self.url.to_owned();
 

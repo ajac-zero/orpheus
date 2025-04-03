@@ -1,4 +1,7 @@
-use std::io::{BufRead, BufReader};
+use std::{
+    collections::HashMap,
+    io::{BufRead, BufReader},
+};
 
 use anyhow::Context;
 use either::Either;
@@ -9,7 +12,6 @@ use super::OrpheusCore;
 use crate::{
     constants::CHAT_COMPLETION_PATH,
     models::chat::{ChatCompletion, ChunkStream, message::Messages, prompt::ChatPrompt},
-    types::ExtrasMap,
 };
 
 pub type CompletionResponse = Either<ChatCompletion, ChunkStream>;
@@ -18,8 +20,8 @@ impl OrpheusCore {
     fn chat_completion(
         &self,
         prompt: &ChatPrompt,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
+        extra_headers: Option<HashMap<String, String>>,
+        extra_query: Option<HashMap<String, String>>,
     ) -> Result<CompletionResponse, reqwest::Error> {
         let response = self
             .api_request(CHAT_COMPLETION_PATH, prompt, extra_headers, extra_query)?
@@ -48,8 +50,8 @@ impl OrpheusCore {
         model: String,
         messages: Messages,
         stream: Option<bool>,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
+        extra_headers: Option<HashMap<String, String>>,
+        extra_query: Option<HashMap<String, String>>,
         extra: Option<&[u8]>,
     ) -> PyResult<CompletionResponse> {
         let extra = extra

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Context;
 use either::Either;
 use pyo3::prelude::*;
@@ -7,7 +9,6 @@ use super::AsyncOrpheusCore;
 use crate::{
     constants::CHAT_COMPLETION_PATH,
     models::chat::{AsyncChunkStream, ChatCompletion, message::Messages, prompt::ChatPrompt},
-    types::ExtrasMap,
 };
 
 pub type CompletionResponse = Either<ChatCompletion, AsyncChunkStream>;
@@ -16,8 +17,8 @@ impl AsyncOrpheusCore {
     async fn chat_completion(
         &self,
         prompt: &ChatPrompt<'_>,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
+        extra_headers: Option<HashMap<String, String>>,
+        extra_query: Option<HashMap<String, String>>,
     ) -> Result<CompletionResponse, reqwest::Error> {
         let response = self
             .api_request(CHAT_COMPLETION_PATH, prompt, extra_headers, extra_query)
@@ -47,8 +48,8 @@ impl AsyncOrpheusCore {
         model: String,
         messages: Messages,
         stream: Option<bool>,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
+        extra_headers: Option<HashMap<String, String>>,
+        extra_query: Option<HashMap<String, String>>,
         extra: Option<Vec<u8>>,
     ) -> PyResult<CompletionResponse> {
         let extra = extra

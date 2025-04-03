@@ -4,7 +4,6 @@ mod blocking;
 mod constants;
 mod models;
 mod nonblocking;
-mod types;
 mod utils;
 
 use pyo3::prelude::*;

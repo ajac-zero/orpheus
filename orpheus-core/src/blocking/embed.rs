@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Context;
 use pyo3::prelude::*;
 
@@ -5,15 +7,14 @@ use super::OrpheusCore;
 use crate::{
     constants::EMBEDDINGS_PATH,
     models::embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse},
-    types::ExtrasMap,
 };
 
 impl OrpheusCore {
     fn embeddings(
         &self,
         prompt: EmbeddingPrompt,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
+        extra_headers: Option<HashMap<String, String>>,
+        extra_query: Option<HashMap<String, String>>,
     ) -> Result<EmbeddingResponse, reqwest::Error> {
         let response = self
             .api_request(EMBEDDINGS_PATH, &prompt, extra_headers, extra_query)?
@@ -35,8 +36,8 @@ impl OrpheusCore {
         dimensions: Option<i32>,
         encoding_format: Option<String>,
         user: Option<String>,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
+        extra_headers: Option<HashMap<String, String>>,
+        extra_query: Option<HashMap<String, String>>,
     ) -> PyResult<EmbeddingResponse> {
         let prompt = EmbeddingPrompt::new(input, model, encoding_format, dimensions, user);
 
