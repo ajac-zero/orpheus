@@ -1,11 +1,14 @@
-use super::SyncRest;
+use anyhow::Context;
+use pyo3::prelude::*;
+
+use super::OrpheusCore;
 use crate::{
     constants::EMBEDDINGS_PATH,
-    models::embed::{EmbeddingPrompt, EmbeddingResponse},
+    models::embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse},
     types::ExtrasMap,
 };
 
-pub trait SyncEmbed: SyncRest {
+impl OrpheusCore {
     fn embeddings(
         &self,
         prompt: EmbeddingPrompt,
@@ -17,6 +20,29 @@ pub trait SyncEmbed: SyncRest {
             .error_for_status()?;
 
         let completion = response.json::<EmbeddingResponse>()?;
+
+        Ok(completion)
+    }
+}
+
+#[pymethods]
+impl OrpheusCore {
+    #[pyo3(signature = (input, model, dimensions=None, encoding_format=None, user=None, extra_headers=None, extra_query=None))]
+    fn native_embeddings_create(
+        &self,
+        input: EmbeddingInput,
+        model: String,
+        dimensions: Option<i32>,
+        encoding_format: Option<String>,
+        user: Option<String>,
+        extra_headers: ExtrasMap,
+        extra_query: ExtrasMap,
+    ) -> PyResult<EmbeddingResponse> {
+        let prompt = EmbeddingPrompt::new(input, model, encoding_format, dimensions, user);
+
+        let completion = self
+            .embeddings(prompt, extra_headers, extra_query)
+            .with_context(|| "Failed to generate embeddings")?;
 
         Ok(completion)
     }

@@ -1,37 +1,22 @@
 pub mod chat;
-mod common;
 mod embed;
 
-use chat::{CompletionResponse, SyncChat};
-use common::{Params, SyncRest};
-use embed::SyncEmbed;
-use pyo3::{exceptions::PyValueError, prelude::*};
+use pyo3::prelude::*;
 use reqwest::blocking;
-use serde_json::Value;
 
 use crate::{
     build_client,
     constants::USER_AGENT_NAME,
-    models::{
-        chat::{message::Messages, prompt::ChatPrompt},
-        embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse},
-    },
     types::ExtrasMap,
     utils::{get_api_key, get_base_url},
 };
 
 #[pyclass(frozen, subclass)]
 pub struct OrpheusCore {
-    params: Params,
+    client: blocking::Client,
+    url: url::Url,
+    key: String,
 }
-
-impl SyncRest for OrpheusCore {
-    fn get_params(&self) -> &Params {
-        &self.params
-    }
-}
-impl SyncChat for OrpheusCore {}
-impl SyncEmbed for OrpheusCore {}
 
 #[pymethods]
 impl OrpheusCore {
@@ -43,58 +28,49 @@ impl OrpheusCore {
         default_headers: ExtrasMap,
         default_query: ExtrasMap,
     ) -> PyResult<Self> {
-        let client = build_client!(blocking, default_headers)?;
-
-        let base_url = get_base_url(base_url, default_query)?;
-
-        let api_key = get_api_key(api_key)?;
-
         Ok(Self {
-            params: Params::new(client, base_url, api_key),
+            client: build_client!(blocking, default_headers)?,
+            url: get_base_url(base_url, default_query)?,
+            key: get_api_key(api_key)?,
         })
     }
+}
 
-    #[pyo3(signature = (input, model, dimensions=None, encoding_format=None, user=None, extra_headers=None, extra_query=None))]
-    fn native_embeddings_create(
+impl OrpheusCore {
+    fn api_request<T: serde::Serialize>(
         &self,
-        input: EmbeddingInput,
-        model: String,
-        dimensions: Option<i32>,
-        encoding_format: Option<String>,
-        user: Option<String>,
+        path: &str,
+        prompt: &T,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
-    ) -> PyResult<EmbeddingResponse> {
-        let prompt = EmbeddingPrompt::new(input, model, encoding_format, dimensions, user);
+    ) -> Result<blocking::Response, reqwest::Error> {
+        let mut url = self.url.to_owned();
 
-        let completion = self
-            .embeddings(prompt, extra_headers, extra_query)
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        url.path_segments_mut()
+            .expect("get path segments")
+            .pop_if_empty()
+            .extend(path.split('/').filter(|s| !s.is_empty()));
 
-        Ok(completion)
-    }
+        if let Some(headers) = extra_query {
+            url.query_pairs_mut().extend_pairs(headers);
+        };
 
-    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
-    fn native_chat_completions_create(
-        &self,
-        model: String,
-        messages: Messages,
-        stream: Option<bool>,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
-        extra: Option<&[u8]>,
-    ) -> PyResult<CompletionResponse> {
-        let extra = extra
-            .map(serde_json::from_slice::<Value>)
-            .transpose()
-            .expect("Serialize bytes to json");
+        let mut builder = self
+            .client
+            .request(reqwest::Method::POST, url)
+            .header("Content-Type", "application/json")
+            .bearer_auth(self.key.as_str());
 
-        let prompt = ChatPrompt::new(model, &messages, stream, extra);
+        if let Some(headers) = extra_headers {
+            builder = headers
+                .into_iter()
+                .fold(builder, |builder, (k, v)| builder.header(k, v));
+        };
 
-        let completion = self
-            .chat_completion(&prompt, extra_headers, extra_query)
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let body = serde_json::to_vec(&prompt).expect("should serialize prompt");
 
-        Ok(completion)
+        let request = builder.body(body);
+
+        request.send()
     }
 }

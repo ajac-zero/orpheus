@@ -1,36 +1,22 @@
 mod chat;
-mod common;
 mod embed;
 
-use chat::{AsyncChat, CompletionResponse};
-use common::{AsyncRest, Params};
-use embed::AsyncEmbed;
-use pyo3::{exceptions::PyValueError, prelude::*};
-use serde_json::Value;
+use pyo3::prelude::*;
+use pyo3_async_runtimes::tokio::get_runtime;
 
 use crate::{
     build_client,
     constants::USER_AGENT_NAME,
-    models::{
-        chat::{message::Messages, prompt::ChatPrompt},
-        embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse},
-    },
     types::ExtrasMap,
     utils::{get_api_key, get_base_url},
 };
 
 #[pyclass(frozen, subclass)]
 pub struct AsyncOrpheusCore {
-    params: Params,
+    client: reqwest::Client,
+    url: url::Url,
+    key: String,
 }
-
-impl AsyncRest for AsyncOrpheusCore {
-    fn get_params(&self) -> &Params {
-        &self.params
-    }
-}
-impl AsyncChat for AsyncOrpheusCore {}
-impl AsyncEmbed for AsyncOrpheusCore {}
 
 #[pymethods]
 impl AsyncOrpheusCore {
@@ -42,61 +28,50 @@ impl AsyncOrpheusCore {
         default_headers: ExtrasMap,
         default_query: ExtrasMap,
     ) -> PyResult<Self> {
-        let client = build_client!(reqwest, default_headers)?;
-
-        let base_url = get_base_url(base_url, default_query)?;
-
-        let api_key = get_api_key(api_key)?;
-
         Ok(Self {
-            params: Params::new(client, base_url, api_key),
+            client: build_client!(reqwest, default_headers)?,
+            url: get_base_url(base_url, default_query)?,
+            key: get_api_key(api_key)?,
         })
     }
+}
 
-    #[pyo3(signature = (input, model, dimensions=None, encoding_format=None, user=None, extra_headers=None, extra_query=None))]
-    async fn native_embeddings_create(
+impl AsyncOrpheusCore {
+    async fn api_request<T: serde::Serialize>(
         &self,
-        input: EmbeddingInput,
-        model: String,
-        dimensions: Option<i32>,
-        encoding_format: Option<String>,
-        user: Option<String>,
+        path: &str,
+        prompt: &T,
         extra_headers: ExtrasMap,
         extra_query: ExtrasMap,
-    ) -> PyResult<EmbeddingResponse> {
-        let prompt = EmbeddingPrompt::new(input, model, encoding_format, dimensions, user);
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let mut url = self.url.to_owned();
 
-        let completion = self
-            .embeddings(prompt, extra_headers, extra_query)
+        url.path_segments_mut()
+            .expect("get path segments")
+            .pop_if_empty()
+            .extend(path.split('/').filter(|s| !s.is_empty()));
+
+        if let Some(headers) = extra_query {
+            url.query_pairs_mut().extend_pairs(headers);
+        };
+
+        let mut builder = self
+            .client
+            .request(reqwest::Method::POST, url)
+            .header("Content-Type", "application/json")
+            .bearer_auth(self.key.as_str());
+
+        if let Some(headers) = extra_headers {
+            builder = headers
+                .into_iter()
+                .fold(builder, |builder, (k, v)| builder.header(k, v));
+        };
+
+        let body = serde_json::to_vec(&prompt).expect("should serialize prompt");
+
+        get_runtime()
+            .spawn(builder.body(body).send())
             .await
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-
-        Ok(completion)
-    }
-
-    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
-    async fn native_chat_completions_create(
-        &self,
-        model: String,
-        messages: Messages,
-        stream: Option<bool>,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
-        extra: Option<Vec<u8>>,
-    ) -> PyResult<CompletionResponse> {
-        let extra = extra
-            .as_deref()
-            .map(serde_json::from_slice::<Value>)
-            .transpose()
-            .expect("Serialize bytes to json");
-
-        let prompt = ChatPrompt::new(model, &messages, stream, extra);
-
-        let completion = self
-            .chat_completion(&prompt, extra_headers, extra_query)
-            .await
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-
-        Ok(completion)
+            .expect("spawn task within runtime")
     }
 }

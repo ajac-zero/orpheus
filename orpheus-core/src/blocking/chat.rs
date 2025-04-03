@@ -1,17 +1,20 @@
 use std::io::{BufRead, BufReader};
 
+use anyhow::Context;
 use either::Either;
+use pyo3::prelude::*;
+use serde_json::Value;
 
-use super::SyncRest;
+use super::OrpheusCore;
 use crate::{
     constants::CHAT_COMPLETION_PATH,
-    models::chat::{ChatCompletion, ChunkStream, prompt::ChatPrompt},
+    models::chat::{ChatCompletion, ChunkStream, message::Messages, prompt::ChatPrompt},
     types::ExtrasMap,
 };
 
 pub type CompletionResponse = Either<ChatCompletion, ChunkStream>;
 
-pub trait SyncChat: SyncRest {
+impl OrpheusCore {
     fn chat_completion(
         &self,
         prompt: &ChatPrompt,
@@ -32,6 +35,33 @@ pub trait SyncChat: SyncRest {
 
             Either::Left(completion)
         };
+
+        Ok(completion)
+    }
+}
+
+#[pymethods]
+impl OrpheusCore {
+    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
+    fn native_chat_completions_create(
+        &self,
+        model: String,
+        messages: Messages,
+        stream: Option<bool>,
+        extra_headers: ExtrasMap,
+        extra_query: ExtrasMap,
+        extra: Option<&[u8]>,
+    ) -> PyResult<CompletionResponse> {
+        let extra = extra
+            .map(serde_json::from_slice::<Value>)
+            .transpose()
+            .with_context(|| "Failed to deserialize extra bytes")?;
+
+        let prompt = ChatPrompt::new(model, &messages, stream, extra);
+
+        let completion = self
+            .chat_completion(&prompt, extra_headers, extra_query)
+            .with_context(|| "Failed to generate chat completion")?;
 
         Ok(completion)
     }
