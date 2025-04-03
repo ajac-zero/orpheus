@@ -12,7 +12,7 @@ pub const API_KEY_ENVS: [&str; 2] = ["ORPHEUS_API_KEY", "OPENAI_API_KEY"];
 #[pymodule]
 fn orpheus_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<blocking::OrpheusCore>()?;
-    m.add_class::<nonblocking::AsyncOrpheus>()?;
+    m.add_class::<nonblocking::AsyncOrpheusCore>()?;
     m.add_class::<types::chat::message::Message>()?;
     m.add_class::<types::chat::ChatCompletion>()?;
     m.add_class::<types::embed::EmbeddingResponse>()?;

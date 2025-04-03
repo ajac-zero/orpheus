@@ -1,73 +1,41 @@
-#![allow(clippy::too_many_arguments)]
-
 mod chat;
+mod common;
 mod embed;
 
 use std::env;
 
-use pyo3::exceptions::PyKeyError;
+use embed::AsyncEmbed;
+use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::prelude::*;
+use serde_json::Value;
 
+use crate::types::chat::message::Messages;
+use crate::types::chat::prompt::ChatPrompt;
+use crate::types::embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse};
 use crate::types::ExtrasMap;
 use crate::{API_KEY_ENVS, BASE_URL_ENVS};
 
-trait AsyncRest {
-    async fn api_request<T: serde::Serialize>(
-        &self,
-        client: &reqwest::Client,
-        base_url: &url::Url,
-        api_key: &str,
-        path: &str,
-        prompt: &T,
-        extra_headers: ExtrasMap,
-        extra_query: ExtrasMap,
-    ) -> Result<reqwest::Response, reqwest::Error> {
-        let mut url = base_url.to_owned();
+use chat::{AsyncChat, CompletionResponse};
+use common::{AsyncRest, Params};
 
-        url.path_segments_mut()
-            .expect("get path segments")
-            .pop_if_empty()
-            .extend(path.split('/').filter(|s| !s.is_empty()));
+#[pyclass(frozen, subclass)]
+pub struct AsyncOrpheusCore {
+    params: Params,
+}
 
-        if let Some(headers) = extra_query {
-            url.query_pairs_mut().extend_pairs(headers);
-        };
-
-        let mut builder = client
-            .request(reqwest::Method::POST, url)
-            .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", api_key));
-
-        if let Some(headers) = extra_headers {
-            builder = headers
-                .into_iter()
-                .fold(builder, |builder, (k, v)| builder.header(k, v));
-        };
-
-        let body = serde_json::to_vec(&prompt).expect("should serialize prompt");
-
-        pyo3_async_runtimes::tokio::get_runtime()
-            .spawn(builder.body(body).send())
-            .await
-            .expect("spawn rt")
+impl AsyncRest for AsyncOrpheusCore {
+    fn get_params(&self) -> &Params {
+        &self.params
     }
 }
-
-#[pyclass]
-pub struct AsyncOrpheus {
-    client: reqwest::Client,
-    #[pyo3(get)]
-    chat: Py<chat::AsyncChat>,
-    #[pyo3(get)]
-    embeddings: Py<embed::AsyncEmbed>,
-}
+impl AsyncChat for AsyncOrpheusCore {}
+impl AsyncEmbed for AsyncOrpheusCore {}
 
 #[pymethods]
-impl AsyncOrpheus {
+impl AsyncOrpheusCore {
     #[new]
     #[pyo3(signature = (base_url=None, api_key=None, default_headers=None, default_query=None))]
-    fn __init__(
-        py: Python<'_>,
+    fn new(
         base_url: Option<String>,
         api_key: Option<String>,
         default_headers: ExtrasMap,
@@ -107,14 +75,55 @@ impl AsyncOrpheus {
                 API_KEY_ENVS
             )))?;
 
-        let chat = chat::AsyncChat::new(client.clone(), base_url.clone(), api_key.clone());
-
-        let embeddings = embed::AsyncEmbed::new(client.clone(), base_url.clone(), api_key.clone());
-
         Ok(Self {
-            client,
-            chat: Py::new(py, chat)?,
-            embeddings: Py::new(py, embeddings)?,
+            params: Params::new(client, base_url, api_key),
         })
+    }
+
+    #[pyo3(signature = (input, model, dimensions=None, encoding_format=None, user=None, extra_headers=None, extra_query=None))]
+    async fn native_embeddings_create(
+        &self,
+        input: EmbeddingInput,
+        model: String,
+        dimensions: Option<i32>,
+        encoding_format: Option<String>,
+        user: Option<String>,
+        extra_headers: ExtrasMap,
+        extra_query: ExtrasMap,
+    ) -> PyResult<EmbeddingResponse> {
+        let prompt = EmbeddingPrompt::new(input, model, encoding_format, dimensions, user);
+
+        let completion = self
+            .embeddings(prompt, extra_headers, extra_query)
+            .await
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+
+        Ok(completion)
+    }
+
+    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
+    async fn native_chat_completions_create(
+        &self,
+        model: String,
+        messages: Messages,
+        stream: Option<bool>,
+        extra_headers: ExtrasMap,
+        extra_query: ExtrasMap,
+        extra: Option<Vec<u8>>,
+    ) -> PyResult<CompletionResponse> {
+        let extra = extra
+            .as_deref()
+            .map(serde_json::from_slice::<Value>)
+            .transpose()
+            .expect("Serialize bytes to json");
+
+        let prompt = ChatPrompt::new(model, &messages, stream, extra);
+
+        let completion = self
+            .chat_completion(&prompt, extra_headers, extra_query)
+            .await
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+
+        Ok(completion)
     }
 }
