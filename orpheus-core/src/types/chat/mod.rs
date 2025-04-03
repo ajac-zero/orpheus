@@ -1,15 +1,20 @@
 pub mod message;
 pub mod prompt;
 
+use std::{
+    io::{BufReader, Lines},
+    pin::Pin,
+    sync::Arc,
+};
+
 use futures_lite::stream::{Stream, StreamExt};
-use pyo3::exceptions::{PyStopAsyncIteration, PyStopIteration, PyValueError};
-use pyo3::prelude::*;
+use pyo3::{
+    exceptions::{PyStopAsyncIteration, PyStopIteration, PyValueError},
+    prelude::*,
+};
 use pyo3_async_runtimes::tokio::{future_into_py, get_runtime};
 use reqwest::blocking::Response;
 use serde::Deserialize;
-use std::io::{BufReader, Lines};
-use std::pin::Pin;
-use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[pyclass(get_all)]

@@ -1,10 +1,10 @@
 use either::Either;
 
-use crate::types::chat::prompt::ChatPrompt;
-use crate::types::chat::{AsyncChunkStream, ChatCompletion};
-use crate::types::ExtrasMap;
-
 use super::AsyncRest;
+use crate::types::{
+    ExtrasMap,
+    chat::{AsyncChunkStream, ChatCompletion, prompt::ChatPrompt},
+};
 
 const CHAT_COMPLETION_PATH: &str = "/chat/completions";
 

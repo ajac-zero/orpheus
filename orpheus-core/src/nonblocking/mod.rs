@@ -4,19 +4,23 @@ mod embed;
 
 use std::env;
 
-use embed::AsyncEmbed;
-use pyo3::exceptions::{PyKeyError, PyValueError};
-use pyo3::prelude::*;
-use serde_json::Value;
-
-use crate::types::chat::message::Messages;
-use crate::types::chat::prompt::ChatPrompt;
-use crate::types::embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse};
-use crate::types::ExtrasMap;
-use crate::{API_KEY_ENVS, BASE_URL_ENVS};
-
 use chat::{AsyncChat, CompletionResponse};
 use common::{AsyncRest, Params};
+use embed::AsyncEmbed;
+use pyo3::{
+    exceptions::{PyKeyError, PyValueError},
+    prelude::*,
+};
+use serde_json::Value;
+
+use crate::{
+    API_KEY_ENVS, BASE_URL_ENVS,
+    types::{
+        ExtrasMap,
+        chat::{message::Messages, prompt::ChatPrompt},
+        embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse},
+    },
+};
 
 #[pyclass(frozen, subclass)]
 pub struct AsyncOrpheusCore {

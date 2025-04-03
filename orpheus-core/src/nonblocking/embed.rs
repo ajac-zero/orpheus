@@ -1,7 +1,8 @@
-use crate::types::embed::{EmbeddingPrompt, EmbeddingResponse};
-use crate::types::ExtrasMap;
-
 use super::AsyncRest;
+use crate::types::{
+    ExtrasMap,
+    embed::{EmbeddingPrompt, EmbeddingResponse},
+};
 
 const EMBEDDINGS_PATH: &str = "/v1/embeddings";
 

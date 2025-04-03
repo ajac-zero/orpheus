@@ -1,11 +1,12 @@
-use either::Either;
 use std::io::{BufRead, BufReader};
 
-use crate::types::chat::prompt::ChatPrompt;
-use crate::types::chat::{ChatCompletion, ChunkStream};
-use crate::types::ExtrasMap;
+use either::Either;
 
 use super::SyncRest;
+use crate::types::{
+    ExtrasMap,
+    chat::{ChatCompletion, ChunkStream, prompt::ChatPrompt},
+};
 
 const CHAT_COMPLETION_PATH: &str = "/chat/completions";
 
