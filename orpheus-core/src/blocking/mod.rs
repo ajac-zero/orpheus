@@ -2,25 +2,22 @@ pub mod chat;
 mod common;
 mod embed;
 
-use std::env;
-
 use chat::{CompletionResponse, SyncChat};
 use common::{Params, SyncRest};
 use embed::SyncEmbed;
-use pyo3::{
-    exceptions::{PyKeyError, PyValueError},
-    prelude::*,
-};
-use reqwest::blocking::Client;
+use pyo3::{exceptions::PyValueError, prelude::*};
+use reqwest::blocking;
 use serde_json::Value;
 
 use crate::{
-    constants::{API_KEY_ENVS, BASE_URL_ENVS},
+    build_client,
+    constants::USER_AGENT_NAME,
     models::{
         chat::{message::Messages, prompt::ChatPrompt},
         embed::{EmbeddingInput, EmbeddingPrompt, EmbeddingResponse},
     },
     types::ExtrasMap,
+    utils::{get_api_key, get_base_url},
 };
 
 #[pyclass(frozen, subclass)]
@@ -33,7 +30,6 @@ impl SyncRest for OrpheusCore {
         &self.params
     }
 }
-
 impl SyncChat for OrpheusCore {}
 impl SyncEmbed for OrpheusCore {}
 
@@ -47,39 +43,11 @@ impl OrpheusCore {
         default_headers: ExtrasMap,
         default_query: ExtrasMap,
     ) -> PyResult<Self> {
-        let mut builder = Client::builder();
+        let client = build_client!(blocking, default_headers)?;
 
-        if let Some(headers) = default_headers {
-            let headermap = (&headers).try_into().expect("valid headers");
-            builder = builder.default_headers(headermap);
-        }
+        let base_url = get_base_url(base_url, default_query)?;
 
-        let client = builder
-            .user_agent("Orpheus")
-            .use_rustls_tls()
-            .build()
-            .expect("should build http client");
-
-        let mut base_url = base_url
-            .or_else(|| env::var(BASE_URL_ENVS[0]).ok())
-            .or_else(|| env::var(BASE_URL_ENVS[1]).ok())
-            .and_then(|s| url::Url::parse(&s).ok())
-            .ok_or(PyKeyError::new_err(format!(
-                "{:?} environment variable not found.",
-                BASE_URL_ENVS
-            )))?;
-
-        if let Some(params) = default_query {
-            base_url.query_pairs_mut().extend_pairs(params);
-        };
-
-        let api_key = api_key
-            .or_else(|| env::var(API_KEY_ENVS[0]).ok())
-            .or_else(|| env::var(API_KEY_ENVS[1]).ok())
-            .ok_or(PyKeyError::new_err(format!(
-                "{:?} environment variable not found.",
-                API_KEY_ENVS
-            )))?;
+        let api_key = get_api_key(api_key)?;
 
         Ok(Self {
             params: Params::new(client, base_url, api_key),

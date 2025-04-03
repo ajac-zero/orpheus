@@ -6,11 +6,11 @@ import pytest
 from orpheus import Orpheus
 
 BASE_URL_EXCEPTION = re.escape(
-    '["ORPHEUS_BASE_URL", "OPENAI_BASE_URL"] environment variable not found.'
+    "No base URL provided and none found in environment variables:"
 )
 
 API_KEY_EXCEPTION = re.escape(
-    '["ORPHEUS_API_KEY", "OPENAI_API_KEY"] environment variable not found.'
+    "No API key provided and none found in environment variables:"
 )
 
 
@@ -36,31 +36,31 @@ class EnvContextManager:
 
 
 def test_create_client_no_env():
-    with pytest.raises(KeyError, match=BASE_URL_EXCEPTION):
+    with pytest.raises(RuntimeError, match=BASE_URL_EXCEPTION):
         Orpheus()
 
 
 def test_create_client_orpheus_url_env():
     with EnvContextManager(ORPHEUS_BASE_URL="https://example.com"):
-        with pytest.raises(KeyError, match=API_KEY_EXCEPTION):
+        with pytest.raises(RuntimeError, match=API_KEY_EXCEPTION):
             Orpheus()
 
 
 def test_create_client_orpheus_key_env():
     with EnvContextManager(ORPHEUS_API_KEY="empty"):
-        with pytest.raises(KeyError, match=BASE_URL_EXCEPTION):
+        with pytest.raises(RuntimeError, match=BASE_URL_EXCEPTION):
             Orpheus()
 
 
 def test_create_client_openai_url_env():
     with EnvContextManager(OPENAI_BASE_URL="https://example.com"):
-        with pytest.raises(KeyError, match=API_KEY_EXCEPTION):
+        with pytest.raises(RuntimeError, match=API_KEY_EXCEPTION):
             Orpheus()
 
 
 def test_create_client_openai_key_env():
     with EnvContextManager(OPENAI_API_KEY="empty"):
-        with pytest.raises(KeyError, match=BASE_URL_EXCEPTION):
+        with pytest.raises(RuntimeError, match=BASE_URL_EXCEPTION):
             Orpheus()
 
 
