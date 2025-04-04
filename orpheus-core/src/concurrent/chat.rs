@@ -8,7 +8,7 @@ use serde_json::Value;
 use super::AsyncOrpheusCore;
 use crate::{
     constants::CHAT_COMPLETION_PATH,
-    models::chat::{AsyncChunkStream, ChatCompletion, message::Messages, prompt::ChatPrompt},
+    models::chat::{AsyncChunkStream, ChatCompletion, ChatPrompt, Messages},
 };
 
 pub type CompletionResponse = Either<ChatCompletion, AsyncChunkStream>;

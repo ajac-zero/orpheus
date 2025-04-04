@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::OrpheusCore;
 use crate::{
     constants::CHAT_COMPLETION_PATH,
-    models::chat::{ChatCompletion, ChunkStream, message::Messages, prompt::ChatPrompt},
+    models::chat::{ChatCompletion, ChatPrompt, ChunkStream, Messages},
 };
 
 pub type CompletionResponse = Either<ChatCompletion, ChunkStream>;
