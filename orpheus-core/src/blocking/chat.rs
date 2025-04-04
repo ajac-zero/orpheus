@@ -6,7 +6,6 @@ use std::{
 use anyhow::Context;
 use either::Either;
 use pyo3::prelude::*;
-use serde_json::Value;
 
 use super::OrpheusCore;
 use crate::{
@@ -44,22 +43,18 @@ impl OrpheusCore {
 
 #[pymethods]
 impl OrpheusCore {
-    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
+    #[pyo3(signature = (model, messages, stream=None, tools=None, extra_headers=None, extra_query=None, extra=None))]
     fn native_chat_completions_create(
         &self,
         model: String,
         messages: Messages,
         stream: Option<bool>,
+        tools: Option<&[u8]>,
         extra_headers: Option<HashMap<String, String>>,
         extra_query: Option<HashMap<String, String>>,
         extra: Option<&[u8]>,
     ) -> PyResult<CompletionResponse> {
-        let extra = extra
-            .map(serde_json::from_slice::<Value>)
-            .transpose()
-            .with_context(|| "Failed to deserialize extra bytes")?;
-
-        let prompt = ChatPrompt::new(model, &messages, stream, extra);
+        let prompt = ChatPrompt::new(model, &messages, stream, tools, extra)?;
 
         let completion = self
             .chat_completion(&prompt, extra_headers, extra_query)

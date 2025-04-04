@@ -2,13 +2,16 @@ use pyo3::{exceptions::PyValueError, prelude::*, types::PyList};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
+use crate::models::ArbitraryDict;
+
+#[pyclass(get_all)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Function {
     name: String,
-    arguments: String,
+    arguments: ArbitraryDict,
 }
 
-#[pyclass]
+#[pyclass(get_all)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCall {
     id: String,
@@ -156,6 +159,14 @@ impl Message {
                 None => "",
             },
             Self::Tool { content, .. } => content,
+        }
+    }
+
+    #[getter]
+    fn tool_calls(&self) -> Option<Vec<ToolCall>> {
+        match self {
+            Self::Assistant { tool_calls, .. } => tool_calls.clone(),
+            _ => todo!(),
         }
     }
 }

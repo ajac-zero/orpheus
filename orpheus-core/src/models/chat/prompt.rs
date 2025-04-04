@@ -10,7 +10,7 @@ pub struct ChatPrompt<'a> {
     messages: &'a message::Messages,
     model: String,
     stream: Option<bool>,
-    tools: Option<Vec<Tool>>,
+    tools: Option<Value>,
     tool_choice: Option<ToolChoice>,
     #[serde(flatten)]
     extra: Option<Value>,
@@ -21,16 +21,17 @@ impl<'a> ChatPrompt<'a> {
         model: String,
         messages: &'a message::Messages,
         stream: Option<bool>,
-        extra: Option<Value>,
-    ) -> Self {
-        Self {
+        tools: Option<&[u8]>,
+        extra: Option<&[u8]>,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
             model,
             messages,
             stream,
-            tools: None,
+            tools: tools.map(serde_json::from_slice::<Value>).transpose()?,
             tool_choice: None,
-            extra,
-        }
+            extra: extra.map(serde_json::from_slice::<Value>).transpose()?,
+        })
     }
 
     pub fn is_stream(&self) -> bool {
@@ -65,20 +66,9 @@ struct Function {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Tool {
-    r#type: String,
-    function: Function,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct FunctionOption {
-    name: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct ToolOption {
-    r#type: String,
-    function: FunctionOption,
+#[serde(tag = "type", content = "function", rename_all = "lowercase")]
+enum ToolOption {
+    Function { name: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

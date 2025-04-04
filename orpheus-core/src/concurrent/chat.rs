@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use anyhow::Context;
 use either::Either;
 use pyo3::prelude::*;
-use serde_json::Value;
 
 use super::AsyncOrpheusCore;
 use crate::{
@@ -42,23 +41,18 @@ impl AsyncOrpheusCore {
 
 #[pymethods]
 impl AsyncOrpheusCore {
-    #[pyo3(signature = (model, messages, stream=None, extra_headers=None, extra_query=None, extra=None))]
+    #[pyo3(signature = (model, messages, stream=None, tools=None, extra_headers=None, extra_query=None, extra=None))]
     async fn native_chat_completions_create(
         &self,
         model: String,
         messages: Messages,
         stream: Option<bool>,
+        tools: Option<Vec<u8>>,
         extra_headers: Option<HashMap<String, String>>,
         extra_query: Option<HashMap<String, String>>,
         extra: Option<Vec<u8>>,
     ) -> PyResult<CompletionResponse> {
-        let extra = extra
-            .as_deref()
-            .map(serde_json::from_slice::<Value>)
-            .transpose()
-            .expect("Serialize bytes to json");
-
-        let prompt = ChatPrompt::new(model, &messages, stream, extra);
+        let prompt = ChatPrompt::new(model, &messages, stream, tools.as_deref(), extra.as_deref())?;
 
         let completion = self
             .chat_completion(&prompt, extra_headers, extra_query)

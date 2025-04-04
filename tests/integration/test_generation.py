@@ -1,4 +1,5 @@
 from orpheus import Orpheus
+from pydantic import BaseModel
 
 
 def test_chat_completion(orpheus: Orpheus):
@@ -92,3 +93,61 @@ def test_chat_stream_completion_with_extra_header(orpheus: Orpheus):
         buffer += chunk.choices[0].delta.content
 
     assert buffer == "hi!"
+
+
+def test_chat_completion_with_tools_pydantic_model(orpheus: Orpheus):
+    class CallMom(BaseModel):
+        number: int
+        name: str
+
+    call_mom_tool = CallMom(number=1, name="mom")
+
+    response = orpheus.chat.completions.create(
+        model="gpt5",
+        messages=[{"role": "user", "content": "hello"}],
+        tools=[call_mom_tool],
+        extra_headers={
+            "mock-response": 'f:{"name": "call_mom", "arguments": {"number": "1"}}'
+        },
+    )
+
+    assert response is not None
+    assert response.choices[0].message.content == ""
+
+    assert (tool_calls := response.choices[0].message.tool_calls) is not None
+
+    assert tool_calls[0].function.name == "call_mom"
+    assert tool_calls[0].function.arguments == {"number": "1"}
+
+
+def test_chat_completion_with_tools_schema(orpheus: Orpheus):
+    response = orpheus.chat.completions.create(
+        model="gpt5",
+        messages=[{"role": "user", "content": "hello"}],
+        extra_headers={
+            "mock-response": 'f:{"name": "call_mom", "arguments": {"number": "1"}}'
+        },
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "call_mom",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "number": {"type": "integer"},
+                            "name": {"type": "string"},
+                        },
+                    },
+                },
+            }
+        ],
+    )
+
+    assert response is not None
+    assert response.choices[0].message.content == ""
+
+    assert (tool_calls := response.choices[0].message.tool_calls) is not None
+
+    assert tool_calls[0].function.name == "call_mom"
+    assert tool_calls[0].function.arguments == {"number": "1"}

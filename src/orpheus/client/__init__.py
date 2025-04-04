@@ -10,8 +10,11 @@ from orpheus_core import (
     Message,
     AsyncOrpheusCore,
 )
+from pydantic import BaseModel
 
 from orpheus.types import MappedMessages
+from orpheus._utils import tools_into_bytes
+
 
 type Messages = list[Message]
 
@@ -38,6 +41,7 @@ class Orpheus(OrpheusCore):
         model: str,
         messages: MappedMessages | Messages,
         stream: Literal[False] | None = None,
+        tools: list[dict] | list[BaseModel] | None = None,
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,
         **kwargs,
@@ -51,6 +55,7 @@ class Orpheus(OrpheusCore):
         model: str,
         messages: MappedMessages | Messages,
         stream: Literal[True],
+        tools: list[dict] | list[BaseModel] | None = None,
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,
         **kwargs,
@@ -63,6 +68,7 @@ class Orpheus(OrpheusCore):
         model: str,
         messages: MappedMessages | Messages,
         stream: bool | None = None,
+        tools: list[dict] | list[BaseModel] | None = None,
         extra_headers: dict[str, str] | None = None,
         extra_query: dict[str, str] | None = None,
         **kwargs,
@@ -72,6 +78,7 @@ class Orpheus(OrpheusCore):
             model=model,
             messages=messages,
             stream=stream,
+            tools=tools_into_bytes(tools) if tools else None,
             extra_headers=extra_headers,
             extra_query=extra_query,
             extra=orjson.dumps(kwargs),

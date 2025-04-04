@@ -1270,6 +1270,7 @@ source = { editable = "." }
 dependencies = [
     { name = "orjson" },
     { name = "orpheus-core" },
+    { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
@@ -1295,6 +1296,7 @@ dev = [
 requires-dist = [
     { name = "orjson", specifier = ">=3.10.15" },
     { name = "orpheus-core", editable = "orpheus-core" },
+    { name = "pydantic", specifier = ">=2.10.6" },
 ]
 
 [package.metadata.requires-dev]

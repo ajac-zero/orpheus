@@ -8,6 +8,7 @@ requires-python = ">=3.11"
 dependencies = [
     "orjson>=3.10.15",
     "orpheus-core",
+    "pydantic>=2.10.6",
 ]
 
 [tool.uv.sources]
