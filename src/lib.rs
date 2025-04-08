@@ -15,5 +15,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<models::chat::Message>()?;
     m.add_class::<models::chat::ChatCompletion>()?;
     m.add_class::<models::embed::EmbeddingResponse>()?;
+    m.add_class::<models::chat::ToolCall>()?;
+    m.add_class::<models::chat::Part>()?;
     Ok(())
 }

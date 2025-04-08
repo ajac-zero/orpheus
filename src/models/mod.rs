@@ -6,6 +6,9 @@ use pythonize::{depythonize, pythonize};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// This object accepts arbitrary python dictionaries,
+/// as long as the can be serialized to a JSON string.
+/// It is basically to be used as a wildcard for unknown dicts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArbitraryDict(Value);
 

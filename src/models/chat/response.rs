@@ -71,19 +71,19 @@ struct StreamUsage {
 }
 
 #[pyclass(get_all)]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct ChoiceChunk {
     finish_reason: Option<String>,
-    delta: super::Delta,
+    delta: Py<super::Delta>,
     index: u32,
     logprobs: Option<LogProbs>,
 }
 
 #[pyclass(get_all)]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct ChatCompletionChunk {
     id: String,
-    choices: Vec<ChoiceChunk>,
+    choices: Vec<Py<ChoiceChunk>>,
     created: u64,
     model: String,
     service_tier: Option<String>,

@@ -1,50 +1,48 @@
-use pyo3::{exceptions::PyValueError, prelude::*, types::PyList};
-use serde::{Deserialize, Serialize};
+use pyo3::{
+    exceptions::PyValueError,
+    prelude::*,
+    types::{PyDict, PyList},
+};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use smallvec::SmallVec;
 
 use crate::models::ArbitraryDict;
 
 #[pyclass(get_all)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Function {
+pub struct Function {
     name: String,
     arguments: ArbitraryDict,
 }
 
 #[pyclass(get_all)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolCall {
-    id: String,
-    r#type: String,
-    function: Function,
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ToolCall {
+    Function { id: String, function: Function },
 }
 
-#[derive(Debug, IntoPyObject, Clone, Serialize, Deserialize)]
-pub struct ImageUrl {
-    #[pyo3(item)]
-    url: String,
-    #[pyo3(item)]
-    detail: Option<String>,
-}
-
-impl<'py> FromPyObject<'py> for ImageUrl {
-    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
-        let url = ob.get_item("url")?.extract::<String>()?;
-        let detail = ob
-            .get_item("detail")
-            .ok()
-            .map(|x| x.extract::<String>())
-            .transpose()?;
-
-        Ok(Self { url, detail })
+#[pymethods]
+impl ToolCall {
+    #[new]
+    fn pynew(id: String, name: String, arguments: &Bound<'_, PyDict>) -> PyResult<Self> {
+        Ok(Self::Function {
+            id,
+            function: Function {
+                name,
+                arguments: arguments.extract()?,
+            },
+        })
     }
 }
 
-#[derive(Debug, IntoPyObject, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[pyclass(frozen)]
+#[derive(Debug, Deserialize)]
 pub enum Part {
+    #[pyo3(constructor=(text))]
     Text { text: String },
-    ImageUrl { image_url: ImageUrl },
+    #[pyo3(constructor=(url, detail=None))]
+    Image { url: String, detail: Option<String> },
 }
 
 impl<'py> FromPyObject<'py> for Part {
@@ -52,15 +50,19 @@ impl<'py> FromPyObject<'py> for Part {
         let part_type = ob.get_item("type")?.extract::<String>()?;
 
         let part = match part_type.as_str() {
-            "text" => {
-                let text = ob.get_item("text")?.extract::<String>()?;
-
-                Part::Text { text }
-            }
+            "text" => Part::Text {
+                text: ob.get_item("text")?.extract::<String>()?,
+            },
             "image_url" => {
-                let image_url = ob.get_item("image_url")?.extract::<ImageUrl>()?;
+                let image_url = ob.get_item("image_url")?;
 
-                Part::ImageUrl { image_url }
+                Part::Image {
+                    url: image_url.get_item("url")?.extract::<String>()?,
+                    detail: image_url
+                        .get_item("detail")
+                        .and_then(|item| item.extract::<String>())
+                        .map_or(None, Some),
+                }
             }
             unknown => return Err(PyValueError::new_err(format!("Unknown type: {unknown}"))),
         };
@@ -69,17 +71,98 @@ impl<'py> FromPyObject<'py> for Part {
     }
 }
 
-#[derive(FromPyObject, IntoPyObject, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
+struct ImageUrl<'a> {
+    url: &'a String,
+    detail: &'a Option<String>,
+}
+
+impl Serialize for Part {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Part::Text { text } => {
+                let mut state = serializer.serialize_struct("text", 1)?;
+                state.serialize_field("type", "text")?;
+                state.serialize_field("text", text)?;
+                state.end()
+            }
+            Part::Image { url, detail } => {
+                let mut state = serializer.serialize_struct("image_url", 1)?;
+                state.serialize_field("type", "image_url")?;
+                let image_url = ImageUrl { url, detail };
+                state.serialize_field("image_url", &image_url)?;
+                state.end()
+            }
+        }
+    }
+}
+
+#[derive(Debug, IntoPyObject, FromPyObject, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Content {
     #[pyo3(transparent)]
     Simple(String),
     #[pyo3(transparent)]
-    Complex(Vec<Part>),
+    Complex(Parts),
+}
+
+impl Clone for Content {
+    fn clone(&self) -> Self {
+        match self {
+            Content::Simple(string) => Content::Simple(string.clone()),
+            Content::Complex(parts) => Python::with_gil(|py| {
+                Content::Complex(Parts(
+                    parts.0.iter().map(|item| item.clone_ref(py)).collect(),
+                ))
+            }),
+        }
+    }
+}
+
+type PartsArray = SmallVec<[Py<Part>; 4]>;
+
+#[pyclass(sequence)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Parts(PartsArray);
+
+#[pymethods]
+impl Parts {
+    fn __len__(&self) -> usize {
+        self.0.len()
+    }
+
+    fn __getitem__(&self, py: Python, index: usize) -> PyResult<Py<Part>> {
+        self.0
+            .get(index)
+            .ok_or(PyValueError::new_err("Index is out of range."))
+            .map(|part_ref| part_ref.clone_ref(py))
+    }
+}
+
+impl<'py> FromPyObject<'py> for Parts {
+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
+        ob.extract::<PartsArray>()
+            .or_else(|_| {
+                ob.downcast::<PyList>()
+                    .map_err(|_| {
+                        PyValueError::new_err("Expected list[Messages] | list[MappedMessages]")
+                    })
+                    .and_then(|list| {
+                        let py = list.py();
+                        list.iter()
+                            .map(|item| item.extract::<Part>().and_then(|msg| Py::new(py, msg)))
+                            .collect::<PyResult<PartsArray>>()
+                    })
+            })
+            .map(Self)
+    }
 }
 
 #[pyclass(get_all)]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Delta {
     role: Option<String>,
     content: Option<Content>,
@@ -94,7 +177,7 @@ const TOOL_ROLE: &str = "tool";
 
 #[pyclass(frozen, get_all)]
 #[serde_with::skip_serializing_none]
-#[derive(FromPyObject, Debug, Serialize, Deserialize)]
+#[derive(Debug, FromPyObject, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Message {
     #[pyo3(constructor=(content, role=SYSTEM_ROLE.into()))]
@@ -171,9 +254,7 @@ impl Message {
     }
 }
 
-const MESSAGES_LIMIT: usize = 24;
-
-type MessageArray = SmallVec<[Py<Message>; MESSAGES_LIMIT]>;
+type MessageArray = SmallVec<[Py<Message>; 24]>;
 
 #[derive(Debug, Serialize)]
 pub struct Messages(MessageArray);

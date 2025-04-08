@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any, Generator, Literal
 
@@ -108,38 +110,87 @@ class PromptTokensDetails:
     cached_tokens: int | None
 
 class Message:
+    """
+    The Message class represents a single message in a conversation with an LLM.
+
+    It does not have an initializer. Instead, it exposes the subclasses for the
+    different message types:
+
+    >>> Message.System
+    >>> Message.User
+    >>> Message.Assistant
+    >>> Message.Tool
+    """
+
     role: str | None
     content: str | None
     tool_calls: list[ToolCall] | None
     tool_id: str | None
 
-    def __init__(
-        self,
-        role: str | None = None,
-        content: str | None = None,
-        tool_calls: list[ToolCall] | None = None,
-        tool_id: str | None = None,
-    ) -> None: ...
-
     class System:
-        role: str
+        """
+        A System message accepts a 'content' string parameter.
+
+        This string serves as the guidelines for how the LLM should behave,
+        during the conversation.
+
+        Exposed attributes:
+        - role: str
+        - content: str
+
+        >>> system_message = Message.System(content="You are a helpful assistant.")
+
+        >>> assert system_message.role == "system"
+        >>> assert system_message.content == "You are a helpful assistant."
+        """
+
+        role: Literal["system"]
         content: str
 
         def __init__(self, content: str) -> None: ...
 
     class User:
-        role: str
-        content: str | list[Part]
+        """
+        A User message accepts a 'content' parameter of type 'str | list[orpheus.models.Part]'.
 
-        def __init__(self, content: str | list[Part]) -> None: ...
+        For most cases you'll can pass just a string; This is a 'Simple' variant.
+        However, if you want to include an image within your prompt, you'll need to pass
+        a list of orpheus.models.Part objects; This is a 'Complex' variant.
+
+        Simple variant:
+        >>> message = Message.User(content="Hello, how are you?")
+
+        >>> assert message.role == "user"
+        >>> assert message.content == "Hello, how are you?"
+
+        Complex variant:
+        >>> message = Message.User(
+        >>>     content=[
+        >>>         Part.Text(text="Describe this image."),
+        >>>         Part.Image(url="https://example.com/image.png")
+        >>>     ]
+        >>> )
+
+        >>> assert message.role == "user"
+        >>> assert len(message.content) == 2
+        >>> assert message.content[0].type == "text"
+        >>> assert message.content[0].text == "Describe this image."
+        >>> assert message.content[1].type == "image_url"
+        >>> assert message.content[1].image_url.url == "https://example.com/image.png"
+        """
+
+        role: Literal["user"]
+        content: str | list[PartType]
+
+        def __init__(self, content: str | list[PartType]) -> None: ...
 
     class Assistant:
         role: str
-        content: str | list[Part]
+        content: str | list[PartType]
         tool_calls: list[ToolCall] | None
 
         def __init__(
-            self, content: str | list[Part], tool_calls: list[ToolCall] | None = None
+            self, content: str | list[PartType], tool_calls: list[ToolCall] | None = None
         ) -> None: ...
 
     class Tool:
@@ -158,6 +209,8 @@ class ToolCall:
     type: str
     function: Function
 
+    def __init__(self, id: str, name: str, arguments: dict[str, Any]) -> None: ...
+
 @dataclass
 class Function:
     name: str
@@ -168,15 +221,20 @@ class ImageUrl:
     url: str
     detail: str | None
 
-@dataclass
-class TextPart:
-    text: str
+class Part:
+    class Text:
+        text: str
 
-@dataclass
-class ImagePart:
-    image_url: ImageUrl
+        def __init__(self, text: str) -> None: ...
 
-type Part = TextPart | ImagePart
+    class Image:
+        url: str
+        detail: str | None
+        image_url: ImageUrl
+
+        def __init__(self, url: str, detail: str | None = None) -> None: ...
+
+type PartType = Part.Text | Part.Image
 
 @dataclass
 class StreamUsage:
