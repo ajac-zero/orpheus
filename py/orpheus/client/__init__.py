@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal, overload
 
 import orjson
-from orpheus_core import (
+from orpheus._core import (
     ChatCompletion,
     Embeddings,
     OrpheusCore,

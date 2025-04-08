@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "orpheus_core"
+name = "_core"
 crate-type = ["cdylib"]
 
 [dependencies]

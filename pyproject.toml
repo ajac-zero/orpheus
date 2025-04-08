@@ -5,17 +5,15 @@ description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "ajac-zero", email = "ajcardoza2000@gmail.com" }]
 requires-python = ">=3.11"
+classifiers = [
+  "Programming Language :: Rust",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
 dependencies = [
     "orjson>=3.10.15",
-    "orpheus-core",
     "pydantic>=2.10.6",
 ]
-
-[tool.uv.sources]
-orpheus-core = { workspace = true }
-
-[tool.uv.workspace]
-members = ["orpheus-core"]
 
 [dependency-groups]
 dev = [
@@ -44,6 +42,11 @@ venv = ".venv"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "py"
+module-name = "orpheus._core"
+
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"

@@ -9,7 +9,7 @@ mod utils;
 use pyo3::prelude::*;
 
 #[pymodule]
-fn orpheus_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<blocking::OrpheusCore>()?;
     m.add_class::<concurrent::AsyncOrpheusCore>()?;
     m.add_class::<models::chat::Message>()?;
