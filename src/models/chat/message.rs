@@ -170,47 +170,34 @@ pub struct Delta {
     tool_calls: Option<Vec<ToolCall>>,
 }
 
-const SYSTEM_ROLE: &str = "system";
-const USER_ROLE: &str = "user";
-const ASSISTANT_ROLE: &str = "assistant";
-const TOOL_ROLE: &str = "tool";
-
 #[pyclass(frozen, get_all)]
 #[serde_with::skip_serializing_none]
 #[derive(Debug, FromPyObject, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "role", rename_all = "snake_case")]
 pub enum Message {
-    #[pyo3(constructor=(content, role=SYSTEM_ROLE.into()))]
+    #[pyo3(constructor=(content))]
     System {
         #[pyo3(item)]
         content: String,
-        #[pyo3(item)]
-        role: String,
     },
-    #[pyo3(constructor=(content, role=USER_ROLE.into()))]
+    #[pyo3(constructor=(content))]
     User {
         #[pyo3(item)]
         content: Content,
-        #[pyo3(item)]
-        role: String,
     },
-    #[pyo3(constructor=(content=None, tool_calls=None, role=ASSISTANT_ROLE.into()))]
+    #[pyo3(constructor=(content=None, tool_calls=None))]
     Assistant {
         #[pyo3(item)]
         content: Option<Content>,
         #[pyo3(item)]
         tool_calls: Option<Vec<ToolCall>>,
-        #[pyo3(item)]
-        role: String,
     },
-    #[pyo3(constructor=(content, tool_id, role=TOOL_ROLE.into()))]
+    #[pyo3(constructor=(content, tool_id))]
     Tool {
         #[pyo3(item)]
         content: String,
         #[pyo3(item)]
         tool_id: String,
-        #[pyo3(item)]
-        role: String,
     },
 }
 
@@ -219,10 +206,10 @@ impl Message {
     #[getter]
     fn role(&self) -> &str {
         match self {
-            Self::System { role, .. } => role,
-            Self::User { role, .. } => role,
-            Self::Assistant { role, .. } => role,
-            Self::Tool { role, .. } => role,
+            Self::System { .. } => "system",
+            Self::User { .. } => "user",
+            Self::Assistant { .. } => "assistant",
+            Self::Tool { .. } => "tool",
         }
     }
 
