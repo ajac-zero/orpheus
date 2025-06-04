@@ -86,6 +86,63 @@ pub struct ChatRequest {
     pub user: Option<String>,
 }
 
+impl ChatRequest {
+    /// Create a new ChatRequest with required fields and sensible defaults
+    pub fn new(model: impl Into<String>, messages: Vec<ChatMessage>) -> Self {
+        Self {
+            model: model.into(),
+            messages,
+            models: None,
+            provider: None,
+            reasoning: None,
+            usage: None,
+            transforms: None,
+            stream: Some(false),
+            max_tokens: None,
+            temperature: None,
+            seed: None,
+            top_p: None,
+            top_k: None,
+            frequency_penalty: None,
+            presence_penalty: None,
+            repetition_penalty: None,
+            logit_bias: None,
+            top_logprobs: None,
+            min_p: None,
+            top_a: None,
+            user: None,
+        }
+    }
+
+    /// Create a simple chat request with a single user message
+    pub fn simple(model: impl Into<String>, message: impl Into<String>) -> Self {
+        let user_message = ChatMessage {
+            role: MessageRole::User,
+            content: Content::Simple(message.into()),
+        };
+        Self::new(model, vec![user_message])
+    }
+
+    /// Create a chat request with system prompt and user message
+    pub fn with_system(
+        model: impl Into<String>,
+        system_prompt: impl Into<String>,
+        user_message: impl Into<String>,
+    ) -> Self {
+        let messages = vec![
+            ChatMessage {
+                role: MessageRole::System,
+                content: Content::Simple(system_prompt.into()),
+            },
+            ChatMessage {
+                role: MessageRole::User,
+                content: Content::Simple(user_message.into()),
+            },
+        ];
+        Self::new(model, messages)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     /// The role of the message author

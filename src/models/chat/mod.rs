@@ -10,47 +10,61 @@ mod tests {
     use serde_json;
 
     #[tokio::test]
+    async fn test_constructor_methods() {
+        // Test simple constructor
+        let simple_request = ChatRequest::simple("gpt-3.5-turbo", "Hello world");
+        assert_eq!(simple_request.model, "gpt-3.5-turbo");
+        assert_eq!(simple_request.messages.len(), 1);
+        assert!(matches!(simple_request.messages[0].role, MessageRole::User));
+        assert_eq!(simple_request.stream, Some(false));
+
+        // Test with_system constructor
+        let system_request = ChatRequest::with_system("gpt-4", "You are helpful", "How are you?");
+        assert_eq!(system_request.model, "gpt-4");
+        assert_eq!(system_request.messages.len(), 2);
+        assert!(matches!(system_request.messages[0].role, MessageRole::System));
+        assert!(matches!(system_request.messages[1].role, MessageRole::User));
+
+        // Test new constructor with custom messages
+        let custom_messages = vec![
+            ChatMessage {
+                role: MessageRole::Developer,
+                content: Content::Simple("Debug mode on".to_string()),
+            }
+        ];
+        let custom_request = ChatRequest::new("claude-3", custom_messages);
+        assert_eq!(custom_request.model, "claude-3");
+        assert_eq!(custom_request.messages.len(), 1);
+        assert!(matches!(custom_request.messages[0].role, MessageRole::Developer));
+    }
+
+    #[tokio::test]
     async fn test_chat_request_serialization() {
-        let request = ChatRequest {
-            model: "gpt-4".to_string(),
-            messages: vec![
-                ChatMessage {
-                    role: MessageRole::System,
-                    content: Content::Simple("You are a helpful assistant.".to_string()),
-                },
-                ChatMessage {
-                    role: MessageRole::User,
-                    content: Content::Simple("Hello! How can you help me today?".to_string()),
-                },
-            ],
-            models: None,
-            provider: Some(ProviderPreferences {
-                sort: Some("price".to_string()),
-            }),
-            reasoning: Some(ReasoningConfig {
-                effort: Some(ReasoningEffort::High),
-                max_tokens: None,
-                exclude: Some(false),
-            }),
-            usage: Some(UsageConfig {
-                include: Some(true),
-            }),
-            transforms: None,
-            stream: Some(false),
-            max_tokens: Some(150),
-            temperature: Some(0.7),
-            seed: Some(42),
-            top_p: Some(0.9),
-            top_k: None,
-            frequency_penalty: Some(0.1),
-            presence_penalty: Some(0.1),
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: Some("test_user_123".to_string()),
-        };
+        let mut request = ChatRequest::with_system(
+            "gpt-4",
+            "You are a helpful assistant.",
+            "Hello! How can you help me today?"
+        );
+
+        // Customize with additional fields
+        request.provider = Some(ProviderPreferences {
+            sort: Some("price".to_string()),
+        });
+        request.reasoning = Some(ReasoningConfig {
+            effort: Some(ReasoningEffort::High),
+            max_tokens: None,
+            exclude: Some(false),
+        });
+        request.usage = Some(UsageConfig {
+            include: Some(true),
+        });
+        request.max_tokens = Some(150);
+        request.temperature = Some(0.7);
+        request.seed = Some(42);
+        request.top_p = Some(0.9);
+        request.frequency_penalty = Some(0.1);
+        request.presence_penalty = Some(0.1);
+        request.user = Some("test_user_123".to_string());
 
         let json = serde_json::to_string_pretty(&request).unwrap();
         println!("Serialized chat request:\n{}", json);
@@ -170,32 +184,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_minimal_chat_request() {
-        let request = ChatRequest {
-            model: "gpt-3.5-turbo".to_string(),
-            messages: vec![ChatMessage {
-                role: MessageRole::User,
-                content: Content::Simple("What is Rust?".to_string()),
-            }],
-            models: None,
-            provider: None,
-            reasoning: None,
-            usage: None,
-            transforms: None,
-            stream: None,
-            max_tokens: None,
-            temperature: None,
-            seed: None,
-            top_p: None,
-            top_k: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: None,
-        };
+        let request = ChatRequest::simple("gpt-3.5-turbo", "What is Rust?");
 
         let json = serde_json::to_string(&request).unwrap();
         let deserialized: ChatRequest = serde_json::from_str(&json).unwrap();
@@ -227,29 +216,9 @@ mod tests {
             },
         ];
 
-        let request = ChatRequest {
-            model: "gpt-4".to_string(),
-            messages: messages.clone(),
-            models: None,
-            provider: None,
-            reasoning: None,
-            usage: None,
-            transforms: None,
-            stream: Some(false),
-            max_tokens: Some(200),
-            temperature: Some(0.7),
-            seed: None,
-            top_p: None,
-            top_k: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: None,
-        };
+        let mut request = ChatRequest::new("gpt-4", messages.clone());
+        request.max_tokens = Some(200);
+        request.temperature = Some(0.7);
 
         let json = serde_json::to_string_pretty(&request).unwrap();
         println!("Conversation request:\n{}", json);
@@ -278,40 +247,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_http_request_example() {
-        let request = ChatRequest {
-            model: "gpt-4".to_string(),
-            messages: vec![
-                ChatMessage {
-                    role: MessageRole::System,
-                    content: Content::Simple("You are a creative writing assistant.".to_string()),
-                },
-                ChatMessage {
-                    role: MessageRole::User,
-                    content: Content::Simple("Write a short haiku about programming.".to_string()),
-                },
-            ],
-            models: None,
-            provider: None,
-            reasoning: None,
-            usage: Some(UsageConfig {
-                include: Some(true),
-            }),
-            transforms: None,
-            stream: Some(false),
-            max_tokens: Some(100),
-            temperature: Some(0.8),
-            seed: None,
-            top_p: Some(0.9),
-            top_k: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: Some("creative_writer_001".to_string()),
-        };
+        let mut request = ChatRequest::with_system(
+            "gpt-4",
+            "You are a creative writing assistant.",
+            "Write a short haiku about programming."
+        );
+
+        request.usage = Some(UsageConfig {
+            include: Some(true),
+        });
+        request.max_tokens = Some(100);
+        request.temperature = Some(0.8);
+        request.top_p = Some(0.9);
+        request.user = Some("creative_writer_001".to_string());
 
         // Example of how you would make the HTTP request
         // Uncomment and modify when you have a real endpoint:
