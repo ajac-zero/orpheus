@@ -5,20 +5,40 @@ edition = "2021"
 
 [lib]
 name = "_core"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+python = ["pyo3", "pyo3-async-runtimes", "pythonize"]
 
 [dependencies]
 anyhow = "1.0.97"
 bytes = "1.10.1"
 either = { version = "1.15.0", features = ["serde"] }
 futures-lite = "2.6.0"
-pyo3 = { version = "0.24.0", features = ["extension-module", "abi3-py39", "experimental-async", "either", "serde", "smallvec", "anyhow", "multiple-pymethods"] }
-pyo3-async-runtimes = { version = "0.24.0", features = ["tokio-runtime"] }
-pythonize = "0.24.0"
-reqwest = { version = "0.12.12", features = ["json", "blocking", "rustls-tls", "stream"] }
+pyo3 = { version = "0.24.0", optional = true, features = [
+    "extension-module",
+    "abi3-py39",
+    "experimental-async",
+    "either",
+    "serde",
+    "smallvec",
+    "anyhow",
+    "multiple-pymethods",
+] }
+pyo3-async-runtimes = { version = "0.24.0", optional = true, features = [
+    "tokio-runtime",
+] }
+pythonize = { version = "0.24.0", optional = true }
+reqwest = { version = "0.12.12", features = [
+    "json",
+    "blocking",
+    "rustls-tls",
+    "stream",
+] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
 serde_with = { version = "3.12.0", features = ["json"] }
 smallvec = { version = "1.14.0", features = ["serde"] }
-tokio = "1.44.1"
+tokio = { version = "1.44.1", features = ["rt", "macros"] }
 url = "2.5.4"
