@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionRequest {
     /// The model ID to use. If unspecified, the user's default is used.
@@ -10,80 +11,91 @@ pub struct CompletionRequest {
     pub prompt: String,
 
     /// Alternate list of models for routing overrides.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub models: Option<Vec<String>>,
 
     /// Preferences for provider routing.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub provider: Option<ProviderPreferences>,
 
     /// Configuration for model reasoning/thinking tokens
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning: Option<ReasoningConfig>,
 
     /// Whether to include usage information in the response
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<UsageConfig>,
 
     /// List of prompt transforms (OpenRouter-only).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub transforms: Option<Vec<String>>,
 
     /// Enable streaming of results. Defaults to false
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
 
     /// Maximum number of tokens (range: [1, context_length)).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<i32>,
 
     /// Sampling temperature (range: [0, 2]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
 
     /// Seed for deterministic outputs.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<i32>,
 
     /// Top-p sampling value (range: (0, 1]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub top_p: Option<f64>,
 
     /// Top-k sampling value (range: [1, Infinity)).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub top_k: Option<i32>,
 
     /// Frequency penalty (range: [-2, 2]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub frequency_penalty: Option<f64>,
 
     /// Presence penalty (range: [-2, 2]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub presence_penalty: Option<f64>,
 
     /// Repetition penalty (range: (0, 2]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub repetition_penalty: Option<f64>,
 
     /// Mapping of token IDs to bias values.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logit_bias: Option<HashMap<String, f64>>,
 
     /// Number of top log probabilities to return.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub top_logprobs: Option<i32>,
 
     /// Minimum probability threshold (range: [0, 1]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub min_p: Option<f64>,
 
     /// Alternate top sampling parameter (range: [0, 1]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub top_a: Option<f64>,
 
     /// A stable identifier for your end-users. Used to help detect and prevent abuse.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
+}
+
+impl CompletionRequest {
+    /// Creates a new CompletionRequest with the required fields.
+    /// All optional fields are set to None.
+    pub fn new(model: impl Into<String>, prompt: impl Into<String>) -> Self {
+        Self {
+            model: model.into(),
+            prompt: prompt.into(),
+            models: None,
+            provider: None,
+            reasoning: None,
+            usage: None,
+            transforms: None,
+            stream: None,
+            max_tokens: None,
+            temperature: None,
+            seed: None,
+            top_p: None,
+            top_k: None,
+            frequency_penalty: None,
+            presence_penalty: None,
+            repetition_penalty: None,
+            logit_bias: None,
+            top_logprobs: None,
+            min_p: None,
+            top_a: None,
+            user: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,18 +105,16 @@ pub struct ProviderPreferences {
     pub sort: Option<String>,
 }
 
+#[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReasoningConfig {
     /// OpenAI-style reasoning effort setting
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub effort: Option<ReasoningEffort>,
 
     /// Non-OpenAI-style reasoning effort setting. Cannot be used simultaneously with effort.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<i32>,
 
     /// Whether to exclude reasoning from the response. Defaults to false
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude: Option<bool>,
 }
 

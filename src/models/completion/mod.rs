@@ -11,37 +11,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_completion_request_serialization() {
-        let request = CompletionRequest {
-            model: "gpt-3.5-turbo".to_string(),
-            prompt: "Hello, world!".to_string(),
-            models: None,
-            provider: Some(ProviderPreferences {
-                sort: Some("price".to_string()),
-            }),
-            reasoning: Some(ReasoningConfig {
-                effort: Some(ReasoningEffort::Medium),
-                max_tokens: None,
-                exclude: Some(false),
-            }),
-            usage: Some(UsageConfig {
-                include: Some(true),
-            }),
-            transforms: None,
-            stream: Some(false),
-            max_tokens: Some(100),
-            temperature: Some(0.7),
-            seed: None,
-            top_p: Some(0.9),
-            top_k: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: Some("test_user".to_string()),
-        };
+        let mut request = CompletionRequest::new("gpt-3.5-turbo", "Hello, world!");
+        request.max_tokens = Some(100);
 
         let json = serde_json::to_string_pretty(&request).unwrap();
         println!("Serialized request:\n{}", json);
@@ -83,31 +54,7 @@ mod tests {
     #[tokio::test]
     async fn test_http_request_example() {
         // This is a mock test - replace with real endpoint when available
-        let request = CompletionRequest {
-            model: "gpt-3.5-turbo".to_string(),
-            prompt: "Write a haiku about coding".to_string(),
-            models: None,
-            provider: None,
-            reasoning: None,
-            usage: Some(UsageConfig {
-                include: Some(true),
-            }),
-            transforms: None,
-            stream: Some(false),
-            max_tokens: Some(50),
-            temperature: Some(0.8),
-            seed: None,
-            top_p: None,
-            top_k: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: None,
-        };
+        let request = CompletionRequest::new("gpt-3.5-turbo", "Write a haiku about coding");
 
         // Example of how you would make the HTTP request
         // Uncomment and modify when you have a real endpoint:

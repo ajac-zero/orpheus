@@ -255,4 +255,26 @@ mod tests {
         let choices = chat_response.choices.unwrap();
         assert!(!choices.is_empty());
     }
+
+    #[test]
+    fn test_completion_request() {
+        let client = Orpheus::new(
+            "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",
+        );
+
+        let response = client.completion(CompletionRequest::new(
+            "openai/gpt-3.5-turbo",
+            "The greatest capital in the world is ",
+        ));
+        println!("{:?}", response);
+
+        assert!(response.is_ok());
+
+        let completion_response = response.unwrap();
+        assert!(completion_response.id.is_some());
+        assert!(completion_response.choices.is_some());
+
+        let choices = completion_response.choices.unwrap();
+        assert!(!choices.is_empty());
+    }
 }
