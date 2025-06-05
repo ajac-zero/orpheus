@@ -1,8 +1,9 @@
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder)]
 pub struct ChatRequest {
     /// The model ID to use. If unspecified, the user's default is used.
     pub model: String,
@@ -69,40 +70,17 @@ pub struct ChatRequest {
 }
 
 impl ChatRequest {
-    /// Create a new ChatRequest with required fields and sensible defaults
-    pub fn new(model: impl Into<String>, messages: Vec<ChatMessage>) -> Self {
-        Self {
-            model: model.into(),
-            messages,
-            models: None,
-            provider: None,
-            reasoning: None,
-            usage: None,
-            transforms: None,
-            stream: Some(false),
-            max_tokens: None,
-            temperature: None,
-            seed: None,
-            top_p: None,
-            top_k: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: None,
-        }
-    }
-
     /// Create a simple chat request with a single user message
     pub fn simple(model: impl Into<String>, message: impl Into<String>) -> Self {
         let user_message = ChatMessage {
             role: MessageRole::User,
             content: Content::Simple(message.into()),
         };
-        Self::new(model, vec![user_message])
+        Self::builder()
+            .model(model.into())
+            .messages(vec![user_message])
+            .stream(false)
+            .build()
     }
 
     /// Create a chat request with system prompt and user message
@@ -121,7 +99,10 @@ impl ChatRequest {
                 content: Content::Simple(user_message.into()),
             },
         ];
-        Self::new(model, messages)
+        Self::builder()
+            .model(model.into())
+            .messages(messages)
+            .build()
     }
 }
 

@@ -2,6 +2,7 @@
 
 mod client;
 mod constants;
+mod exceptions;
 mod models;
 mod utils;
 

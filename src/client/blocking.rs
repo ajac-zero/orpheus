@@ -1,3 +1,4 @@
+use crate::exceptions::OrpheusError;
 use crate::models::chat::{ChatRequest, ChatResponse};
 use crate::models::completion::{CompletionRequest, CompletionResponse};
 use reqwest::blocking::Client;
@@ -9,41 +10,6 @@ pub struct Orpheus {
     api_key: String,
     base_url: String,
 }
-
-#[derive(Debug)]
-pub enum OrpheusError {
-    Http(reqwest::Error),
-    Serialization(serde_json::Error),
-    ApiError { status: u16, message: String },
-    MissingApiKey,
-}
-
-impl From<reqwest::Error> for OrpheusError {
-    fn from(err: reqwest::Error) -> Self {
-        OrpheusError::Http(err)
-    }
-}
-
-impl From<serde_json::Error> for OrpheusError {
-    fn from(err: serde_json::Error) -> Self {
-        OrpheusError::Serialization(err)
-    }
-}
-
-impl std::fmt::Display for OrpheusError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OrpheusError::Http(e) => write!(f, "HTTP error: {}", e),
-            OrpheusError::Serialization(e) => write!(f, "Serialization error: {}", e),
-            OrpheusError::ApiError { status, message } => {
-                write!(f, "API error {}: {}", status, message)
-            }
-            OrpheusError::MissingApiKey => write!(f, "API key is required"),
-        }
-    }
-}
-
-impl std::error::Error for OrpheusError {}
 
 impl Orpheus {
     /// Create a new Orpheus client with default settings
@@ -202,29 +168,13 @@ mod tests {
 
     #[test]
     fn test_completion_request_serialization() {
-        let request = CompletionRequest {
-            model: "gpt-3.5-turbo".to_string(),
-            prompt: "Complete this sentence:".to_string(),
-            models: None,
-            provider: None,
-            reasoning: None,
-            usage: None,
-            transforms: None,
-            stream: Some(false),
-            max_tokens: Some(50),
-            temperature: Some(0.7),
-            seed: None,
-            top_p: None,
-            top_k: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: None,
-        };
+        let request = CompletionRequest::builder()
+            .model("gpt-3.5-turbo".to_string())
+            .prompt("Complete this sentence:".to_string())
+            .stream(false)
+            .max_tokens(50)
+            .temperature(0.7)
+            .build();
 
         // Test that we can serialize the request
         let json = serde_json::to_string(&request).unwrap();
@@ -237,13 +187,15 @@ mod tests {
             "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",
         );
 
-        let response = client.chat(ChatRequest::new(
-            "deepseek/deepseek-r1-0528-qwen3-8b:free",
-            vec![
+        let request = ChatRequest::builder()
+            .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
+            .messages(vec![
                 ChatMessage::new_system(Content::simple("You are a friend")),
                 ChatMessage::new_user(Content::simple("Hello!")),
-            ],
-        ));
+            ])
+            .build();
+
+        let response = client.chat(request);
         println!("{:?}", response);
 
         assert!(response.is_ok());

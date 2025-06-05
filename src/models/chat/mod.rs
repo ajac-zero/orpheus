@@ -33,7 +33,10 @@ mod tests {
             role: MessageRole::Developer,
             content: Content::Simple("Debug mode on".to_string()),
         }];
-        let custom_request = ChatRequest::new("claude-3", custom_messages);
+        let custom_request = ChatRequest::builder()
+            .model("claude-3".into())
+            .messages(custom_messages)
+            .build();
         assert_eq!(custom_request.model, "claude-3");
         assert_eq!(custom_request.messages.len(), 1);
         assert!(matches!(
@@ -223,9 +226,12 @@ mod tests {
             },
         ];
 
-        let mut request = ChatRequest::new("gpt-4", messages.clone());
-        request.max_tokens = Some(200);
-        request.temperature = Some(0.7);
+        let request = ChatRequest::builder()
+            .model("gpt-4".into())
+            .messages(messages.clone())
+            .max_tokens(200)
+            .temperature(0.7)
+            .build();
 
         let json = serde_json::to_string_pretty(&request).unwrap();
         println!("Conversation request:\n{}", json);
