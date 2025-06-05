@@ -190,8 +190,8 @@ mod tests {
         let request = ChatRequest::builder()
             .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
             .messages(vec![
-                ChatMessage::new_system(Content::simple("You are a friend")),
-                ChatMessage::new_user(Content::simple("Hello!")),
+                ChatMessage::system(Content::simple("You are a friend")),
+                ChatMessage::user(Content::simple("Hello!")),
             ])
             .build();
 

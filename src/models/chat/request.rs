@@ -116,28 +116,28 @@ pub struct ChatMessage {
 }
 
 impl ChatMessage {
-    pub fn new_system(content: Content) -> Self {
+    pub fn system(content: Content) -> Self {
         Self {
             role: MessageRole::System,
             content,
         }
     }
 
-    pub fn new_user(content: Content) -> Self {
+    pub fn user(content: Content) -> Self {
         Self {
             role: MessageRole::User,
             content,
         }
     }
 
-    pub fn new_assistant(content: Content) -> Self {
+    pub fn assistant(content: Content) -> Self {
         Self {
             role: MessageRole::Assistant,
             content,
         }
     }
 
-    pub fn new_tool(content: Content) -> Self {
+    pub fn tool(content: Content) -> Self {
         Self {
             role: MessageRole::Tool,
             content,
