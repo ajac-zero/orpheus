@@ -2,7 +2,7 @@ use crate::constants::*;
 use crate::exceptions::OrpheusError;
 use crate::models::chat::{ChatRequest, ChatResponse};
 use crate::models::completion::{CompletionRequest, CompletionResponse};
-use reqwest::blocking::Client;
+use reqwest::Client;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 
 #[derive(Debug)]
@@ -49,7 +49,7 @@ impl Orpheus {
     }
 
     /// Send a chat completion request
-    pub fn chat(&self, request: ChatRequest) -> Result<ChatResponse, OrpheusError> {
+    pub async fn chat(&self, request: ChatRequest) -> Result<ChatResponse, OrpheusError> {
         let headers = self.build_headers()?;
         let url = format!("{}/chat/completions", self.base_url);
 
@@ -58,12 +58,14 @@ impl Orpheus {
             .post(&url)
             .headers(headers)
             .json(&request)
-            .send()?;
+            .send()
+            .await?;
 
         let status = response.status();
         if !status.is_success() {
             let error_text = response
                 .text()
+                .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(OrpheusError::ApiError {
                 status: status.as_u16(),
@@ -71,12 +73,12 @@ impl Orpheus {
             });
         }
 
-        let chat_response: ChatResponse = response.json()?;
+        let chat_response: ChatResponse = response.json().await?;
         Ok(chat_response)
     }
 
     /// Send a text completion request
-    pub fn completion(
+    pub async fn completion(
         &self,
         request: CompletionRequest,
     ) -> Result<CompletionResponse, OrpheusError> {
@@ -88,12 +90,14 @@ impl Orpheus {
             .post(&url)
             .headers(headers)
             .json(&request)
-            .send()?;
+            .send()
+            .await?;
 
         let status = response.status();
         if !status.is_success() {
             let error_text = response
                 .text()
+                .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(OrpheusError::ApiError {
                 status: status.as_u16(),
@@ -101,29 +105,29 @@ impl Orpheus {
             });
         }
 
-        let completion_response: CompletionResponse = response.json()?;
+        let completion_response: CompletionResponse = response.json().await?;
         Ok(completion_response)
     }
 
     /// Convenience method for simple chat requests
-    pub fn simple_chat(
+    pub async fn simple_chat(
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
     ) -> Result<ChatResponse, OrpheusError> {
         let request = ChatRequest::simple(model, message);
-        self.chat(request)
+        self.chat(request).await
     }
 
     /// Convenience method for chat with system prompt
-    pub fn chat_with_system(
+    pub async fn chat_with_system(
         &self,
         model: impl Into<String>,
         system_prompt: impl Into<String>,
         user_message: impl Into<String>,
     ) -> Result<ChatResponse, OrpheusError> {
         let request = ChatRequest::with_system(model, system_prompt, user_message);
-        self.chat(request)
+        self.chat(request).await
     }
 }
 
@@ -184,11 +188,11 @@ mod tests {
         assert!(json.contains("Complete this sentence:"));
     }
 
-    #[test]
-    fn test_chat_request() {
-        let api_key = env::var(OPENROUTER_API_ENV_VAR).expect("load env var");
-
-        let client = Orpheus::new(api_key);
+    #[tokio::test]
+    async fn test_chat_request() {
+        let client = Orpheus::new(
+            "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",
+        );
 
         let request = ChatRequest::builder()
             .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
@@ -198,7 +202,7 @@ mod tests {
             ])
             .build();
 
-        let response = client.chat(request);
+        let response = client.chat(request).await;
         println!("{:?}", response);
 
         assert!(response.is_ok());
@@ -211,17 +215,17 @@ mod tests {
         assert!(!choices.is_empty());
     }
 
-    #[test]
-    fn test_completion_request() {
-        let client = Orpheus::new(
-            "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",
-        );
+    #[tokio::test]
+    async fn test_completion_request() {
+        let api_key = env::var(OPENROUTER_API_ENV_VAR).expect("load env var");
+
+        let client = Orpheus::new(api_key);
 
         let request = CompletionRequest::builder()
             .model("openai/gpt-3.5-turbo".into())
             .prompt("The greatest capital in the world is ".into())
             .build();
-        let response = client.completion(request);
+        let response = client.completion(request).await;
         println!("{:?}", response);
 
         assert!(response.is_ok());

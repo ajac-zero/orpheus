@@ -4,3 +4,6 @@ pub const USER_AGENT_NAME: &str = "Orpheus";
 
 pub const CHAT_COMPLETION_PATH: &str = "/chat/completions";
 pub const EMBEDDINGS_PATH: &str = "/v1/embeddings";
+
+pub const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
+pub const OPENROUTER_API_ENV_VAR: &str = "OPENROUTER_API_KEY";
