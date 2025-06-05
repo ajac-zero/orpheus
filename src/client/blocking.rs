@@ -230,4 +230,29 @@ mod tests {
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("Complete this sentence:"));
     }
+
+    #[test]
+    fn test_chat_request() {
+        let client = Orpheus::new(
+            "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",
+        );
+
+        let response = client.chat(ChatRequest::new(
+            "deepseek/deepseek-r1-0528-qwen3-8b:free",
+            vec![
+                ChatMessage::new_system(Content::simple("You are a friend")),
+                ChatMessage::new_user(Content::simple("Hello!")),
+            ],
+        ));
+        println!("{:?}", response);
+
+        assert!(response.is_ok());
+
+        let chat_response = response.unwrap();
+        assert!(chat_response.id.is_some());
+        assert!(chat_response.choices.is_some());
+
+        let choices = chat_response.choices.unwrap();
+        assert!(!choices.is_empty());
+    }
 }

@@ -134,11 +134,47 @@ pub struct ChatMessage {
     pub content: Content,
 }
 
+impl ChatMessage {
+    pub fn new_system(content: Content) -> Self {
+        Self {
+            role: MessageRole::System,
+            content,
+        }
+    }
+
+    pub fn new_user(content: Content) -> Self {
+        Self {
+            role: MessageRole::User,
+            content,
+        }
+    }
+
+    pub fn new_assistant(content: Content) -> Self {
+        Self {
+            role: MessageRole::Assistant,
+            content,
+        }
+    }
+
+    pub fn new_tool(content: Content) -> Self {
+        Self {
+            role: MessageRole::Tool,
+            content,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Content {
     Simple(String),
     Complex(Vec<Part>),
+}
+
+impl Content {
+    pub fn simple(content: impl Into<String>) -> Self {
+        Content::Simple(content.into())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
