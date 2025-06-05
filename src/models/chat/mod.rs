@@ -22,20 +22,24 @@ mod tests {
         let system_request = ChatRequest::with_system("gpt-4", "You are helpful", "How are you?");
         assert_eq!(system_request.model, "gpt-4");
         assert_eq!(system_request.messages.len(), 2);
-        assert!(matches!(system_request.messages[0].role, MessageRole::System));
+        assert!(matches!(
+            system_request.messages[0].role,
+            MessageRole::System
+        ));
         assert!(matches!(system_request.messages[1].role, MessageRole::User));
 
         // Test new constructor with custom messages
-        let custom_messages = vec![
-            ChatMessage {
-                role: MessageRole::Developer,
-                content: Content::Simple("Debug mode on".to_string()),
-            }
-        ];
+        let custom_messages = vec![ChatMessage {
+            role: MessageRole::Developer,
+            content: Content::Simple("Debug mode on".to_string()),
+        }];
         let custom_request = ChatRequest::new("claude-3", custom_messages);
         assert_eq!(custom_request.model, "claude-3");
         assert_eq!(custom_request.messages.len(), 1);
-        assert!(matches!(custom_request.messages[0].role, MessageRole::Developer));
+        assert!(matches!(
+            custom_request.messages[0].role,
+            MessageRole::Developer
+        ));
     }
 
     #[tokio::test]
@@ -43,7 +47,7 @@ mod tests {
         let mut request = ChatRequest::with_system(
             "gpt-4",
             "You are a helpful assistant.",
-            "Hello! How can you help me today?"
+            "Hello! How can you help me today?",
         );
 
         // Customize with additional fields
@@ -178,7 +182,10 @@ mod tests {
         assert_eq!(message.role, MessageRole::Assistant);
         assert_eq!(
             message.content,
-            Content::Simple("Hello! I'm doing well, thank you for asking. How can I assist you today?".to_string())
+            Content::Simple(
+                "Hello! I'm doing well, thank you for asking. How can I assist you today?"
+                    .to_string()
+            )
         );
     }
 
@@ -250,7 +257,7 @@ mod tests {
         let mut request = ChatRequest::with_system(
             "gpt-4",
             "You are a creative writing assistant.",
-            "Write a short haiku about programming."
+            "Write a short haiku about programming.",
         );
 
         request.usage = Some(UsageConfig {
@@ -266,7 +273,10 @@ mod tests {
         let client = reqwest::Client::new();
         let response = client
             .post("https://openrouter.ai/api/v1/chat/completions")
-            .header("Authorization", "Bearer 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")
+            .header(
+                "Authorization",
+                "Bearer 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",
+            )
             .header("Content-Type", "application/json")
             .json(&request)
             .send()

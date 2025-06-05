@@ -1,5 +1,6 @@
 #![allow(dead_code, clippy::too_many_arguments, unused_imports)]
 
+mod client;
 mod constants;
 mod models;
 mod utils;

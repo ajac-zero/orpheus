@@ -72,7 +72,10 @@ mod tests {
 
         let choices = response.choices.unwrap();
         assert_eq!(choices.len(), 1);
-        assert_eq!(choices[0].text, Some("Hello! How can I help you today?".to_string()));
+        assert_eq!(
+            choices[0].text,
+            Some("Hello! How can I help you today?".to_string())
+        );
         assert_eq!(choices[0].index, Some(0));
         assert_eq!(choices[0].finish_reason, Some("stop".to_string()));
     }
@@ -111,7 +114,10 @@ mod tests {
         let client = reqwest::Client::new();
         let response = client
             .post("https://openrouter.ai/api/v1/completions")
-            .header("Authorization", "Bearer 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")
+            .header(
+                "Authorization",
+                "Bearer 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",
+            )
             .header("Content-Type", "application/json")
             .json(&request)
             .send()

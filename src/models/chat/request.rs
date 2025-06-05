@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatRequest {
     /// The model ID to use. If unspecified, the user's default is used.
@@ -10,79 +11,60 @@ pub struct ChatRequest {
     pub messages: Vec<ChatMessage>,
 
     /// Alternate list of models for routing overrides.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub models: Option<Vec<String>>,
 
     /// Preferences for provider routing.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub provider: Option<ProviderPreferences>,
 
     /// Configuration for model reasoning/thinking tokens
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning: Option<ReasoningConfig>,
 
     /// Whether to include usage information in the response
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<UsageConfig>,
 
     /// List of prompt transforms (OpenRouter-only).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub transforms: Option<Vec<String>>,
 
     /// Enable streaming of results. Defaults to false
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
 
     /// Maximum number of tokens (range: [1, context_length)).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<i32>,
 
     /// Sampling temperature (range: [0, 2]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
 
     /// Seed for deterministic outputs.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<i32>,
 
     /// Top-p sampling value (range: (0, 1]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub top_p: Option<f64>,
 
     /// Top-k sampling value (range: [1, Infinity)).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub top_k: Option<i32>,
 
     /// Frequency penalty (range: [-2, 2]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub frequency_penalty: Option<f64>,
 
     /// Presence penalty (range: [-2, 2]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub presence_penalty: Option<f64>,
 
     /// Repetition penalty (range: (0, 2]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub repetition_penalty: Option<f64>,
 
     /// Mapping of token IDs to bias values.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logit_bias: Option<HashMap<String, f64>>,
 
     /// Number of top log probabilities to return.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub top_logprobs: Option<i32>,
 
     /// Minimum probability threshold (range: [0, 1]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub min_p: Option<f64>,
 
     /// Alternate top sampling parameter (range: [0, 1]).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub top_a: Option<f64>,
 
     /// A stable identifier for your end-users. Used to help detect and prevent abuse.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
 }
 
@@ -175,7 +157,7 @@ pub struct File {
 pub enum Part {
     Text { text: String },
     Image { image_url: ImageUrl },
-    File { file: File }
+    File { file: File },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
