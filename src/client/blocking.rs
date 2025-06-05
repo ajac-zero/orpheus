@@ -262,10 +262,11 @@ mod tests {
             "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",
         );
 
-        let response = client.completion(CompletionRequest::new(
-            "openai/gpt-3.5-turbo",
-            "The greatest capital in the world is ",
-        ));
+        let request = CompletionRequest::builder()
+            .model("openai/gpt-3.5-turbo".into())
+            .prompt("The greatest capital in the world is ".into())
+            .build();
+        let response = client.completion(request);
         println!("{:?}", response);
 
         assert!(response.is_ok());

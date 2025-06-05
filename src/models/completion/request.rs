@@ -1,8 +1,9 @@
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder)]
 pub struct CompletionRequest {
     /// The model ID to use. If unspecified, the user's default is used.
     pub model: String,
@@ -68,36 +69,6 @@ pub struct CompletionRequest {
     pub user: Option<String>,
 }
 
-impl CompletionRequest {
-    /// Creates a new CompletionRequest with the required fields.
-    /// All optional fields are set to None.
-    pub fn new(model: impl Into<String>, prompt: impl Into<String>) -> Self {
-        Self {
-            model: model.into(),
-            prompt: prompt.into(),
-            models: None,
-            provider: None,
-            reasoning: None,
-            usage: None,
-            transforms: None,
-            stream: None,
-            max_tokens: None,
-            temperature: None,
-            seed: None,
-            top_p: None,
-            top_k: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            repetition_penalty: None,
-            logit_bias: None,
-            top_logprobs: None,
-            min_p: None,
-            top_a: None,
-            user: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderPreferences {
     /// Sort preference (e.g., price, throughput).
@@ -131,4 +102,27 @@ pub struct UsageConfig {
     /// Whether to include usage information in the response
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include: Option<bool>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_completion_request_serialization() {
+        let request = CompletionRequest::builder()
+            .model("gpt-3.5-turbo".into())
+            .prompt("Hello, world!".into())
+            .max_tokens(100)
+            .build();
+
+        let json = serde_json::to_string_pretty(&request).unwrap();
+        println!("Serialized request:\n{}", json);
+
+        // Test deserialization
+        let deserialized: CompletionRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.model, "gpt-3.5-turbo");
+        assert_eq!(deserialized.prompt, "Hello, world!");
+        assert_eq!(deserialized.max_tokens, Some(100));
+    }
 }

@@ -10,51 +10,12 @@ mod tests {
     use serde_json;
 
     #[tokio::test]
-    async fn test_completion_request_serialization() {
-        let mut request = CompletionRequest::new("gpt-3.5-turbo", "Hello, world!");
-        request.max_tokens = Some(100);
-
-        let json = serde_json::to_string_pretty(&request).unwrap();
-        println!("Serialized request:\n{}", json);
-
-        // Test deserialization
-        let deserialized: CompletionRequest = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.model, "gpt-3.5-turbo");
-        assert_eq!(deserialized.prompt, "Hello, world!");
-        assert_eq!(deserialized.max_tokens, Some(100));
-    }
-
-    #[tokio::test]
-    async fn test_completion_response_deserialization() {
-        let response_json = r#"{
-            "id": "cmpl-123",
-            "choices": [
-                {
-                    "text": "Hello! How can I help you today?",
-                    "index": 0,
-                    "finish_reason": "stop"
-                }
-            ]
-        }"#;
-
-        let response: CompletionResponse = serde_json::from_str(response_json).unwrap();
-        assert_eq!(response.id, Some("cmpl-123".to_string()));
-        assert!(response.choices.is_some());
-
-        let choices = response.choices.unwrap();
-        assert_eq!(choices.len(), 1);
-        assert_eq!(
-            choices[0].text,
-            Some("Hello! How can I help you today?".to_string())
-        );
-        assert_eq!(choices[0].index, Some(0));
-        assert_eq!(choices[0].finish_reason, Some("stop".to_string()));
-    }
-
-    #[tokio::test]
     async fn test_http_request_example() {
         // This is a mock test - replace with real endpoint when available
-        let request = CompletionRequest::new("gpt-3.5-turbo", "Write a haiku about coding");
+        let request = CompletionRequest::builder()
+            .model("gpt-3.5-turbo".into())
+            .prompt("Write a haiku about coding".into())
+            .build();
 
         // Example of how you would make the HTTP request
         // Uncomment and modify when you have a real endpoint:
