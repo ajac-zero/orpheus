@@ -10,202 +10,6 @@ mod tests {
     use serde_json;
 
     #[tokio::test]
-    async fn test_constructor_methods() {
-        // Test simple constructor
-        let simple_request = ChatRequest::simple("gpt-3.5-turbo", "Hello world");
-        assert_eq!(simple_request.model, "gpt-3.5-turbo");
-        assert_eq!(simple_request.messages.len(), 1);
-        assert!(matches!(simple_request.messages[0].role, MessageRole::User));
-        assert_eq!(simple_request.stream, Some(false));
-
-        // Test with_system constructor
-        let system_request = ChatRequest::with_system("gpt-4", "You are helpful", "How are you?");
-        assert_eq!(system_request.model, "gpt-4");
-        assert_eq!(system_request.messages.len(), 2);
-        assert!(matches!(
-            system_request.messages[0].role,
-            MessageRole::System
-        ));
-        assert!(matches!(system_request.messages[1].role, MessageRole::User));
-
-        // Test new constructor with custom messages
-        let custom_messages = vec![ChatMessage {
-            role: MessageRole::Developer,
-            content: Content::Simple("Debug mode on".to_string()),
-        }];
-        let custom_request = ChatRequest::builder()
-            .model("claude-3".into())
-            .messages(custom_messages)
-            .build();
-        assert_eq!(custom_request.model, "claude-3");
-        assert_eq!(custom_request.messages.len(), 1);
-        assert!(matches!(
-            custom_request.messages[0].role,
-            MessageRole::Developer
-        ));
-    }
-
-    #[tokio::test]
-    async fn test_chat_request_serialization() {
-        let mut request = ChatRequest::with_system(
-            "gpt-4",
-            "You are a helpful assistant.",
-            "Hello! How can you help me today?",
-        );
-
-        // Customize with additional fields
-        request.provider = Some(ProviderPreferences {
-            sort: Some("price".to_string()),
-        });
-        request.reasoning = Some(ReasoningConfig {
-            effort: Some(ReasoningEffort::High),
-            max_tokens: None,
-            exclude: Some(false),
-        });
-        request.usage = Some(UsageConfig {
-            include: Some(true),
-        });
-        request.max_tokens = Some(150);
-        request.temperature = Some(0.7);
-        request.seed = Some(42);
-        request.top_p = Some(0.9);
-        request.frequency_penalty = Some(0.1);
-        request.presence_penalty = Some(0.1);
-        request.user = Some("test_user_123".to_string());
-
-        let json = serde_json::to_string_pretty(&request).unwrap();
-        println!("Serialized chat request:\n{}", json);
-
-        // Test deserialization
-        let deserialized: ChatRequest = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.model, "gpt-4");
-        assert_eq!(deserialized.messages.len(), 2);
-        assert_eq!(deserialized.max_tokens, Some(150));
-        assert_eq!(deserialized.temperature, Some(0.7));
-    }
-
-    #[tokio::test]
-    async fn test_chat_message_simple_content() {
-        let message = ChatMessage {
-            role: MessageRole::User,
-            content: Content::Simple("Hello world!".to_string()),
-        };
-
-        let json = serde_json::to_string(&message).unwrap();
-        let deserialized: ChatMessage = serde_json::from_str(&json).unwrap();
-
-        match deserialized.content {
-            Content::Simple(text) => assert_eq!(text, "Hello world!"),
-            _ => panic!("Expected simple content"),
-        }
-        assert!(matches!(deserialized.role, MessageRole::User));
-    }
-
-    #[tokio::test]
-    async fn test_message_roles_serialization() {
-        let roles = vec![
-            MessageRole::System,
-            MessageRole::Developer,
-            MessageRole::User,
-            MessageRole::Assistant,
-            MessageRole::Tool,
-        ];
-
-        for role in roles {
-            let message = ChatMessage {
-                role: role.clone(),
-                content: Content::Simple("test".to_string()),
-            };
-
-            let json = serde_json::to_string(&message).unwrap();
-            let deserialized: ChatMessage = serde_json::from_str(&json).unwrap();
-
-            // Test that roles serialize/deserialize correctly
-            match (&role, &deserialized.role) {
-                (MessageRole::System, MessageRole::System) => (),
-                (MessageRole::Developer, MessageRole::Developer) => (),
-                (MessageRole::User, MessageRole::User) => (),
-                (MessageRole::Assistant, MessageRole::Assistant) => (),
-                (MessageRole::Tool, MessageRole::Tool) => (),
-                _ => panic!("Role mismatch: {:?} != {:?}", role, deserialized.role),
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn test_reasoning_effort_serialization() {
-        let efforts = vec![
-            ReasoningEffort::High,
-            ReasoningEffort::Medium,
-            ReasoningEffort::Low,
-        ];
-
-        for effort in efforts {
-            let config = ReasoningConfig {
-                effort: Some(effort.clone()),
-                max_tokens: None,
-                exclude: None,
-            };
-
-            let json = serde_json::to_string(&config).unwrap();
-            let deserialized: ReasoningConfig = serde_json::from_str(&json).unwrap();
-
-            assert!(deserialized.effort.is_some());
-            match (&effort, deserialized.effort.as_ref().unwrap()) {
-                (ReasoningEffort::High, ReasoningEffort::High) => (),
-                (ReasoningEffort::Medium, ReasoningEffort::Medium) => (),
-                (ReasoningEffort::Low, ReasoningEffort::Low) => (),
-                _ => panic!("Effort mismatch"),
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn test_chat_response_deserialization() {
-        let response_json = r#"{
-            "id": "chatcmpl-abc123",
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": "Hello! I'm doing well, thank you for asking. How can I assist you today?"
-                    }
-                }
-            ]
-        }"#;
-
-        let response: ChatResponse = serde_json::from_str(response_json).unwrap();
-        assert_eq!(response.id, Some("chatcmpl-abc123".to_string()));
-        assert!(response.choices.is_some());
-
-        let choices = response.choices.unwrap();
-        assert_eq!(choices.len(), 1);
-
-        let message = choices[0].message.as_ref().unwrap();
-        assert_eq!(message.role, MessageRole::Assistant);
-        assert_eq!(
-            message.content,
-            Content::Simple(
-                "Hello! I'm doing well, thank you for asking. How can I assist you today?"
-                    .to_string()
-            )
-        );
-    }
-
-    #[tokio::test]
-    async fn test_minimal_chat_request() {
-        let request = ChatRequest::simple("gpt-3.5-turbo", "What is Rust?");
-
-        let json = serde_json::to_string(&request).unwrap();
-        let deserialized: ChatRequest = serde_json::from_str(&json).unwrap();
-
-        assert_eq!(deserialized.model, "gpt-3.5-turbo");
-        assert_eq!(deserialized.messages.len(), 1);
-        assert!(deserialized.max_tokens.is_none());
-        assert!(deserialized.temperature.is_none());
-    }
-
-    #[tokio::test]
     async fn test_conversation_flow() {
         let messages = vec![
             ChatMessage {
@@ -260,19 +64,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_http_request_example() {
-        let mut request = ChatRequest::with_system(
-            "gpt-4",
-            "You are a creative writing assistant.",
-            "Write a short haiku about programming.",
-        );
-
-        request.usage = Some(UsageConfig {
-            include: Some(true),
-        });
-        request.max_tokens = Some(100);
-        request.temperature = Some(0.8);
-        request.top_p = Some(0.9);
-        request.user = Some("creative_writer_001".to_string());
+        let request = ChatRequest::builder()
+            .model("gpt-4".into())
+            .messages(vec![
+                ChatMessage {
+                    role: MessageRole::System,
+                    content: Content::Simple("You are a creative writing assistant.".to_string()),
+                },
+                ChatMessage {
+                    role: MessageRole::User,
+                    content: Content::Simple("Write a short haiku about programming.".to_string()),
+                },
+            ])
+            .usage(UsageConfig {
+                include: Some(true),
+            })
+            .max_tokens(100)
+            .temperature(0.8)
+            .top_p(0.9)
+            .user("creative_writer_001".into())
+            .build();
 
         // Example of how you would make the HTTP request
         // Uncomment and modify when you have a real endpoint:
