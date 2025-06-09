@@ -21,7 +21,7 @@ impl Orpheus {
             .build()
             .unwrap();
         let api_key = api_key.into();
-        let base_url = OPENROUTER_BASE_URL.into();
+        let base_url = BASE_URL_ENV_VAR.into();
 
         Self {
             client,
@@ -36,27 +36,15 @@ impl Orpheus {
         self
     }
 
-    /// Build headers for requests
-    fn build_headers(&self) -> Result<HeaderMap, OrpheusError> {
-        let mut headers = HeaderMap::new();
-        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-
-        let auth_value = HeaderValue::from_str(&format!("Bearer {}", self.api_key))
-            .map_err(|_| OrpheusError::MissingApiKey)?;
-        headers.insert(AUTHORIZATION, auth_value);
-
-        Ok(headers)
-    }
-
     /// Send a chat completion request
     pub async fn chat(&self, request: ChatRequest) -> Result<ChatResponse, OrpheusError> {
-        let headers = self.build_headers()?;
-        let url = format!("{}/chat/completions", self.base_url);
+        let url = [self.base_url.as_str(), CHAT_COMPLETION_PATH].concat();
 
         let response = self
             .client
             .post(&url)
-            .headers(headers)
+            .header(CONTENT_TYPE, "application/json")
+            .bearer_auth(self.api_key.clone())
             .json(&request)
             .send()
             .await?;
@@ -82,13 +70,13 @@ impl Orpheus {
         &self,
         request: CompletionRequest,
     ) -> Result<CompletionResponse, OrpheusError> {
-        let headers = self.build_headers()?;
-        let url = format!("{}/completions", self.base_url);
+        let url = [self.base_url.as_str(), COMPLETION_PATH].concat();
 
         let response = self
             .client
             .post(&url)
-            .headers(headers)
+            .header(CONTENT_TYPE, "application/json")
+            .bearer_auth(self.api_key.clone())
             .json(&request)
             .send()
             .await?;
@@ -151,48 +139,11 @@ mod tests {
         assert_eq!(client.base_url, "https://custom-api.example.com/v1");
     }
 
-    #[test]
-    fn test_headers() {
-        let client = Orpheus::new("test_key");
-        let headers = client.build_headers().unwrap();
-
-        assert!(headers.contains_key(CONTENT_TYPE));
-        assert!(headers.contains_key(AUTHORIZATION));
-
-        let auth_header = headers.get(AUTHORIZATION).unwrap().to_str().unwrap();
-        assert_eq!(auth_header, "Bearer test_key");
-    }
-
-    #[test]
-    fn test_chat_request_serialization() {
-        let request = ChatRequest::simple("gpt-3.5-turbo", "Hello world");
-
-        // Test that we can serialize the request (this would normally be sent to the API)
-        let json = serde_json::to_string(&request).unwrap();
-        assert!(json.contains("gpt-3.5-turbo"));
-        assert!(json.contains("Hello world"));
-    }
-
-    #[test]
-    fn test_completion_request_serialization() {
-        let request = CompletionRequest::builder()
-            .model("gpt-3.5-turbo".to_string())
-            .prompt("Complete this sentence:".to_string())
-            .stream(false)
-            .max_tokens(50)
-            .temperature(0.7)
-            .build();
-
-        // Test that we can serialize the request
-        let json = serde_json::to_string(&request).unwrap();
-        assert!(json.contains("Complete this sentence:"));
-    }
-
     #[tokio::test]
     async fn test_chat_request() {
-        let client = Orpheus::new(
-            "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",
-        );
+        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
+
+        let client = Orpheus::new(api_key);
 
         let request = ChatRequest::builder()
             .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
@@ -217,7 +168,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_completion_request() {
-        let api_key = env::var(OPENROUTER_API_ENV_VAR).expect("load env var");
+        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
 
         let client = Orpheus::new(api_key);
 

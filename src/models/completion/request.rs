@@ -108,8 +108,8 @@ pub struct UsageConfig {
 mod test {
     use super::*;
 
-    #[tokio::test]
-    async fn test_completion_request_serialization() {
+    #[test]
+    fn test_completion_request_serialization() {
         let request = CompletionRequest::builder()
             .model("gpt-3.5-turbo".into())
             .prompt("Hello, world!".into())

@@ -4,7 +4,6 @@ mod client;
 mod constants;
 mod exceptions;
 mod models;
-mod utils;
 
 // use pyo3::prelude::*;
 

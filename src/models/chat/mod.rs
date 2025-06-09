@@ -89,12 +89,12 @@ mod tests {
 
         // Example of how you would make the HTTP request
         // Uncomment and modify when you have a real endpoint:
-        let api_key = std::env::var(OPENROUTER_API_ENV_VAR).expect("load env var");
+        let api_key = std::env::var(API_KEY_ENV_VAR).expect("load env var");
         let client = reqwest::Client::new();
         let response = client
             .post("https://openrouter.ai/api/v1/chat/completions")
-            .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
+            .bearer_auth(api_key)
             .json(&request)
             .send()
             .await

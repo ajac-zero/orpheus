@@ -4,6 +4,8 @@ mod response;
 pub use request::*;
 pub use response::*;
 
+use crate::constants::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -19,14 +21,12 @@ mod tests {
 
         // Example of how you would make the HTTP request
         // Uncomment and modify when you have a real endpoint:
+        let api_key = std::env::var(API_KEY_ENV_VAR).expect("load env var");
         let client = reqwest::Client::new();
         let response = client
             .post("https://openrouter.ai/api/v1/completions")
-            .header(
-                "Authorization",
-                "Bearer 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",
-            )
             .header("Content-Type", "application/json")
+            .bearer_auth(api_key)
             .json(&request)
             .send()
             .await

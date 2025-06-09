@@ -264,6 +264,16 @@ mod test {
         ));
     }
 
+    #[test]
+    fn test_simple_chat_request_serialization() {
+        let request = ChatRequest::simple("gpt-3.5-turbo", "Hello world");
+
+        // Test that we can serialize the request (this would normally be sent to the API)
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("gpt-3.5-turbo"));
+        assert!(json.contains("Hello world"));
+    }
+
     #[tokio::test]
     async fn test_chat_request_serialization() {
         let request = ChatRequest::builder()
