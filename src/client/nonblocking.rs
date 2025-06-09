@@ -1,7 +1,8 @@
 use crate::constants::*;
 use crate::exceptions::OrpheusError;
-use crate::models::chat::{ChatRequest, ChatResponse};
+use crate::models::chat::{AsyncChatResponse, AsyncStream, ChatRequest};
 use crate::models::completion::{CompletionRequest, CompletionResponse};
+use either::Either::{Left, Right};
 use reqwest::Client;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 
@@ -37,7 +38,7 @@ impl Orpheus {
     }
 
     /// Send a chat completion request
-    pub async fn chat(&self, request: ChatRequest) -> Result<ChatResponse, OrpheusError> {
+    pub async fn chat(&self, request: ChatRequest) -> Result<AsyncChatResponse, OrpheusError> {
         let url = [self.base_url.as_str(), CHAT_COMPLETION_PATH].concat();
 
         let response = self
@@ -61,7 +62,12 @@ impl Orpheus {
             });
         }
 
-        let chat_response: ChatResponse = response.json().await?;
+        let chat_response = if request.stream.is_some_and(|x| x) {
+            Right(AsyncStream::new(response))
+        } else {
+            Left(response.json().await?)
+        };
+
         Ok(chat_response)
     }
 
@@ -102,7 +108,7 @@ impl Orpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> Result<ChatResponse, OrpheusError> {
+    ) -> Result<AsyncChatResponse, OrpheusError> {
         let request = ChatRequest::simple(model, message);
         self.chat(request).await
     }
@@ -113,7 +119,7 @@ impl Orpheus {
         model: impl Into<String>,
         system_prompt: impl Into<String>,
         user_message: impl Into<String>,
-    ) -> Result<ChatResponse, OrpheusError> {
+    ) -> Result<AsyncChatResponse, OrpheusError> {
         let request = ChatRequest::with_system(model, system_prompt, user_message);
         self.chat(request).await
     }
@@ -121,10 +127,12 @@ impl Orpheus {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::{env, ops::DerefMut};
+
+    use tokio::io::AsyncBufReadExt;
 
     use super::*;
-    use crate::models::chat::{ChatMessage, Content, MessageRole};
+    use crate::models::chat::{ChatMessage, ChatStreamChunk, Content, MessageRole};
 
     #[test]
     fn test_client_creation() {
@@ -158,12 +166,79 @@ mod tests {
 
         assert!(response.is_ok());
 
-        let chat_response = response.unwrap();
+        let chat_response = response.unwrap().unwrap_left();
         assert!(chat_response.id.is_some());
         assert!(chat_response.choices.is_some());
 
         let choices = chat_response.choices.unwrap();
         assert!(!choices.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_chat_stream_request() {
+        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
+
+        let client = Orpheus::new(api_key);
+
+        let request = ChatRequest::builder()
+            .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
+            .messages(vec![
+                ChatMessage::system(Content::simple("You are a friend")),
+                ChatMessage::user(Content::simple("Hello!")),
+            ])
+            .stream(true)
+            .build();
+
+        let response = client.chat(request).await;
+        println!("{:?}", response);
+
+        assert!(response.is_ok());
+
+        let chat_response = response.unwrap().unwrap_right();
+
+        let mut accumulated_content = String::new();
+        let mut is_finished = false;
+
+        let mut lines = chat_response.0.lines();
+
+        while let Some(line) = lines.next_line().await.unwrap() {
+            if line.is_empty() || line.starts_with(":") {
+                continue;
+            }
+
+            assert!(line.starts_with("data: "), "Invalid SSE line: {}", line);
+
+            let json_str = &line[6..]; // Remove "data: " prefix and trailing whitespace
+
+            if json_str == "[DONE]" {
+                break;
+            }
+
+            println!("{:?}", json_str);
+            let chunk = serde_json::from_str::<ChatStreamChunk>(json_str).unwrap();
+
+            assert_eq!(chunk.object, "chat.completion.chunk");
+            assert_eq!(chunk.choices.len(), 1);
+
+            let choice = &chunk.choices[0];
+
+            // Accumulate content
+            if let Some(content) = &choice.delta.content {
+                accumulated_content.push_str(content);
+            }
+
+            // Check for completion
+            if choice.finish_reason.is_some() {
+                is_finished = true;
+                assert_eq!(choice.finish_reason, Some("stop".to_string()));
+            }
+        }
+
+        assert!(is_finished);
+        println!(
+            "Successfully processed streaming chat completion: '{}'",
+            accumulated_content
+        );
     }
 
     #[tokio::test]

@@ -1,7 +1,10 @@
+use std::io::BufReader;
+
 use crate::constants::*;
 use crate::exceptions::OrpheusError;
 use crate::models::chat::{ChatRequest, ChatResponse};
 use crate::models::completion::{CompletionRequest, CompletionResponse};
+use either::Either::{Left, Right};
 use reqwest::blocking::Client;
 use reqwest::header::CONTENT_TYPE;
 
@@ -59,7 +62,12 @@ impl Orpheus {
             });
         }
 
-        let chat_response: ChatResponse = response.json()?;
+        let chat_response = if request.stream.is_some_and(|x| x) {
+            Right(BufReader::new(response))
+        } else {
+            Left(response.json()?)
+        };
+
         Ok(chat_response)
     }
 
@@ -117,10 +125,10 @@ impl Orpheus {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::{env, io::BufRead};
 
     use super::*;
-    use crate::models::chat::{ChatMessage, Content, MessageRole};
+    use crate::models::chat::{ChatMessage, ChatStreamChunk, Content, MessageRole};
 
     #[test]
     fn test_client_creation() {
@@ -154,12 +162,79 @@ mod tests {
 
         assert!(response.is_ok());
 
-        let chat_response = response.unwrap();
+        let chat_response = response.unwrap().unwrap_left();
         assert!(chat_response.id.is_some());
         assert!(chat_response.choices.is_some());
 
         let choices = chat_response.choices.unwrap();
         assert!(!choices.is_empty());
+    }
+
+    #[test]
+    fn test_chat_stream_request() {
+        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
+
+        let client = Orpheus::new(api_key);
+
+        let request = ChatRequest::builder()
+            .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
+            .messages(vec![
+                ChatMessage::system(Content::simple("You are a friend")),
+                ChatMessage::user(Content::simple("Hello!")),
+            ])
+            .stream(true)
+            .build();
+
+        let response = client.chat(request);
+        println!("{:?}", response);
+
+        assert!(response.is_ok());
+
+        let chat_response = response.unwrap().unwrap_right();
+
+        let mut accumulated_content = String::new();
+        let mut is_finished = false;
+
+        for maybe_line in chat_response.lines() {
+            let line = maybe_line.unwrap();
+
+            if line.is_empty() || line.starts_with(":") {
+                continue;
+            }
+
+            assert!(line.starts_with("data: "), "Invalid SSE line: {}", line);
+
+            let json_str = &line[6..]; // Remove "data: " prefix and trailing whitespace
+
+            if json_str == "[DONE]" {
+                break;
+            }
+
+            println!("{:?}", json_str);
+            let chunk = serde_json::from_str::<ChatStreamChunk>(json_str).unwrap();
+
+            assert_eq!(chunk.object, "chat.completion.chunk");
+            assert_eq!(chunk.choices.len(), 1);
+
+            let choice = &chunk.choices[0];
+
+            // Accumulate content
+            if let Some(content) = &choice.delta.content {
+                accumulated_content.push_str(content);
+            }
+
+            // Check for completion
+            if choice.finish_reason.is_some() {
+                is_finished = true;
+                assert_eq!(choice.finish_reason, Some("stop".to_string()));
+            }
+        }
+
+        assert!(is_finished);
+        println!(
+            "Successfully processed streaming chat completion: '{}'",
+            accumulated_content
+        );
     }
 
     #[test]

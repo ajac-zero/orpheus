@@ -1,10 +1,20 @@
+use std::io::BufReader;
+use std::ops::{Deref, DerefMut};
+use std::{fmt::Debug, pin::Pin};
+
+use either::Either;
+use futures_lite::Stream;
+use futures_util::TryStreamExt;
+use reqwest::blocking;
 use serde::{Deserialize, Serialize};
+use tokio::io;
+use tokio_util::io::StreamReader;
 
 use super::ChatMessage;
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatResponse {
+pub struct ChatCompletion {
     /// Unique identifier for the chat completion
     pub id: Option<String>,
 
@@ -23,25 +33,25 @@ pub struct ChatChoice {
 pub struct ChatStreamChunk {
     /// Unique identifier for the chat completion
     pub id: String,
-    
+
     /// The provider of the model
     pub provider: Option<String>,
-    
+
     /// The model used for the completion
     pub model: Option<String>,
-    
+
     /// The object type (always "chat.completion.chunk" for streaming)
     pub object: String,
-    
+
     /// Unix timestamp of when the completion was created
     pub created: i64,
-    
+
     /// List of streaming choices
     pub choices: Vec<ChatStreamChoice>,
-    
+
     /// System fingerprint for the response
     pub system_fingerprint: Option<String>,
-    
+
     /// Usage statistics (only present in the final chunk)
     pub usage: Option<ChatUsage>,
 }
@@ -51,16 +61,16 @@ pub struct ChatStreamChunk {
 pub struct ChatStreamChoice {
     /// The index of the choice
     pub index: u32,
-    
+
     /// The delta containing incremental message content
     pub delta: ChatStreamDelta,
-    
+
     /// The reason the completion finished
     pub finish_reason: Option<String>,
-    
+
     /// The native finish reason from the provider
     pub native_finish_reason: Option<String>,
-    
+
     /// Log probabilities for the choice
     pub logprobs: Option<serde_json::Value>,
 }
@@ -70,7 +80,7 @@ pub struct ChatStreamChoice {
 pub struct ChatStreamDelta {
     /// The role of the message (typically "assistant" for responses)
     pub role: Option<String>,
-    
+
     /// The incremental content of the message
     pub content: Option<String>,
 }
@@ -80,16 +90,16 @@ pub struct ChatStreamDelta {
 pub struct ChatUsage {
     /// Number of tokens in the prompt
     pub prompt_tokens: u32,
-    
+
     /// Number of tokens in the completion
     pub completion_tokens: u32,
-    
+
     /// Total number of tokens used
     pub total_tokens: u32,
-    
+
     /// Detailed prompt token information
     pub prompt_tokens_details: Option<PromptTokensDetails>,
-    
+
     /// Detailed completion token information
     pub completion_tokens_details: Option<CompletionTokensDetails>,
 }
@@ -108,7 +118,42 @@ pub struct CompletionTokensDetails {
     pub reasoning_tokens: u32,
 }
 
-pub struct ChatStreamResponse {}
+pub type ChatStream = BufReader<blocking::Response>;
+
+pub struct AsyncStream(pub io::BufReader<Pin<Box<dyn io::AsyncRead + Send>>>);
+
+impl AsyncStream {
+    pub fn new(response: reqwest::Response) -> Self {
+        let stream = response
+            .bytes_stream()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e));
+
+        let reader = StreamReader::new(stream);
+        Self(io::BufReader::new(Box::pin(reader)))
+    }
+}
+
+impl Debug for AsyncStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AsyncStream").finish()
+    }
+}
+
+// pub struct AsyncStreamResponse(pub Pin<Box<dyn AsyncRead + Send>>);
+
+// impl AsyncStreamResponse {
+//     pub fn new(response: reqwest::Response) -> Self {
+//         let stream = response
+//             .bytes_stream()
+//             .map_err(|e| io::Error::new(io::ErrorKind::Other, e));
+
+//         let reader = StreamReader::new(stream);
+//         Self(Box::pin(reader))
+//     }
+// }
+
+pub type ChatResponse = Either<ChatCompletion, ChatStream>;
+pub type AsyncChatResponse = Either<ChatCompletion, AsyncStream>;
 
 #[cfg(test)]
 mod test {
@@ -129,7 +174,7 @@ mod test {
                 ]
             }"#;
 
-        let response: ChatResponse = serde_json::from_str(response_json).unwrap();
+        let response: ChatCompletion = serde_json::from_str(response_json).unwrap();
         assert_eq!(response.id, Some("chatcmpl-abc123".to_string()));
         assert!(response.choices.is_some());
 
@@ -177,7 +222,7 @@ mod test {
         assert_eq!(chunk.object, "chat.completion.chunk");
         assert_eq!(chunk.created, 1749454386);
         assert_eq!(chunk.choices.len(), 1);
-        
+
         let choice = &chunk.choices[0];
         assert_eq!(choice.index, 0);
         assert_eq!(choice.delta.role, Some("assistant".to_string()));
@@ -220,7 +265,7 @@ mod test {
 
         let chunk: ChatStreamChunk = serde_json::from_str(chunk_json).unwrap();
         assert!(chunk.usage.is_some());
-        
+
         let usage = chunk.usage.unwrap();
         assert_eq!(usage.prompt_tokens, 8);
         assert_eq!(usage.completion_tokens, 9);

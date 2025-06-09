@@ -9,6 +9,8 @@ use crate::constants::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures_lite::StreamExt;
+    use reqwest::header::CONTENT_TYPE;
     use serde_json;
 
     #[tokio::test]
@@ -88,19 +90,18 @@ mod tests {
             .build();
 
         // Example of how you would make the HTTP request
-        // Uncomment and modify when you have a real endpoint:
         let api_key = std::env::var(API_KEY_ENV_VAR).expect("load env var");
         let client = reqwest::Client::new();
         let response = client
-            .post("https://openrouter.ai/api/v1/chat/completions")
-            .header("Content-Type", "application/json")
+            .post(format!("{BASE_URL_ENV_VAR}{CHAT_COMPLETION_PATH}"))
+            .header(CONTENT_TYPE, "application/json")
             .bearer_auth(api_key)
             .json(&request)
             .send()
             .await
             .unwrap();
 
-        let chat_response: ChatResponse = response.json().await.unwrap();
+        let chat_response: ChatCompletion = response.json().await.unwrap();
         println!("Chat Response: {:?}", chat_response);
 
         // For now, just test that we can serialize the request
@@ -108,5 +109,91 @@ mod tests {
         assert!(json.contains("gpt-4"));
         assert!(json.contains("Write a short haiku about programming"));
         assert!(json.contains("creative_writer_001"));
+    }
+
+    #[tokio::test]
+    async fn test_http_streaming_request() {
+        // Create a streaming chat request
+        let request = ChatRequest::builder()
+            .model("gpt-4".into())
+            .messages(vec![
+                ChatMessage::system(Content::simple("You are a helpful assistant.")),
+                ChatMessage::user(Content::simple("Tell me about the roman republic")),
+            ])
+            .stream(true) // Enable streaming
+            .temperature(0.7)
+            .build();
+
+        // Verify the request is properly configured for streaming
+        assert_eq!(request.stream, Some(true));
+
+        // Test serialization
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"stream\":true"));
+        assert!(json.contains("Tell me about the roman republic"));
+
+        // Example of how you would make the streaming HTTP request
+        // Note: In a real test, you'd need a mock server or test against actual API
+        let api_key = std::env::var(API_KEY_ENV_VAR).unwrap();
+        let client = reqwest::Client::new();
+
+        // This is how you would set up the streaming request
+        let response = client
+            .post(format!("{BASE_URL_ENV_VAR}{CHAT_COMPLETION_PATH}"))
+            .header(CONTENT_TYPE, "application/json")
+            .bearer_auth(api_key)
+            .json(&request)
+            .send()
+            .await
+            .unwrap();
+
+        let mut accumulated_content = String::new();
+        let mut is_finished = false;
+
+        let mut stream = response.bytes_stream();
+
+        // Process mock SSE lines
+        while let Some(Ok(bytes)) = stream.next().await {
+            let data = String::from_utf8(bytes.to_vec()).unwrap();
+
+            for line in data.lines() {
+                if line.is_empty() || line.starts_with(":") {
+                    continue;
+                }
+
+                assert!(line.starts_with("data: "), "Invalid SSE line: {}", line);
+
+                let json_str = &line[6..]; // Remove "data: " prefix and trailing whitespace
+
+                if json_str == "[DONE]" {
+                    break;
+                }
+
+                println!("{:?}", json_str);
+                let chunk = serde_json::from_str::<ChatStreamChunk>(json_str).unwrap();
+
+                assert_eq!(chunk.object, "chat.completion.chunk");
+                assert_eq!(chunk.choices.len(), 1);
+
+                let choice = &chunk.choices[0];
+
+                // Accumulate content
+                if let Some(content) = &choice.delta.content {
+                    accumulated_content.push_str(content);
+                }
+
+                // Check for completion
+                if choice.finish_reason.is_some() {
+                    is_finished = true;
+                    assert_eq!(choice.finish_reason, Some("stop".to_string()));
+                }
+            }
+        }
+
+        assert!(is_finished);
+        println!(
+            "Successfully processed streaming chat completion: '{}'",
+            accumulated_content
+        );
     }
 }
