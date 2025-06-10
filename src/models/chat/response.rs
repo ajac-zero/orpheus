@@ -7,8 +7,10 @@ use futures_lite::Stream;
 use futures_util::TryStreamExt;
 use reqwest::blocking;
 use serde::{Deserialize, Serialize};
-use tokio::io;
+use tokio::io::{self, AsyncBufReadExt};
 use tokio_util::io::StreamReader;
+
+use crate::exceptions::OrpheusError;
 
 use super::ChatMessage;
 
@@ -131,6 +133,33 @@ impl AsyncStream {
         let reader = StreamReader::new(stream);
         Self(io::BufReader::new(Box::pin(reader)))
     }
+
+    pub async fn next(&mut self) -> Result<Option<ChatStreamChunk>, OrpheusError> {
+        let mut line = String::new();
+
+        loop {
+            line.clear();
+            match self.0.read_line(&mut line).await? {
+                0 => return Ok(None), // EOF
+                _ => {
+                    let line = line.trim();
+                    if line.is_empty() || line.starts_with(":") {
+                        continue;
+                    }
+
+                    assert!(line.starts_with("data: "), "Invalid SSE line: {:?}", line);
+
+                    let json_str = &line[6..]; // Remove "data: " prefix
+
+                    if json_str == "[DONE]" {
+                        return Ok(None);
+                    }
+
+                    return Ok(Some(serde_json::from_str::<ChatStreamChunk>(json_str)?));
+                }
+            }
+        }
+    }
 }
 
 impl Debug for AsyncStream {
@@ -138,19 +167,6 @@ impl Debug for AsyncStream {
         f.debug_struct("AsyncStream").finish()
     }
 }
-
-// pub struct AsyncStreamResponse(pub Pin<Box<dyn AsyncRead + Send>>);
-
-// impl AsyncStreamResponse {
-//     pub fn new(response: reqwest::Response) -> Self {
-//         let stream = response
-//             .bytes_stream()
-//             .map_err(|e| io::Error::new(io::ErrorKind::Other, e));
-
-//         let reader = StreamReader::new(stream);
-//         Self(Box::pin(reader))
-//     }
-// }
 
 pub type ChatResponse = Either<ChatCompletion, ChatStream>;
 pub type AsyncChatResponse = Either<ChatCompletion, AsyncStream>;

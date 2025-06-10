@@ -4,6 +4,14 @@ pub enum OrpheusError {
     Serialization(serde_json::Error),
     ApiError { status: u16, message: String },
     MissingApiKey,
+    Anyhow(String),
+    Io(tokio::io::Error),
+}
+
+impl From<anyhow::Error> for OrpheusError {
+    fn from(err: anyhow::Error) -> Self {
+        OrpheusError::Anyhow(err.to_string())
+    }
 }
 
 impl From<reqwest::Error> for OrpheusError {
@@ -18,6 +26,12 @@ impl From<serde_json::Error> for OrpheusError {
     }
 }
 
+impl From<tokio::io::Error> for OrpheusError {
+    fn from(err: tokio::io::Error) -> Self {
+        OrpheusError::Io(err)
+    }
+}
+
 impl std::fmt::Display for OrpheusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -27,6 +41,8 @@ impl std::fmt::Display for OrpheusError {
                 write!(f, "API error {}: {}", status, message)
             }
             OrpheusError::MissingApiKey => write!(f, "API key is required"),
+            OrpheusError::Anyhow(e) => write!(f, "Anyhow error: {}", e),
+            OrpheusError::Io(e) => write!(f, "IO error: {}", e),
         }
     }
 }

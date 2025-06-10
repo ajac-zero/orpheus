@@ -118,7 +118,7 @@ mod tests {
             .model("gpt-4".into())
             .messages(vec![
                 ChatMessage::system(Content::simple("You are a helpful assistant.")),
-                ChatMessage::user(Content::simple("Tell me about the roman republic")),
+                ChatMessage::user(Content::simple("Say hello!")),
             ])
             .stream(true) // Enable streaming
             .temperature(0.7)
@@ -130,7 +130,7 @@ mod tests {
         // Test serialization
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("\"stream\":true"));
-        assert!(json.contains("Tell me about the roman republic"));
+        assert!(json.contains("Say hello!"));
 
         // Example of how you would make the streaming HTTP request
         // Note: In a real test, you'd need a mock server or test against actual API
