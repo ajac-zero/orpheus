@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::too_many_arguments, unused_imports)]
+#![allow(dead_code, clippy::too_many_arguments)]
 
 mod client;
 mod constants;

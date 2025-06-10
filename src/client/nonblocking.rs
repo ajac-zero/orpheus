@@ -1,10 +1,10 @@
 use crate::constants::*;
 use crate::exceptions::OrpheusError;
-use crate::models::chat::{AsyncChatResponse, AsyncStream, ChatRequest};
+use crate::models::chat::{AsyncChatResponse, ChatRequest};
 use crate::models::completion::{CompletionRequest, CompletionResponse};
 use either::Either::{Left, Right};
 use reqwest::Client;
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
+use reqwest::header::CONTENT_TYPE;
 
 #[derive(Debug)]
 pub struct Orpheus {
@@ -63,7 +63,7 @@ impl Orpheus {
         }
 
         let chat_response = if request.stream.is_some_and(|x| x) {
-            Right(AsyncStream::new(response))
+            Right(response.into())
         } else {
             Left(response.json().await?)
         };
@@ -127,12 +127,10 @@ impl Orpheus {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, ops::DerefMut};
-
-    use tokio::io::AsyncBufReadExt;
+    use std::env;
 
     use super::*;
-    use crate::models::chat::{ChatMessage, ChatStreamChunk, Content, MessageRole};
+    use crate::models::chat::{ChatMessage, Content};
 
     #[test]
     fn test_client_creation() {

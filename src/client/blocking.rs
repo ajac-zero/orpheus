@@ -1,5 +1,3 @@
-use std::io::BufReader;
-
 use crate::constants::*;
 use crate::exceptions::OrpheusError;
 use crate::models::chat::{ChatRequest, ChatResponse};
@@ -63,7 +61,7 @@ impl Orpheus {
         }
 
         let chat_response = if request.stream.is_some_and(|x| x) {
-            Right(BufReader::new(response))
+            Right(response.into())
         } else {
             Left(response.json()?)
         };
@@ -125,10 +123,10 @@ impl Orpheus {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, io::BufRead};
+    use std::env;
 
     use super::*;
-    use crate::models::chat::{ChatMessage, ChatStreamChunk, Content, MessageRole};
+    use crate::models::chat::{ChatMessage, Content};
 
     #[test]
     fn test_client_creation() {
@@ -190,29 +188,12 @@ mod tests {
 
         assert!(response.is_ok());
 
-        let chat_response = response.unwrap().unwrap_right();
+        let mut chat_response = response.unwrap().unwrap_right();
 
         let mut accumulated_content = String::new();
         let mut is_finished = false;
 
-        for maybe_line in chat_response.lines() {
-            let line = maybe_line.unwrap();
-
-            if line.is_empty() || line.starts_with(":") {
-                continue;
-            }
-
-            assert!(line.starts_with("data: "), "Invalid SSE line: {}", line);
-
-            let json_str = &line[6..]; // Remove "data: " prefix and trailing whitespace
-
-            if json_str == "[DONE]" {
-                break;
-            }
-
-            println!("{:?}", json_str);
-            let chunk = serde_json::from_str::<ChatStreamChunk>(json_str).unwrap();
-
+        while let Some(chunk) = chat_response.next().unwrap() {
             assert_eq!(chunk.object, "chat.completion.chunk");
             assert_eq!(chunk.choices.len(), 1);
 

@@ -4,11 +4,10 @@ mod response;
 pub use request::*;
 pub use response::*;
 
-use crate::constants::*;
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::*;
     use futures_lite::StreamExt;
     use reqwest::header::CONTENT_TYPE;
     use serde_json;

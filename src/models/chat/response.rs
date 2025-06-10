@@ -1,9 +1,7 @@
-use std::io::BufReader;
-use std::ops::{Deref, DerefMut};
+use std::io::{BufRead, BufReader};
 use std::{fmt::Debug, pin::Pin};
 
 use either::Either;
-use futures_lite::Stream;
 use futures_util::TryStreamExt;
 use reqwest::blocking;
 use serde::{Deserialize, Serialize};
@@ -120,9 +118,56 @@ pub struct CompletionTokensDetails {
     pub reasoning_tokens: u32,
 }
 
-pub type ChatStream = BufReader<blocking::Response>;
+#[derive(Debug)]
+pub struct ChatStream(BufReader<blocking::Response>);
+
+impl From<blocking::Response> for ChatStream {
+    fn from(value: blocking::Response) -> Self {
+        Self::new(value)
+    }
+}
+
+impl ChatStream {
+    pub fn new(response: reqwest::blocking::Response) -> Self {
+        let reader = BufReader::new(response);
+        Self(reader)
+    }
+
+    pub fn next(&mut self) -> Result<Option<ChatStreamChunk>, OrpheusError> {
+        let mut line = String::new();
+
+        loop {
+            line.clear();
+            match self.0.read_line(&mut line)? {
+                0 => break Ok(None),
+                _ => {
+                    let line = line.trim();
+                    if line.is_empty() || line.starts_with(":") {
+                        continue;
+                    }
+
+                    assert!(line.starts_with("data: "), "Invalid SSE line: {}", line);
+
+                    let json_str = &line[6..]; // Remove "data: " prefix and trailing whitespace
+
+                    if json_str == "[DONE]" {
+                        break Ok(None);
+                    }
+
+                    return Ok(Some(serde_json::from_str::<ChatStreamChunk>(json_str)?));
+                }
+            }
+        }
+    }
+}
 
 pub struct AsyncStream(pub io::BufReader<Pin<Box<dyn io::AsyncRead + Send>>>);
+
+impl From<reqwest::Response> for AsyncStream {
+    fn from(value: reqwest::Response) -> Self {
+        Self::new(value)
+    }
+}
 
 impl AsyncStream {
     pub fn new(response: reqwest::Response) -> Self {
