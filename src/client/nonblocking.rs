@@ -7,13 +7,13 @@ use reqwest::Client;
 use reqwest::header::CONTENT_TYPE;
 
 #[derive(Debug)]
-pub struct Orpheus {
+pub struct AsyncOrpheus {
     client: Client,
     api_key: String,
     base_url: String,
 }
 
-impl Orpheus {
+impl AsyncOrpheus {
     /// Create a new Orpheus client with default settings
     pub fn new(api_key: impl Into<String>) -> Self {
         let client = Client::builder()
@@ -123,6 +123,16 @@ impl Orpheus {
         let request = ChatRequest::with_system(model, system_prompt, user_message);
         self.chat(request).await
     }
+
+    /// Convenience method for simple streaming requests
+    pub async fn simple_chat_stream(
+        &self,
+        model: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Result<AsyncChatResponse, OrpheusError> {
+        let request = ChatRequest::simple_stream(model, message);
+        self.chat(request).await
+    }
 }
 
 #[cfg(test)]
@@ -134,14 +144,15 @@ mod tests {
 
     #[test]
     fn test_client_creation() {
-        let client = Orpheus::new("test_key");
+        let client = AsyncOrpheus::new("test_key");
         assert_eq!(client.base_url, "https://openrouter.ai/api/v1");
         assert_eq!(client.api_key, "test_key");
     }
 
     #[test]
     fn test_client_with_base_url() {
-        let client = Orpheus::new("test_key").with_base_url("https://custom-api.example.com/v1");
+        let client =
+            AsyncOrpheus::new("test_key").with_base_url("https://custom-api.example.com/v1");
         assert_eq!(client.base_url, "https://custom-api.example.com/v1");
     }
 
@@ -149,7 +160,7 @@ mod tests {
     async fn test_chat_request() {
         let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
 
-        let client = Orpheus::new(api_key);
+        let client = AsyncOrpheus::new(api_key);
 
         let request = ChatRequest::builder()
             .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
@@ -176,7 +187,7 @@ mod tests {
     async fn test_chat_stream_request() {
         let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
 
-        let client = Orpheus::new(api_key);
+        let client = AsyncOrpheus::new(api_key);
 
         let request = ChatRequest::builder()
             .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
@@ -226,7 +237,7 @@ mod tests {
     async fn test_completion_request() {
         let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
 
-        let client = Orpheus::new(api_key);
+        let client = AsyncOrpheus::new(api_key);
 
         let request = CompletionRequest::builder()
             .model("openai/gpt-3.5-turbo".into())

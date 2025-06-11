@@ -1,10 +1,10 @@
 [package]
-name = "orpheus-core"
+name = "orpheus"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "_core"
+name = "orpheus"
 crate-type = ["cdylib", "rlib"]
 
 [features]

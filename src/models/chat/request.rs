@@ -104,6 +104,19 @@ impl ChatRequest {
             .messages(messages)
             .build()
     }
+
+    /// Create a simple streaming chat request with a single user message
+    pub fn simple_stream(model: impl Into<String>, message: impl Into<String>) -> Self {
+        let user_message = ChatMessage {
+            role: MessageRole::User,
+            content: Content::Simple(message.into()),
+        };
+        Self::builder()
+            .model(model.into())
+            .messages(vec![user_message])
+            .stream(true)
+            .build()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

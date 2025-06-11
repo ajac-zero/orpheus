@@ -3,7 +3,9 @@
 mod client;
 mod constants;
 mod exceptions;
-mod models;
+pub mod models;
+
+pub use client::{AsyncOrpheus, Orpheus};
 
 // use pyo3::prelude::*;
 
