@@ -1,12 +1,11 @@
 use std::io::{BufRead, BufReader};
+use std::task::{Context, Poll};
 use std::{fmt::Debug, pin::Pin};
 
 use either::Either;
-use futures_util::TryStreamExt;
+use futures_lite::Stream;
 use reqwest::blocking;
 use serde::{Deserialize, Serialize};
-use tokio::io::{self, AsyncBufReadExt};
-use tokio_util::io::StreamReader;
 
 use crate::exceptions::OrpheusError;
 
@@ -54,6 +53,18 @@ pub struct ChatStreamChunk {
 
     /// Usage statistics (only present in the final chunk)
     pub usage: Option<ChatUsage>,
+}
+
+impl From<ChatStreamChunk> for String {
+    fn from(value: ChatStreamChunk) -> Self {
+        let content = value.choices.first().unwrap().clone().delta.content;
+
+        if let Some(content) = content {
+            content
+        } else {
+            "".to_string()
+        }
+    }
 }
 
 #[serde_with::skip_serializing_none]
@@ -161,7 +172,10 @@ impl ChatStream {
     }
 }
 
-pub struct AsyncStream(pub io::BufReader<Pin<Box<dyn io::AsyncRead + Send>>>);
+pub struct AsyncStream {
+    stream: Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>,
+    buffer: Vec<u8>,
+}
 
 impl From<reqwest::Response> for AsyncStream {
     fn from(value: reqwest::Response) -> Self {
@@ -171,39 +185,118 @@ impl From<reqwest::Response> for AsyncStream {
 
 impl AsyncStream {
     pub fn new(response: reqwest::Response) -> Self {
-        let stream = response
-            .bytes_stream()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e));
-
-        let reader = StreamReader::new(stream);
-        Self(io::BufReader::new(Box::pin(reader)))
+        let stream = Box::pin(response.bytes_stream());
+        Self {
+            stream,
+            buffer: Vec::new(), // Initialize as Vec<u8>
+        }
     }
+}
 
-    pub async fn next(&mut self) -> Result<Option<ChatStreamChunk>, OrpheusError> {
-        let mut line = String::new();
+impl Stream for AsyncStream {
+    type Item = Result<ChatStreamChunk, OrpheusError>;
 
-        loop {
-            line.clear();
-            match self.0.read_line(&mut line).await? {
-                0 => return Ok(None), // EOF
-                _ => {
-                    let line = line.trim();
-                    if line.is_empty() || line.starts_with(":") {
-                        continue;
-                    }
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
 
-                    assert!(line.starts_with("data: "), "Invalid SSE line: {:?}", line);
+        let result = loop {
+            // First, try to extract a complete line from existing buffer
+            if let Some(line_bytes) = extract_line(&mut this.buffer) {
+                let line = String::from_utf8_lossy(&line_bytes);
+                let line = line.trim();
 
-                    let json_str = &line[6..]; // Remove "data: " prefix
+                // Skip empty lines and comments
+                if line.is_empty() || line.starts_with(":") {
+                    continue;
+                }
 
-                    if json_str == "[DONE]" {
-                        return Ok(None);
-                    }
+                // Validate SSE format
+                if !line.starts_with("data: ") {
+                    break Some(Err(OrpheusError::Anyhow(format!(
+                        "Invalid SSE line: {:?}",
+                        line
+                    ))));
+                }
 
-                    return Ok(Some(serde_json::from_str::<ChatStreamChunk>(json_str)?));
+                let json_str = &line[6..]; // Remove "data: " prefix
+                if json_str == "[DONE]" {
+                    break None;
+                }
+
+                // Parse JSON - handle the Result properly
+                match serde_json::from_str::<ChatStreamChunk>(json_str) {
+                    Ok(chunk) => break Some(Ok(chunk)),
+                    Err(e) => break Some(Err(OrpheusError::Anyhow(e.to_string()))),
                 }
             }
+
+            // No complete line found, need more data from stream
+            match this.stream.as_mut().poll_next(cx) {
+                Poll::Pending => return Poll::Pending,
+                Poll::Ready(None) => {
+                    // Stream ended - check if we have remaining data
+                    if this.buffer.is_empty() {
+                        return Poll::Ready(None);
+                    } else {
+                        // Process final incomplete line
+                        let line_clone = this.buffer.clone();
+                        let line = String::from_utf8_lossy(&line_clone);
+                        this.buffer.clear();
+                        let line = line.trim();
+
+                        if line.is_empty() || line.starts_with(":") {
+                            return Poll::Ready(None);
+                        }
+
+                        if !line.starts_with("data: ") {
+                            return Poll::Ready(Some(Err(OrpheusError::Anyhow(format!(
+                                "Invalid SSE line: {:?}",
+                                line
+                            )))));
+                        }
+
+                        let json_str = &line[6..];
+                        if json_str == "[DONE]" {
+                            return Poll::Ready(None);
+                        }
+
+                        match serde_json::from_str::<ChatStreamChunk>(json_str) {
+                            Ok(chunk) => return Poll::Ready(Some(Ok(chunk))),
+                            Err(e) => {
+                                return Poll::Ready(Some(Err(OrpheusError::Anyhow(e.to_string()))));
+                            }
+                        }
+                    }
+                }
+                Poll::Ready(Some(item)) => match item {
+                    Ok(bytes) => this.buffer.extend_from_slice(&bytes),
+                    Err(e) => break Some(Err(OrpheusError::Anyhow(e.to_string()))),
+                },
+            }
+        };
+
+        Poll::Ready(result)
+    }
+}
+
+// Helper function to extract a complete line from buffer
+fn extract_line(buffer: &mut Vec<u8>) -> Option<Vec<u8>> {
+    // Look for newline
+    if let Some(newline_pos) = buffer.iter().position(|&b| b == b'\n') {
+        // Extract the line including the newline
+        let mut line: Vec<u8> = buffer.drain(0..=newline_pos).collect();
+
+        // Remove the newline
+        line.pop();
+
+        // Remove carriage return if present (for \r\n line endings)
+        if line.last() == Some(&b'\r') {
+            line.pop();
         }
+
+        Some(line)
+    } else {
+        None
     }
 }
 

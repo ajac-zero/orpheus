@@ -139,6 +139,8 @@ impl AsyncOrpheus {
 mod tests {
     use std::env;
 
+    use futures_util::StreamExt;
+
     use super::*;
     use crate::models::chat::{ChatMessage, Content};
 
@@ -208,7 +210,11 @@ mod tests {
         let mut accumulated_content = String::new();
         let mut is_finished = false;
 
-        while let Some(chunk) = chat_response.next().await.unwrap() {
+        let mut count = 0;
+        while let Some(chunk) = chat_response.next().await {
+            println!("{:?}", chunk);
+            count = count + 1;
+            let chunk = chunk.unwrap();
             assert_eq!(chunk.object, "chat.completion.chunk");
             assert_eq!(chunk.choices.len(), 1);
 
@@ -226,6 +232,7 @@ mod tests {
             }
         }
 
+        println!("Processed chunks: {}", count);
         assert!(is_finished);
         println!(
             "Successfully processed streaming chat completion: '{}'",
