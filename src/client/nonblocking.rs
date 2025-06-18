@@ -6,11 +6,17 @@ use either::Either::{Left, Right};
 use reqwest::Client;
 use reqwest::header::CONTENT_TYPE;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AsyncOrpheus {
     client: Client,
     api_key: String,
     base_url: String,
+}
+
+impl Default for AsyncOrpheus {
+    fn default() -> Self {
+        Self::new("NOT_SET")
+    }
 }
 
 impl AsyncOrpheus {
@@ -34,6 +40,12 @@ impl AsyncOrpheus {
     /// Set the base URL for the API
     pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
         self.base_url = base_url.into();
+        self
+    }
+
+    /// Set the base URL for the API
+    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = api_key.into();
         self
     }
 

@@ -169,6 +169,13 @@ impl Content {
     pub fn simple(content: impl Into<String>) -> Self {
         Content::Simple(content.into())
     }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Content::Simple(s) => s.clone(),
+            Content::Complex(_) => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -198,6 +205,19 @@ pub enum MessageRole {
     User,
     Assistant,
     Tool,
+}
+
+impl MessageRole {
+    pub fn from_string(string: &str) -> Result<Self, String> {
+        match string {
+            "system" => Ok(MessageRole::System),
+            "developer" => Ok(MessageRole::Developer),
+            "user" => Ok(MessageRole::User),
+            "assistant" => Ok(MessageRole::Assistant),
+            "tool" => Ok(MessageRole::Tool),
+            _ => Err(format!("Invalid message role: {}", string)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
