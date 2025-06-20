@@ -9,70 +9,76 @@ use reqwest::header::CONTENT_TYPE;
 #[derive(Debug, Clone)]
 pub struct AsyncOrpheus {
     client: Client,
-    api_key: String,
-    base_url: String,
+    api_key: Option<String>,
+    base_url: Option<String>,
 }
 
 impl Default for AsyncOrpheus {
     fn default() -> Self {
-        Self::new("NOT_SET")
-    }
-}
-
-impl AsyncOrpheus {
-    /// Create a new Orpheus client with default settings
-    pub fn new(api_key: impl Into<String>) -> Self {
         let client = Client::builder()
             .user_agent("Orpheus 1.0")
             .use_rustls_tls()
             .build()
-            .unwrap();
-        let api_key = api_key.into();
-        let base_url = BASE_URL_ENV_VAR.into();
+            .expect("build request client");
 
         Self {
             client,
-            api_key,
-            base_url,
+            api_key: None,
+            base_url: None,
         }
+    }
+}
+
+impl AsyncOrpheus {
+    /// Create a new Orpheus client with provided key and default base url
+    pub fn new(api_key: impl Into<String>) -> Self {
+        Self::default()
+            .with_api_key(api_key)
+            .with_base_url(DEFAULT_BASE_URL)
     }
 
     /// Set the base URL for the API
     pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
-        self.base_url = base_url.into();
+        self.base_url = Some(base_url.into());
         self
     }
 
     /// Set the base URL for the API
     pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
-        self.api_key = api_key.into();
+        self.api_key = Some(api_key.into());
         self
+    }
+
+    fn get_base_url(&self) -> Result<String, OrpheusError> {
+        self.base_url
+            .clone()
+            .ok_or(OrpheusError::Anyhow("No base url set".into()))
+    }
+
+    fn get_url_path(&self, path: &str) -> Result<String, OrpheusError> {
+        self.get_base_url().map(|url| [url.as_str(), path].concat())
+    }
+
+    fn get_api_key(&self) -> Result<String, OrpheusError> {
+        self.api_key
+            .clone()
+            .ok_or(OrpheusError::Anyhow("No api key set".into()))
     }
 
     /// Send a chat completion request
     pub async fn chat(&self, request: ChatRequest) -> Result<AsyncChatResponse, OrpheusError> {
-        let url = [self.base_url.as_str(), CHAT_COMPLETION_PATH].concat();
+        let url = self.get_url_path(CHAT_COMPLETION_PATH)?;
+        let token = self.get_api_key()?;
 
         let response = self
             .client
             .post(&url)
             .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(self.api_key.clone())
+            .bearer_auth(token)
             .json(&request)
             .send()
-            .await?;
-
-        let status = response.status();
-        if !status.is_success() {
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(OrpheusError::ApiError {
-                status: status.as_u16(),
-                message: error_text,
-            });
-        }
+            .await?
+            .error_for_status()?;
 
         let chat_response = if request.stream.is_some_and(|x| x) {
             Right(response.into())
@@ -87,29 +93,19 @@ impl AsyncOrpheus {
     pub async fn completion(
         &self,
         request: CompletionRequest,
-    ) -> Result<CompletionResponse, OrpheusError> {
-        let url = [self.base_url.as_str(), COMPLETION_PATH].concat();
+    ) -> Result<CompletionResponse, anyhow::Error> {
+        let url = self.get_url_path(COMPLETION_PATH)?;
+        let token = self.get_api_key()?;
 
         let response = self
             .client
             .post(&url)
             .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(self.api_key.clone())
+            .bearer_auth(token)
             .json(&request)
             .send()
-            .await?;
-
-        let status = response.status();
-        if !status.is_success() {
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(OrpheusError::ApiError {
-                status: status.as_u16(),
-                message: error_text,
-            });
-        }
+            .await?
+            .error_for_status()?;
 
         let completion_response: CompletionResponse = response.json().await?;
         Ok(completion_response)
@@ -159,15 +155,21 @@ mod tests {
     #[test]
     fn test_client_creation() {
         let client = AsyncOrpheus::new("test_key");
-        assert_eq!(client.base_url, "https://openrouter.ai/api/v1");
-        assert_eq!(client.api_key, "test_key");
+        assert_eq!(
+            client.base_url,
+            Some("https://openrouter.ai/api/v1".to_string())
+        );
+        assert_eq!(client.api_key, Some("test_key".to_string()));
     }
 
     #[test]
     fn test_client_with_base_url() {
         let client =
             AsyncOrpheus::new("test_key").with_base_url("https://custom-api.example.com/v1");
-        assert_eq!(client.base_url, "https://custom-api.example.com/v1");
+        assert_eq!(
+            client.base_url,
+            Some("https://custom-api.example.com/v1".to_string())
+        );
     }
 
     #[tokio::test]
