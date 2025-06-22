@@ -1,15 +1,17 @@
-use std::io::{BufRead, BufReader};
-use std::task::{Context, Poll};
-use std::{fmt::Debug, pin::Pin};
+use std::{
+    fmt::Debug,
+    io::{BufRead, BufReader},
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 use either::Either;
 use futures_lite::Stream;
 use reqwest::blocking;
 use serde::{Deserialize, Serialize};
 
-use crate::exceptions::OrpheusError;
-
 use super::ChatMessage;
+use crate::exceptions::OrpheusError;
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -311,8 +313,10 @@ pub type AsyncChatResponse = Either<ChatCompletion, AsyncStream>;
 
 #[cfg(test)]
 mod test {
-    use super::super::{Content, MessageRole};
-    use super::*;
+    use super::{
+        super::{Content, MessageRole},
+        *,
+    };
 
     #[tokio::test]
     async fn test_chat_response_deserialization() {

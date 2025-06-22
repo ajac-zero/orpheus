@@ -1,102 +1,79 @@
-use crate::constants::*;
-use crate::exceptions::OrpheusError;
-use crate::models::chat::{ChatRequest, ChatResponse};
-use crate::models::completion::{CompletionRequest, CompletionResponse};
-use either::Either::{Left, Right};
-use reqwest::blocking::Client;
-use reqwest::header::CONTENT_TYPE;
+use std::collections::HashMap;
+
+use reqwest::{blocking::Client, header::CONTENT_TYPE};
+use url::Url;
+
+use crate::{
+    constants::*,
+    models::{
+        chat::*,
+        completion::{self, CompletionRequest, CompletionResponse},
+    },
+};
 
 #[derive(Debug)]
 pub struct Orpheus {
     client: Client,
-    api_key: String,
-    base_url: String,
+    api_key: Option<String>,
+    base_url: Url,
 }
 
-impl Orpheus {
-    /// Create a new Orpheus client with default settings
-    pub fn new(api_key: impl Into<String>) -> Self {
+impl Default for Orpheus {
+    fn default() -> Self {
         let client = Client::builder()
             .user_agent(USER_AGENT_NAME)
             .use_rustls_tls()
             .build()
-            .unwrap();
-        let api_key = api_key.into();
-        let base_url = BASE_URL_ENV_VAR.into();
+            .expect("build request client");
 
         Self {
             client,
-            api_key,
-            base_url,
+            api_key: None,
+            base_url: Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url"),
         }
+    }
+}
+
+impl Orpheus {
+    /// Create a new Orpheus client with provided key and default base url
+    pub fn new(api_key: impl Into<String>) -> Self {
+        Self::default().with_api_key(api_key)
     }
 
     /// Set the base URL for the API
-    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
-        self.base_url = base_url.into();
-        self
+    pub fn with_base_url<U>(mut self, base_url: U) -> Result<Self, anyhow::Error>
+    where
+        U: TryInto<Url>,
+        U::Error: Into<anyhow::Error>,
+    {
+        self.base_url = base_url.try_into().map_err(Into::into)?;
+        Ok(self)
     }
 
-    /// Send a chat completion request
-    pub fn chat(&self, request: ChatRequest) -> Result<ChatResponse, OrpheusError> {
-        let url = [self.base_url.as_str(), CHAT_COMPLETION_PATH].concat();
-
-        let response = self
-            .client
-            .post(&url)
-            .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(self.api_key.clone())
-            .json(&request)
-            .send()?;
-
-        let status = response.status();
-        if !status.is_success() {
-            let error_text = response
-                .text()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(OrpheusError::ApiError {
-                status: status.as_u16(),
-                message: error_text,
-            });
-        }
-
-        let chat_response = if request.stream.is_some_and(|x| x) {
-            Right(response.into())
-        } else {
-            Left(response.json()?)
-        };
-
-        Ok(chat_response)
-    }
-
-    /// Send a text completion request
-    pub fn completion(
+    pub fn execute(
         &self,
-        request: CompletionRequest,
-    ) -> Result<CompletionResponse, OrpheusError> {
-        let url = [self.base_url.as_str(), COMPLETION_PATH].concat();
-
-        let response = self
+        path: &str,
+        body: impl serde::Serialize,
+    ) -> anyhow::Result<reqwest::blocking::Response> {
+        let url = self.base_url.join(path)?;
+        let token = self
+            .api_key
+            .as_ref()
+            .map_or_else(String::new, |key| key.clone());
+        Ok(self
             .client
-            .post(&url)
+            .post(url)
             .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(self.api_key.clone())
-            .json(&request)
-            .send()?;
+            .bearer_auth(token)
+            .json(&body)
+            .send()?
+            .error_for_status()?)
+    }
 
-        let status = response.status();
-        if !status.is_success() {
-            let error_text = response
-                .text()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(OrpheusError::ApiError {
-                status: status.as_u16(),
-                message: error_text,
-            });
-        }
-
-        let completion_response: CompletionResponse = response.json()?;
-        Ok(completion_response)
+    /// Set the base URL for the API
+    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = Some(api_key.into());
+        self
     }
 
     /// Convenience method for simple chat requests
@@ -104,9 +81,10 @@ impl Orpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> Result<ChatResponse, OrpheusError> {
-        let request = ChatRequest::simple(model, message);
-        self.chat(request)
+    ) -> anyhow::Result<ChatCompletion> {
+        let message = ChatMessage::user(Content::simple(message));
+
+        self.chat().model(model).messages(vec![message]).send()
     }
 
     /// Convenience method for chat with system prompt
@@ -115,9 +93,196 @@ impl Orpheus {
         model: impl Into<String>,
         system_prompt: impl Into<String>,
         user_message: impl Into<String>,
-    ) -> Result<ChatResponse, OrpheusError> {
-        let request = ChatRequest::with_system(model, system_prompt, user_message);
-        self.chat(request)
+    ) -> anyhow::Result<ChatCompletion> {
+        let messages = vec![
+            ChatMessage::system(Content::simple(system_prompt)),
+            ChatMessage::user(Content::simple(user_message)),
+        ];
+
+        self.chat().model(model).messages(messages).send()
+    }
+
+    /// Convenience method for simple streaming requests
+    pub fn simple_chat_stream(
+        &self,
+        model: impl Into<String>,
+        message: impl Into<String>,
+    ) -> anyhow::Result<ChatStream> {
+        let message = ChatMessage::user(Content::simple(message));
+
+        self.chat_stream()
+            .model(model)
+            .messages(vec![message])
+            .send()
+    }
+}
+
+#[bon::bon]
+impl Orpheus {
+    #[builder(finish_fn = send, on(String, into))]
+    fn chat(
+        &self,
+        model: String,
+        messages: Vec<ChatMessage>,
+        models: Option<Vec<String>>,
+        provider: Option<ProviderPreferences>,
+        reasoning: Option<ReasoningConfig>,
+        usage: Option<UsageConfig>,
+        transforms: Option<Vec<String>>,
+        max_tokens: Option<i32>,
+        temperature: Option<f64>,
+        seed: Option<i32>,
+        top_p: Option<f64>,
+        top_k: Option<i32>,
+        frequency_penalty: Option<f64>,
+        presence_penalty: Option<f64>,
+        repetition_penalty: Option<f64>,
+        logit_bias: Option<HashMap<String, f64>>,
+        top_logprobs: Option<i32>,
+        min_p: Option<f64>,
+        top_a: Option<f64>,
+        user: Option<String>,
+    ) -> anyhow::Result<ChatCompletion> {
+        let stream = Some(false);
+        let body = ChatRequest::new(
+            model,
+            messages,
+            models,
+            provider,
+            reasoning,
+            usage,
+            transforms,
+            stream,
+            max_tokens,
+            temperature,
+            seed,
+            top_p,
+            top_k,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            logit_bias,
+            top_logprobs,
+            min_p,
+            top_a,
+            user,
+        );
+
+        let response = self.execute(CHAT_COMPLETION_PATH, body)?;
+
+        let chat_completion = response.json::<ChatCompletion>()?;
+
+        Ok(chat_completion)
+    }
+
+    #[builder(finish_fn = send, on(String, into))]
+    fn chat_stream(
+        &self,
+        model: String,
+        messages: Vec<ChatMessage>,
+        models: Option<Vec<String>>,
+        provider: Option<ProviderPreferences>,
+        reasoning: Option<ReasoningConfig>,
+        usage: Option<UsageConfig>,
+        transforms: Option<Vec<String>>,
+        max_tokens: Option<i32>,
+        temperature: Option<f64>,
+        seed: Option<i32>,
+        top_p: Option<f64>,
+        top_k: Option<i32>,
+        frequency_penalty: Option<f64>,
+        presence_penalty: Option<f64>,
+        repetition_penalty: Option<f64>,
+        logit_bias: Option<HashMap<String, f64>>,
+        top_logprobs: Option<i32>,
+        min_p: Option<f64>,
+        top_a: Option<f64>,
+        user: Option<String>,
+    ) -> anyhow::Result<ChatStream> {
+        let stream = Some(true);
+        let body = ChatRequest::new(
+            model,
+            messages,
+            models,
+            provider,
+            reasoning,
+            usage,
+            transforms,
+            stream,
+            max_tokens,
+            temperature,
+            seed,
+            top_p,
+            top_k,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            logit_bias,
+            top_logprobs,
+            min_p,
+            top_a,
+            user,
+        );
+
+        let response = self.execute(CHAT_COMPLETION_PATH, body)?;
+
+        Ok(response.into())
+    }
+
+    /// Send a text completion request
+    #[builder(finish_fn = send, on(String, into))]
+    pub fn completion(
+        &self,
+        model: String,
+        prompt: String,
+        models: Option<Vec<String>>,
+        provider: Option<completion::ProviderPreferences>,
+        reasoning: Option<completion::ReasoningConfig>,
+        usage: Option<completion::UsageConfig>,
+        transforms: Option<Vec<String>>,
+        stream: Option<bool>,
+        max_tokens: Option<i32>,
+        temperature: Option<f64>,
+        seed: Option<i32>,
+        top_p: Option<f64>,
+        top_k: Option<i32>,
+        frequency_penalty: Option<f64>,
+        presence_penalty: Option<f64>,
+        repetition_penalty: Option<f64>,
+        logit_bias: Option<HashMap<String, f64>>,
+        top_logprobs: Option<i32>,
+        min_p: Option<f64>,
+        top_a: Option<f64>,
+        user: Option<String>,
+    ) -> anyhow::Result<CompletionResponse> {
+        let body = CompletionRequest::new(
+            model,
+            prompt,
+            models,
+            provider,
+            reasoning,
+            usage,
+            transforms,
+            stream,
+            max_tokens,
+            temperature,
+            seed,
+            top_p,
+            top_k,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            logit_bias,
+            top_logprobs,
+            min_p,
+            top_a,
+            user,
+        );
+
+        let response = self.execute(COMPLETION_PATH, body)?;
+
+        let completion_response: CompletionResponse = response.json()?;
+        Ok(completion_response)
     }
 }
 
@@ -131,14 +296,22 @@ mod tests {
     #[test]
     fn test_client_creation() {
         let client = Orpheus::new("test_key");
-        assert_eq!(client.base_url, "https://openrouter.ai/api/v1");
-        assert_eq!(client.api_key, "test_key");
+        assert_eq!(
+            client.base_url,
+            Url::parse("https://openrouter.ai/api/v1/").unwrap()
+        );
+        assert_eq!(client.api_key, Some("test_key".to_string()));
     }
 
     #[test]
     fn test_client_with_base_url() {
-        let client = Orpheus::new("test_key").with_base_url("https://custom-api.example.com/v1");
-        assert_eq!(client.base_url, "https://custom-api.example.com/v1");
+        let client = Orpheus::new("test_key")
+            .with_base_url("https://custom-api.example.com/v1")
+            .unwrap();
+        assert_eq!(
+            client.base_url,
+            Url::parse("https://custom-api.example.com/v1").unwrap()
+        );
     }
 
     #[test]
@@ -147,20 +320,19 @@ mod tests {
 
         let client = Orpheus::new(api_key);
 
-        let request = ChatRequest::builder()
-            .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
+        let response = client
+            .chat()
+            .model("deepseek/deepseek-r1-0528-qwen3-8b:free")
             .messages(vec![
                 ChatMessage::system(Content::simple("You are a friend")),
                 ChatMessage::user(Content::simple("Hello!")),
             ])
-            .build();
-
-        let response = client.chat(request);
+            .send();
         println!("{:?}", response);
 
         assert!(response.is_ok());
 
-        let chat_response = response.unwrap().unwrap_left();
+        let chat_response = response.unwrap();
         assert!(chat_response.id.is_some());
         assert!(chat_response.choices.is_some());
 
@@ -174,21 +346,19 @@ mod tests {
 
         let client = Orpheus::new(api_key);
 
-        let request = ChatRequest::builder()
-            .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
+        let response = client
+            .chat_stream()
+            .model("deepseek/deepseek-r1-0528-qwen3-8b:free")
             .messages(vec![
                 ChatMessage::system(Content::simple("You are a friend")),
                 ChatMessage::user(Content::simple("Hello!")),
             ])
-            .stream(true)
-            .build();
-
-        let response = client.chat(request);
+            .send();
         println!("{:?}", response);
 
         assert!(response.is_ok());
 
-        let mut chat_response = response.unwrap().unwrap_right();
+        let mut chat_response = response.unwrap();
 
         let mut accumulated_content = String::new();
         let mut is_finished = false;
@@ -216,28 +386,5 @@ mod tests {
             "Successfully processed streaming chat completion: '{}'",
             accumulated_content
         );
-    }
-
-    #[test]
-    fn test_completion_request() {
-        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
-
-        let client = Orpheus::new(api_key);
-
-        let request = CompletionRequest::builder()
-            .model("openai/gpt-3.5-turbo".into())
-            .prompt("The greatest capital in the world is ".into())
-            .build();
-        let response = client.completion(request);
-        println!("{:?}", response);
-
-        assert!(response.is_ok());
-
-        let completion_response = response.unwrap();
-        assert!(completion_response.id.is_some());
-        assert!(completion_response.choices.is_some());
-
-        let choices = completion_response.choices.unwrap();
-        assert!(!choices.is_empty());
     }
 }

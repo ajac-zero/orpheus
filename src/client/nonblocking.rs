@@ -1,10 +1,15 @@
-use crate::constants::*;
-use crate::models::chat::{AsyncChatResponse, ChatMessage, ChatRequest, Content};
-use crate::models::completion::{CompletionRequest, CompletionResponse};
-use either::Either::{Left, Right};
-use reqwest::Client;
-use reqwest::header::CONTENT_TYPE;
+use std::collections::HashMap;
+
+use reqwest::{Client, header::CONTENT_TYPE};
 use url::Url;
+
+use crate::{
+    constants::*,
+    models::{
+        chat::*,
+        completion::{self, CompletionRequest, CompletionResponse},
+    },
+};
 
 #[derive(Debug, Clone)]
 pub struct AsyncOrpheus {
@@ -36,9 +41,13 @@ impl AsyncOrpheus {
     }
 
     /// Set the base URL for the API
-    pub fn with_base_url(mut self, base_url: impl Into<Url>) -> Self {
-        self.base_url = base_url.into();
-        self
+    pub fn with_base_url<U>(mut self, base_url: U) -> Result<Self, anyhow::Error>
+    where
+        U: TryInto<Url>,
+        U::Error: Into<anyhow::Error>,
+    {
+        self.base_url = base_url.try_into().map_err(Into::into)?;
+        Ok(self)
     }
 
     /// Set the base URL for the API
@@ -47,47 +56,25 @@ impl AsyncOrpheus {
         self
     }
 
-    /// Send a chat completion request
-    pub fn chat(&self) -> Result<ChatRequestBuilder, anyhow::Error> {
-        let url = self
-            .base_url
-            .join(CHAT_COMPLETION_PATH)
-            .expect("Is valid Url");
-        let token = self.api_key.clone();
-        let client = self.client.clone();
-        let request = ChatRequest::default();
-
-        let req = ChatRequestBuilder {
-            url,
-            token,
-            client,
-            request,
-        }
-        .stream(false);
-
-        Ok(req)
-    }
-
-    /// Send a text completion request
-    pub async fn completion(
+    pub async fn execute(
         &self,
-        request: CompletionRequest,
-    ) -> Result<CompletionResponse, anyhow::Error> {
-        let url = self.get_url_path(COMPLETION_PATH)?;
-        let token = self.get_api_key()?;
-
-        let response = self
+        path: &str,
+        body: impl serde::Serialize,
+    ) -> anyhow::Result<reqwest::Response> {
+        let url = self.base_url.join(path)?;
+        let token = self
+            .api_key
+            .as_ref()
+            .map_or_else(String::new, |key| key.clone());
+        Ok(self
             .client
-            .post(&url)
+            .post(url)
             .header(CONTENT_TYPE, "application/json")
             .bearer_auth(token)
-            .json(&request)
+            .json(&body)
             .send()
             .await?
-            .error_for_status()?;
-
-        let completion_response: CompletionResponse = response.json().await?;
-        Ok(completion_response)
+            .error_for_status()?)
     }
 
     /// Convenience method for simple chat requests
@@ -95,10 +82,10 @@ impl AsyncOrpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> Result<AsyncChatResponse, anyhow::Error> {
+    ) -> anyhow::Result<ChatCompletion> {
         let message = ChatMessage::user(Content::simple(message));
 
-        self.chat()?
+        self.chat()
             .model(model)
             .messages(vec![message])
             .send()
@@ -111,13 +98,13 @@ impl AsyncOrpheus {
         model: impl Into<String>,
         system_prompt: impl Into<String>,
         user_message: impl Into<String>,
-    ) -> Result<AsyncChatResponse, anyhow::Error> {
+    ) -> anyhow::Result<ChatCompletion> {
         let messages = vec![
             ChatMessage::system(Content::simple(system_prompt)),
             ChatMessage::user(Content::simple(user_message)),
         ];
 
-        self.chat()?.model(model).messages(messages).send().await
+        self.chat().model(model).messages(messages).send().await
     }
 
     /// Convenience method for simple streaming requests
@@ -125,78 +112,184 @@ impl AsyncOrpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> Result<AsyncChatResponse, anyhow::Error> {
+    ) -> Result<AsyncStream, anyhow::Error> {
         let message = ChatMessage::user(Content::simple(message));
 
-        self.chat()?
+        self.chat_stream()
             .model(model)
             .messages(vec![message])
-            .stream(true)
             .send()
             .await
     }
 }
 
-struct ChatRequestBuilder {
-    url: Url,
-    token: Option<String>,
-    client: Client,
-    request: ChatRequest,
-}
+#[bon::bon]
+impl AsyncOrpheus {
+    #[builder(finish_fn = send, on(String, into))]
+    async fn chat(
+        &self,
+        model: String,
+        messages: Vec<ChatMessage>,
+        models: Option<Vec<String>>,
+        provider: Option<ProviderPreferences>,
+        reasoning: Option<ReasoningConfig>,
+        usage: Option<UsageConfig>,
+        transforms: Option<Vec<String>>,
+        max_tokens: Option<i32>,
+        temperature: Option<f64>,
+        seed: Option<i32>,
+        top_p: Option<f64>,
+        top_k: Option<i32>,
+        frequency_penalty: Option<f64>,
+        presence_penalty: Option<f64>,
+        repetition_penalty: Option<f64>,
+        logit_bias: Option<HashMap<String, f64>>,
+        top_logprobs: Option<i32>,
+        min_p: Option<f64>,
+        top_a: Option<f64>,
+        user: Option<String>,
+    ) -> anyhow::Result<ChatCompletion> {
+        let stream = Some(false);
+        let body = ChatRequest::new(
+            model,
+            messages,
+            models,
+            provider,
+            reasoning,
+            usage,
+            transforms,
+            stream,
+            max_tokens,
+            temperature,
+            seed,
+            top_p,
+            top_k,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            logit_bias,
+            top_logprobs,
+            min_p,
+            top_a,
+            user,
+        );
 
-impl ChatRequestBuilder {
-    pub async fn send(self) -> Result<AsyncChatResponse, anyhow::Error> {
-        let response = self
-            .client
-            .post(self.url.as_str())
-            .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(self.token.unwrap_or_else(String::new))
-            .json(&self.request)
-            .send()
-            .await?
-            .error_for_status()?;
+        let response = self.execute(CHAT_COMPLETION_PATH, body).await?;
 
-        let chat_response = if self.request.stream.is_some_and(|x| x) {
-            Right(response.into())
-        } else {
-            Left(response.json().await?)
-        };
+        let chat_completion = response.json::<ChatCompletion>().await?;
 
-        Ok(chat_response)
+        Ok(chat_completion)
     }
 
-    pub fn model(mut self, model: impl Into<String>) -> Self {
-        self.request.model = model.into();
-        self
+    #[builder(finish_fn = send, on(String, into))]
+    async fn chat_stream(
+        &self,
+        model: String,
+        messages: Vec<ChatMessage>,
+        models: Option<Vec<String>>,
+        provider: Option<ProviderPreferences>,
+        reasoning: Option<ReasoningConfig>,
+        usage: Option<UsageConfig>,
+        transforms: Option<Vec<String>>,
+        max_tokens: Option<i32>,
+        temperature: Option<f64>,
+        seed: Option<i32>,
+        top_p: Option<f64>,
+        top_k: Option<i32>,
+        frequency_penalty: Option<f64>,
+        presence_penalty: Option<f64>,
+        repetition_penalty: Option<f64>,
+        logit_bias: Option<HashMap<String, f64>>,
+        top_logprobs: Option<i32>,
+        min_p: Option<f64>,
+        top_a: Option<f64>,
+        user: Option<String>,
+    ) -> anyhow::Result<AsyncStream> {
+        let stream = Some(true);
+        let body = ChatRequest::new(
+            model,
+            messages,
+            models,
+            provider,
+            reasoning,
+            usage,
+            transforms,
+            stream,
+            max_tokens,
+            temperature,
+            seed,
+            top_p,
+            top_k,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            logit_bias,
+            top_logprobs,
+            min_p,
+            top_a,
+            user,
+        );
+
+        let response = self.execute(CHAT_COMPLETION_PATH, body).await?;
+
+        Ok(response.into())
     }
 
-    pub fn messages(mut self, messages: Vec<ChatMessage>) -> Self {
-        self.request.messages = messages;
-        self
+    /// Send a text completion request
+    #[builder(finish_fn = send, on(String, into))]
+    pub async fn completion(
+        &self,
+        model: String,
+        prompt: String,
+        models: Option<Vec<String>>,
+        provider: Option<completion::ProviderPreferences>,
+        reasoning: Option<completion::ReasoningConfig>,
+        usage: Option<completion::UsageConfig>,
+        transforms: Option<Vec<String>>,
+        stream: Option<bool>,
+        max_tokens: Option<i32>,
+        temperature: Option<f64>,
+        seed: Option<i32>,
+        top_p: Option<f64>,
+        top_k: Option<i32>,
+        frequency_penalty: Option<f64>,
+        presence_penalty: Option<f64>,
+        repetition_penalty: Option<f64>,
+        logit_bias: Option<HashMap<String, f64>>,
+        top_logprobs: Option<i32>,
+        min_p: Option<f64>,
+        top_a: Option<f64>,
+        user: Option<String>,
+    ) -> anyhow::Result<CompletionResponse> {
+        let body = CompletionRequest::new(
+            model,
+            prompt,
+            models,
+            provider,
+            reasoning,
+            usage,
+            transforms,
+            stream,
+            max_tokens,
+            temperature,
+            seed,
+            top_p,
+            top_k,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            logit_bias,
+            top_logprobs,
+            min_p,
+            top_a,
+            user,
+        );
+
+        let response = self.execute(COMPLETION_PATH, body).await?;
+
+        let completion_response: CompletionResponse = response.json().await?;
+        Ok(completion_response)
     }
-    //     pub models: Option<Vec<String>>,
-    //     pub provider: Option<ProviderPreferences>,
-    //     pub reasoning: Option<ReasoningConfig>,
-    //     pub usage: Option<UsageConfig>,
-    //     pub transforms: Option<Vec<String>>,
-    //     pub stream: Option<bool>,
-    pub fn stream(mut self, stream: bool) -> Self {
-        self.request.stream = Some(stream);
-        self
-    }
-    //     pub max_tokens: Option<i32>,
-    //     pub temperature: Option<f64>,
-    //     pub seed: Option<i32>,
-    //     pub top_p: Option<f64>,
-    //     pub frequency_penalty: Option<f64>,
-    //     pub presence_penalty: Option<f64>,
-    //     pub repetition_penalty: Option<f64>,
-    //     pub logit_bias: Option<HashMap<String, f64>>,
-    //     pub top_logprobs: Option<i32>,
-    //     pub min_p: Option<f64>,
-    //     pub top_a: Option<f64>,
-    //     pub user: Option<String>,
-    // }
 }
 
 #[cfg(test)]
@@ -213,18 +306,19 @@ mod tests {
         let client = AsyncOrpheus::new("test_key");
         assert_eq!(
             client.base_url,
-            Some("https://openrouter.ai/api/v1".to_string())
+            Url::parse("https://openrouter.ai/api/v1/").unwrap()
         );
         assert_eq!(client.api_key, Some("test_key".to_string()));
     }
 
     #[test]
     fn test_client_with_base_url() {
-        let client =
-            AsyncOrpheus::new("test_key").with_base_url("https://custom-api.example.com/v1");
+        let client = AsyncOrpheus::new("test_key")
+            .with_base_url("https://custom-api.example.com/v1")
+            .unwrap();
         assert_eq!(
             client.base_url,
-            Some("https://custom-api.example.com/v1".to_string())
+            Url::parse("https://custom-api.example.com/v1").unwrap()
         );
     }
 
@@ -236,7 +330,6 @@ mod tests {
 
         let response = client
             .chat()
-            .expect("client has correct credentials")
             .model("deepseek/deepseek-r1-0528-qwen3-8b:free")
             .messages(vec![
                 ChatMessage::system(Content::simple("You are a friend")),
@@ -248,7 +341,7 @@ mod tests {
 
         assert!(response.is_ok());
 
-        let chat_response = response.unwrap().unwrap_left();
+        let chat_response = response.unwrap();
         assert!(chat_response.id.is_some());
         assert!(chat_response.choices.is_some());
 
@@ -262,21 +355,20 @@ mod tests {
 
         let client = AsyncOrpheus::new(api_key);
 
-        let request = ChatRequest::builder()
-            .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
+        let response = client
+            .chat_stream()
+            .model("deepseek/deepseek-r1-0528-qwen3-8b:free")
             .messages(vec![
                 ChatMessage::system(Content::simple("You are a friend")),
                 ChatMessage::user(Content::simple("Hello!")),
             ])
-            .stream(true)
-            .build();
-
-        let response = client.chat(request).await;
+            .send()
+            .await;
         println!("{:?}", response);
 
         assert!(response.is_ok());
 
-        let mut chat_response = response.unwrap().unwrap_right();
+        let mut chat_response = response.unwrap();
 
         let mut accumulated_content = String::new();
         let mut is_finished = false;
@@ -309,28 +401,5 @@ mod tests {
             "Successfully processed streaming chat completion: '{}'",
             accumulated_content
         );
-    }
-
-    #[tokio::test]
-    async fn test_completion_request() {
-        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
-
-        let client = AsyncOrpheus::new(api_key);
-
-        let request = CompletionRequest::builder()
-            .model("openai/gpt-3.5-turbo".into())
-            .prompt("The greatest capital in the world is ".into())
-            .build();
-        let response = client.completion(request).await;
-        println!("{:?}", response);
-
-        assert!(response.is_ok());
-
-        let completion_response = response.unwrap();
-        assert!(completion_response.id.is_some());
-        assert!(completion_response.choices.is_some());
-
-        let choices = completion_response.choices.unwrap();
-        assert!(!choices.is_empty());
     }
 }

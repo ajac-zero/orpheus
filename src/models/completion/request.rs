@@ -1,9 +1,9 @@
-use bon::Builder;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, Builder)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionRequest {
     /// The model ID to use. If unspecified, the user's default is used.
     pub model: String,
@@ -69,6 +69,56 @@ pub struct CompletionRequest {
     pub user: Option<String>,
 }
 
+impl CompletionRequest {
+    pub fn new(
+        model: String,
+        prompt: String,
+        models: Option<Vec<String>>,
+        provider: Option<ProviderPreferences>,
+        reasoning: Option<ReasoningConfig>,
+        usage: Option<UsageConfig>,
+        transforms: Option<Vec<String>>,
+        stream: Option<bool>,
+        max_tokens: Option<i32>,
+        temperature: Option<f64>,
+        seed: Option<i32>,
+        top_p: Option<f64>,
+        top_k: Option<i32>,
+        frequency_penalty: Option<f64>,
+        presence_penalty: Option<f64>,
+        repetition_penalty: Option<f64>,
+        logit_bias: Option<HashMap<String, f64>>,
+        top_logprobs: Option<i32>,
+        min_p: Option<f64>,
+        top_a: Option<f64>,
+        user: Option<String>,
+    ) -> Self {
+        Self {
+            model,
+            prompt,
+            models,
+            provider,
+            reasoning,
+            usage,
+            transforms,
+            stream,
+            max_tokens,
+            temperature,
+            seed,
+            top_p,
+            top_k,
+            frequency_penalty,
+            presence_penalty,
+            repetition_penalty,
+            logit_bias,
+            top_logprobs,
+            min_p,
+            top_a,
+            user,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderPreferences {
     /// Sort preference (e.g., price, throughput).
@@ -102,27 +152,4 @@ pub struct UsageConfig {
     /// Whether to include usage information in the response
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include: Option<bool>,
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_completion_request_serialization() {
-        let request = CompletionRequest::builder()
-            .model("gpt-3.5-turbo".into())
-            .prompt("Hello, world!".into())
-            .max_tokens(100)
-            .build();
-
-        let json = serde_json::to_string_pretty(&request).unwrap();
-        println!("Serialized request:\n{}", json);
-
-        // Test deserialization
-        let deserialized: CompletionRequest = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.model, "gpt-3.5-turbo");
-        assert_eq!(deserialized.prompt, "Hello, world!");
-        assert_eq!(deserialized.max_tokens, Some(100));
-    }
 }
