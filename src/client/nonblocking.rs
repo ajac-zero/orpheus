@@ -1,22 +1,22 @@
 use crate::constants::*;
-use crate::exceptions::OrpheusError;
-use crate::models::chat::{AsyncChatResponse, ChatRequest};
+use crate::models::chat::{AsyncChatResponse, ChatMessage, ChatRequest, Content};
 use crate::models::completion::{CompletionRequest, CompletionResponse};
 use either::Either::{Left, Right};
 use reqwest::Client;
 use reqwest::header::CONTENT_TYPE;
+use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct AsyncOrpheus {
     client: Client,
     api_key: Option<String>,
-    base_url: Option<String>,
+    base_url: Url,
 }
 
 impl Default for AsyncOrpheus {
     fn default() -> Self {
         let client = Client::builder()
-            .user_agent("Orpheus 1.0")
+            .user_agent(USER_AGENT_NAME)
             .use_rustls_tls()
             .build()
             .expect("build request client");
@@ -24,7 +24,7 @@ impl Default for AsyncOrpheus {
         Self {
             client,
             api_key: None,
-            base_url: None,
+            base_url: Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url"),
         }
     }
 }
@@ -32,14 +32,12 @@ impl Default for AsyncOrpheus {
 impl AsyncOrpheus {
     /// Create a new Orpheus client with provided key and default base url
     pub fn new(api_key: impl Into<String>) -> Self {
-        Self::default()
-            .with_api_key(api_key)
-            .with_base_url(DEFAULT_BASE_URL)
+        Self::default().with_api_key(api_key)
     }
 
     /// Set the base URL for the API
-    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
-        self.base_url = Some(base_url.into());
+    pub fn with_base_url(mut self, base_url: impl Into<Url>) -> Self {
+        self.base_url = base_url.into();
         self
     }
 
@@ -49,44 +47,25 @@ impl AsyncOrpheus {
         self
     }
 
-    fn get_base_url(&self) -> Result<String, OrpheusError> {
-        self.base_url
-            .clone()
-            .ok_or(OrpheusError::Anyhow("No base url set".into()))
-    }
-
-    fn get_url_path(&self, path: &str) -> Result<String, OrpheusError> {
-        self.get_base_url().map(|url| [url.as_str(), path].concat())
-    }
-
-    fn get_api_key(&self) -> Result<String, OrpheusError> {
-        self.api_key
-            .clone()
-            .ok_or(OrpheusError::Anyhow("No api key set".into()))
-    }
-
     /// Send a chat completion request
-    pub async fn chat(&self, request: ChatRequest) -> Result<AsyncChatResponse, OrpheusError> {
-        let url = self.get_url_path(CHAT_COMPLETION_PATH)?;
-        let token = self.get_api_key()?;
+    pub fn chat(&self) -> Result<ChatRequestBuilder, anyhow::Error> {
+        let url = self
+            .base_url
+            .join(CHAT_COMPLETION_PATH)
+            .expect("Is valid Url");
+        let token = self.api_key.clone();
+        let client = self.client.clone();
+        let request = ChatRequest::default();
 
-        let response = self
-            .client
-            .post(&url)
-            .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(token)
-            .json(&request)
-            .send()
-            .await?
-            .error_for_status()?;
+        let req = ChatRequestBuilder {
+            url,
+            token,
+            client,
+            request,
+        }
+        .stream(false);
 
-        let chat_response = if request.stream.is_some_and(|x| x) {
-            Right(response.into())
-        } else {
-            Left(response.json().await?)
-        };
-
-        Ok(chat_response)
+        Ok(req)
     }
 
     /// Send a text completion request
@@ -116,9 +95,14 @@ impl AsyncOrpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> Result<AsyncChatResponse, OrpheusError> {
-        let request = ChatRequest::simple(model, message);
-        self.chat(request).await
+    ) -> Result<AsyncChatResponse, anyhow::Error> {
+        let message = ChatMessage::user(Content::simple(message));
+
+        self.chat()?
+            .model(model)
+            .messages(vec![message])
+            .send()
+            .await
     }
 
     /// Convenience method for chat with system prompt
@@ -127,9 +111,13 @@ impl AsyncOrpheus {
         model: impl Into<String>,
         system_prompt: impl Into<String>,
         user_message: impl Into<String>,
-    ) -> Result<AsyncChatResponse, OrpheusError> {
-        let request = ChatRequest::with_system(model, system_prompt, user_message);
-        self.chat(request).await
+    ) -> Result<AsyncChatResponse, anyhow::Error> {
+        let messages = vec![
+            ChatMessage::system(Content::simple(system_prompt)),
+            ChatMessage::user(Content::simple(user_message)),
+        ];
+
+        self.chat()?.model(model).messages(messages).send().await
     }
 
     /// Convenience method for simple streaming requests
@@ -137,10 +125,78 @@ impl AsyncOrpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> Result<AsyncChatResponse, OrpheusError> {
-        let request = ChatRequest::simple_stream(model, message);
-        self.chat(request).await
+    ) -> Result<AsyncChatResponse, anyhow::Error> {
+        let message = ChatMessage::user(Content::simple(message));
+
+        self.chat()?
+            .model(model)
+            .messages(vec![message])
+            .stream(true)
+            .send()
+            .await
     }
+}
+
+struct ChatRequestBuilder {
+    url: Url,
+    token: Option<String>,
+    client: Client,
+    request: ChatRequest,
+}
+
+impl ChatRequestBuilder {
+    pub async fn send(self) -> Result<AsyncChatResponse, anyhow::Error> {
+        let response = self
+            .client
+            .post(self.url.as_str())
+            .header(CONTENT_TYPE, "application/json")
+            .bearer_auth(self.token.unwrap_or_else(String::new))
+            .json(&self.request)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let chat_response = if self.request.stream.is_some_and(|x| x) {
+            Right(response.into())
+        } else {
+            Left(response.json().await?)
+        };
+
+        Ok(chat_response)
+    }
+
+    pub fn model(mut self, model: impl Into<String>) -> Self {
+        self.request.model = model.into();
+        self
+    }
+
+    pub fn messages(mut self, messages: Vec<ChatMessage>) -> Self {
+        self.request.messages = messages;
+        self
+    }
+    //     pub models: Option<Vec<String>>,
+    //     pub provider: Option<ProviderPreferences>,
+    //     pub reasoning: Option<ReasoningConfig>,
+    //     pub usage: Option<UsageConfig>,
+    //     pub transforms: Option<Vec<String>>,
+    //     pub stream: Option<bool>,
+    pub fn stream(mut self, stream: bool) -> Self {
+        self.request.stream = Some(stream);
+        self
+    }
+    //     pub max_tokens: Option<i32>,
+    //     pub temperature: Option<f64>,
+    //     pub seed: Option<i32>,
+    //     pub top_p: Option<f64>,
+    //     pub frequency_penalty: Option<f64>,
+    //     pub presence_penalty: Option<f64>,
+    //     pub repetition_penalty: Option<f64>,
+    //     pub logit_bias: Option<HashMap<String, f64>>,
+    //     pub top_logprobs: Option<i32>,
+    //     pub min_p: Option<f64>,
+    //     pub top_a: Option<f64>,
+    //     pub user: Option<String>,
+    // }
 }
 
 #[cfg(test)]
@@ -178,15 +234,16 @@ mod tests {
 
         let client = AsyncOrpheus::new(api_key);
 
-        let request = ChatRequest::builder()
-            .model("deepseek/deepseek-r1-0528-qwen3-8b:free".into())
+        let response = client
+            .chat()
+            .expect("client has correct credentials")
+            .model("deepseek/deepseek-r1-0528-qwen3-8b:free")
             .messages(vec![
                 ChatMessage::system(Content::simple("You are a friend")),
                 ChatMessage::user(Content::simple("Hello!")),
             ])
-            .build();
-
-        let response = client.chat(request).await;
+            .send()
+            .await;
         println!("{:?}", response);
 
         assert!(response.is_ok());
