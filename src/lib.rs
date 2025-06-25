@@ -7,7 +7,8 @@ pub mod models;
 
 pub use client::{AsyncOrpheus, Orpheus};
 
-// use pyo3::prelude::*;
+pub type Error = exceptions::OrpheusError;
+pub type Result<T, E = Error> = core::result::Result<T, E>;
 
 // #[pymodule]
 // fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {

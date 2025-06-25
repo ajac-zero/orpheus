@@ -14,12 +14,9 @@ default = []
 python = ["pyo3", "pyo3-async-runtimes", "pythonize"]
 
 [dependencies]
-anyhow = "1.0.97"
 bon = "3.6.3"
 bytes = "1.10.1"
-either = { version = "1.15.0", features = ["serde"] }
 futures-lite = "2.6.0"
-futures-util = { version = "0.3.31", features = ["io"] }
 pyo3 = { version = "0.24.0", optional = true, features = [
     "extension-module",
     "abi3-py39",
@@ -43,7 +40,6 @@ reqwest = { version = "0.12.12", features = [
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
 serde_with = { version = "3.12.0", features = ["json"] }
-smallvec = { version = "1.14.0", features = ["serde"] }
+thiserror = "2.0.12"
 tokio = { version = "1.44.1", features = ["rt", "macros"] }
-tokio-util = "0.7.15"
 url = "2.5.4"

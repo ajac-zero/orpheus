@@ -41,10 +41,10 @@ impl Orpheus {
     }
 
     /// Set the base URL for the API
-    pub fn with_base_url<U>(mut self, base_url: U) -> Result<Self, anyhow::Error>
+    pub fn with_base_url<U>(mut self, base_url: U) -> crate::Result<Self>
     where
         U: TryInto<Url>,
-        U::Error: Into<anyhow::Error>,
+        U::Error: Into<crate::Error>,
     {
         self.base_url = base_url.try_into().map_err(Into::into)?;
         Ok(self)
@@ -54,20 +54,26 @@ impl Orpheus {
         &self,
         path: &str,
         body: impl serde::Serialize,
-    ) -> anyhow::Result<reqwest::blocking::Response> {
+    ) -> crate::Result<reqwest::blocking::Response> {
         let url = self.base_url.join(path)?;
         let token = self
             .api_key
             .as_ref()
             .map_or_else(String::new, |key| key.clone());
-        Ok(self
+        let response = self
             .client
             .post(url)
             .header(CONTENT_TYPE, "application/json")
             .bearer_auth(token)
             .json(&body)
-            .send()?
-            .error_for_status()?)
+            .send()?;
+
+        if response.status().is_success() {
+            Ok(response)
+        } else {
+            let err = response.text()?;
+            Err(crate::Error::OpenRouter(err))
+        }
     }
 
     /// Set the base URL for the API
@@ -81,7 +87,7 @@ impl Orpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> anyhow::Result<ChatCompletion> {
+    ) -> crate::Result<ChatCompletion> {
         let message = ChatMessage::user(Content::simple(message));
 
         self.chat().model(model).messages(vec![message]).send()
@@ -93,7 +99,7 @@ impl Orpheus {
         model: impl Into<String>,
         system_prompt: impl Into<String>,
         user_message: impl Into<String>,
-    ) -> anyhow::Result<ChatCompletion> {
+    ) -> crate::Result<ChatCompletion> {
         let messages = vec![
             ChatMessage::system(Content::simple(system_prompt)),
             ChatMessage::user(Content::simple(user_message)),
@@ -107,7 +113,7 @@ impl Orpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> anyhow::Result<ChatStream> {
+    ) -> crate::Result<ChatStream> {
         let message = ChatMessage::user(Content::simple(message));
 
         self.chat_stream()
@@ -142,7 +148,7 @@ impl Orpheus {
         min_p: Option<f64>,
         top_a: Option<f64>,
         user: Option<String>,
-    ) -> anyhow::Result<ChatCompletion> {
+    ) -> crate::Result<ChatCompletion> {
         let stream = Some(false);
         let body = ChatRequest::new(
             model,
@@ -198,7 +204,7 @@ impl Orpheus {
         min_p: Option<f64>,
         top_a: Option<f64>,
         user: Option<String>,
-    ) -> anyhow::Result<ChatStream> {
+    ) -> crate::Result<ChatStream> {
         let stream = Some(true);
         let body = ChatRequest::new(
             model,
@@ -254,7 +260,7 @@ impl Orpheus {
         min_p: Option<f64>,
         top_a: Option<f64>,
         user: Option<String>,
-    ) -> anyhow::Result<CompletionResponse> {
+    ) -> crate::Result<CompletionResponse> {
         let body = CompletionRequest::new(
             model,
             prompt,

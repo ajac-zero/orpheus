@@ -41,10 +41,10 @@ impl AsyncOrpheus {
     }
 
     /// Set the base URL for the API
-    pub fn with_base_url<U>(mut self, base_url: U) -> Result<Self, anyhow::Error>
+    pub fn with_base_url<U>(mut self, base_url: U) -> crate::Result<Self>
     where
         U: TryInto<Url>,
-        U::Error: Into<anyhow::Error>,
+        U::Error: Into<crate::Error>,
     {
         self.base_url = base_url.try_into().map_err(Into::into)?;
         Ok(self)
@@ -60,21 +60,27 @@ impl AsyncOrpheus {
         &self,
         path: &str,
         body: impl serde::Serialize,
-    ) -> anyhow::Result<reqwest::Response> {
+    ) -> crate::Result<reqwest::Response> {
         let url = self.base_url.join(path)?;
         let token = self
             .api_key
             .as_ref()
             .map_or_else(String::new, |key| key.clone());
-        Ok(self
+        let response = self
             .client
             .post(url)
             .header(CONTENT_TYPE, "application/json")
             .bearer_auth(token)
             .json(&body)
             .send()
-            .await?
-            .error_for_status()?)
+            .await?;
+
+        if response.status().is_success() {
+            Ok(response)
+        } else {
+            let err = response.text().await?;
+            Err(crate::Error::OpenRouter(err))
+        }
     }
 
     /// Convenience method for simple chat requests
@@ -82,7 +88,7 @@ impl AsyncOrpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> anyhow::Result<ChatCompletion> {
+    ) -> crate::Result<ChatCompletion> {
         let message = ChatMessage::user(Content::simple(message));
 
         self.chat()
@@ -98,7 +104,7 @@ impl AsyncOrpheus {
         model: impl Into<String>,
         system_prompt: impl Into<String>,
         user_message: impl Into<String>,
-    ) -> anyhow::Result<ChatCompletion> {
+    ) -> crate::Result<ChatCompletion> {
         let messages = vec![
             ChatMessage::system(Content::simple(system_prompt)),
             ChatMessage::user(Content::simple(user_message)),
@@ -112,7 +118,7 @@ impl AsyncOrpheus {
         &self,
         model: impl Into<String>,
         message: impl Into<String>,
-    ) -> Result<AsyncStream, anyhow::Error> {
+    ) -> crate::Result<AsyncStream> {
         let message = ChatMessage::user(Content::simple(message));
 
         self.chat_stream()
@@ -148,7 +154,7 @@ impl AsyncOrpheus {
         min_p: Option<f64>,
         top_a: Option<f64>,
         user: Option<String>,
-    ) -> anyhow::Result<ChatCompletion> {
+    ) -> crate::Result<ChatCompletion> {
         let stream = Some(false);
         let body = ChatRequest::new(
             model,
@@ -204,7 +210,7 @@ impl AsyncOrpheus {
         min_p: Option<f64>,
         top_a: Option<f64>,
         user: Option<String>,
-    ) -> anyhow::Result<AsyncStream> {
+    ) -> crate::Result<AsyncStream> {
         let stream = Some(true);
         let body = ChatRequest::new(
             model,
@@ -260,7 +266,7 @@ impl AsyncOrpheus {
         min_p: Option<f64>,
         top_a: Option<f64>,
         user: Option<String>,
-    ) -> anyhow::Result<CompletionResponse> {
+    ) -> crate::Result<CompletionResponse> {
         let body = CompletionRequest::new(
             model,
             prompt,
@@ -296,7 +302,7 @@ impl AsyncOrpheus {
 mod tests {
     use std::env;
 
-    use futures_util::StreamExt;
+    use futures_lite::StreamExt;
 
     use super::*;
     use crate::models::chat::{ChatMessage, Content};
@@ -401,5 +407,22 @@ mod tests {
             "Successfully processed streaming chat completion: '{}'",
             accumulated_content
         );
+    }
+
+    #[tokio::test]
+    async fn test_completion_request() {
+        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
+
+        let client = AsyncOrpheus::new(api_key);
+
+        let response = client
+            .completion()
+            .model("openai/gpt-3.5-turbo")
+            .prompt("The best city in the world is ")
+            .send()
+            .await;
+        println!("{:?}", response);
+
+        // assert!(response.is_ok());
     }
 }

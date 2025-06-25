@@ -5,13 +5,11 @@ use std::{
     task::{Context, Poll},
 };
 
-use either::Either;
 use futures_lite::Stream;
 use reqwest::blocking;
 use serde::{Deserialize, Serialize};
 
 use super::ChatMessage;
-use crate::exceptions::OrpheusError;
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,7 +144,7 @@ impl ChatStream {
         Self(reader)
     }
 
-    pub fn next(&mut self) -> Result<Option<ChatStreamChunk>, OrpheusError> {
+    pub fn next(&mut self) -> crate::Result<Option<ChatStreamChunk>> {
         let mut line = String::new();
 
         loop {
@@ -196,7 +194,7 @@ impl AsyncStream {
 }
 
 impl Stream for AsyncStream {
-    type Item = Result<ChatStreamChunk, OrpheusError>;
+    type Item = crate::Result<ChatStreamChunk>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -214,10 +212,7 @@ impl Stream for AsyncStream {
 
                 // Validate SSE format
                 if !line.starts_with("data: ") {
-                    break Some(Err(OrpheusError::Anyhow(format!(
-                        "Invalid SSE line: {:?}",
-                        line
-                    ))));
+                    break Some(Err(crate::Error::InvalidSSE(line.into())));
                 }
 
                 let json_str = &line[6..]; // Remove "data: " prefix
@@ -228,7 +223,7 @@ impl Stream for AsyncStream {
                 // Parse JSON - handle the Result properly
                 match serde_json::from_str::<ChatStreamChunk>(json_str) {
                     Ok(chunk) => break Some(Ok(chunk)),
-                    Err(e) => break Some(Err(OrpheusError::Anyhow(e.to_string()))),
+                    Err(e) => break Some(Err(crate::Error::Serde(e))),
                 }
             }
 
@@ -251,10 +246,7 @@ impl Stream for AsyncStream {
                         }
 
                         if !line.starts_with("data: ") {
-                            return Poll::Ready(Some(Err(OrpheusError::Anyhow(format!(
-                                "Invalid SSE line: {:?}",
-                                line
-                            )))));
+                            return Poll::Ready(Some(Err(crate::Error::InvalidSSE(line.into()))));
                         }
 
                         let json_str = &line[6..];
@@ -265,14 +257,14 @@ impl Stream for AsyncStream {
                         match serde_json::from_str::<ChatStreamChunk>(json_str) {
                             Ok(chunk) => return Poll::Ready(Some(Ok(chunk))),
                             Err(e) => {
-                                return Poll::Ready(Some(Err(OrpheusError::Anyhow(e.to_string()))));
+                                return Poll::Ready(Some(Err(crate::Error::Serde(e))));
                             }
                         }
                     }
                 }
                 Poll::Ready(Some(item)) => match item {
                     Ok(bytes) => this.buffer.extend_from_slice(&bytes),
-                    Err(e) => break Some(Err(OrpheusError::Anyhow(e.to_string()))),
+                    Err(e) => break Some(Err(crate::Error::Http(e))),
                 },
             }
         };
@@ -307,9 +299,6 @@ impl Debug for AsyncStream {
         f.debug_struct("AsyncStream").finish()
     }
 }
-
-pub type ChatResponse = Either<ChatCompletion, ChatStream>;
-pub type AsyncChatResponse = Either<ChatCompletion, AsyncStream>;
 
 #[cfg(test)]
 mod test {
