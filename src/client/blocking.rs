@@ -126,11 +126,12 @@ impl Orpheus {
 #[bon::bon]
 impl Orpheus {
     #[builder(finish_fn = send, on(String, into))]
-    fn chat(
+    pub fn chat(
         &self,
         model: String,
         messages: Vec<ChatMessage>,
         models: Option<Vec<String>>,
+        plugins: Option<Vec<Plugins>>,
         provider: Option<ProviderPreferences>,
         reasoning: Option<ReasoningConfig>,
         usage: Option<UsageConfig>,
@@ -154,6 +155,7 @@ impl Orpheus {
             model,
             messages,
             models,
+            plugins,
             provider,
             reasoning,
             usage,
@@ -182,11 +184,12 @@ impl Orpheus {
     }
 
     #[builder(finish_fn = send, on(String, into))]
-    fn chat_stream(
+    pub fn chat_stream(
         &self,
         model: String,
         messages: Vec<ChatMessage>,
         models: Option<Vec<String>>,
+        plugins: Option<Vec<Plugins>>,
         provider: Option<ProviderPreferences>,
         reasoning: Option<ReasoningConfig>,
         usage: Option<UsageConfig>,
@@ -210,6 +213,7 @@ impl Orpheus {
             model,
             messages,
             models,
+            plugins,
             provider,
             reasoning,
             usage,

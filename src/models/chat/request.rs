@@ -14,6 +14,8 @@ pub struct ChatRequest {
     /// Alternate list of models for routing overrides.
     pub models: Option<Vec<String>>,
 
+    pub plugins: Option<Vec<Plugins>>,
+
     /// Preferences for provider routing.
     pub provider: Option<ProviderPreferences>,
 
@@ -74,6 +76,7 @@ impl ChatRequest {
         model: String,
         messages: Vec<ChatMessage>,
         models: Option<Vec<String>>,
+        plugins: Option<Vec<Plugins>>,
         provider: Option<ProviderPreferences>,
         reasoning: Option<ReasoningConfig>,
         usage: Option<UsageConfig>,
@@ -97,6 +100,7 @@ impl ChatRequest {
             model,
             messages,
             models,
+            plugins,
             provider,
             reasoning,
             usage,
@@ -303,6 +307,27 @@ pub struct UsageConfig {
     pub include: Option<bool>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "engine", rename_all = "kebab-case")]
+pub enum ParsingEngine {
+    PdfText,
+    MistralOcr,
+    Native,
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "id", rename_all = "kebab-case")]
+pub enum Plugins {
+    FileParser {
+        pdf: ParsingEngine,
+    },
+    Web {
+        max_results: Option<u64>,
+        search_prompt: Option<String>,
+    },
+}
+
 #[cfg(test)]
 mod test {
     use serde_json::{from_value, json};
@@ -455,5 +480,64 @@ mod test {
 
         let model = from_value::<ChatRequest>(data).unwrap();
         println!("Complex Chat Message: {:?}", model);
+    }
+
+    #[test]
+    fn test_file_parser_plugin_deserialize() {
+        let payload = json!({
+              "id": "file-parser",
+              "pdf": {
+                "engine": "pdf-text", // or 'mistral-ocr' or 'native'
+              },
+        });
+
+        let plugin = from_value::<Plugins>(payload).unwrap();
+        println!("Web Plugin: {:?}", plugin);
+
+        // assert that the plugin is of variant FileParser
+        match plugin {
+            Plugins::FileParser { pdf } => {
+                assert!(matches!(pdf, ParsingEngine::PdfText));
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn test_web_plugin_with_params_deserialize() {
+        let payload = json!({"id": "web" });
+
+        let plugin = from_value::<Plugins>(payload).unwrap();
+        println!("Web Plugin: {:?}", plugin);
+
+        // assert that the plugin is of variant FileParser
+        match plugin {
+            Plugins::Web {
+                max_results,
+                search_prompt,
+            } => {
+                assert!(max_results.is_none());
+                assert!(search_prompt.is_none());
+            }
+            _ => unreachable!(),
+        }
+
+        let payload =
+            json!({"id": "web", "max_results": 10, "search_prompt": "Some relevant web results:" });
+
+        let plugin = from_value::<Plugins>(payload).unwrap();
+        println!("Web Plugin: {:?}", plugin);
+
+        // assert that the plugin is of variant FileParser
+        match plugin {
+            Plugins::Web {
+                max_results,
+                search_prompt,
+            } => {
+                assert!(max_results == Some(10));
+                assert!(search_prompt == Some("Some relevant web results:".to_string()));
+            }
+            _ => unreachable!(),
+        }
     }
 }

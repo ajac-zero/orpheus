@@ -132,11 +132,12 @@ impl AsyncOrpheus {
 #[bon::bon]
 impl AsyncOrpheus {
     #[builder(finish_fn = send, on(String, into))]
-    async fn chat(
+    pub async fn chat(
         &self,
         model: String,
         messages: Vec<ChatMessage>,
         models: Option<Vec<String>>,
+        plugins: Option<Vec<Plugins>>,
         provider: Option<ProviderPreferences>,
         reasoning: Option<ReasoningConfig>,
         usage: Option<UsageConfig>,
@@ -160,6 +161,7 @@ impl AsyncOrpheus {
             model,
             messages,
             models,
+            plugins,
             provider,
             reasoning,
             usage,
@@ -188,11 +190,12 @@ impl AsyncOrpheus {
     }
 
     #[builder(finish_fn = send, on(String, into))]
-    async fn chat_stream(
+    pub async fn chat_stream(
         &self,
         model: String,
         messages: Vec<ChatMessage>,
         models: Option<Vec<String>>,
+        plugins: Option<Vec<Plugins>>,
         provider: Option<ProviderPreferences>,
         reasoning: Option<ReasoningConfig>,
         usage: Option<UsageConfig>,
@@ -216,6 +219,7 @@ impl AsyncOrpheus {
             model,
             messages,
             models,
+            plugins,
             provider,
             reasoning,
             usage,
