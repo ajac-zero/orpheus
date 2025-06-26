@@ -191,9 +191,10 @@ pub struct File {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Part {
     Text { text: String },
-    Image { image_url: ImageUrl },
+    ImageUrl { image_url: ImageUrl },
     File { file: File },
 }
 
@@ -259,6 +260,8 @@ pub struct UsageConfig {
 
 #[cfg(test)]
 mod test {
+    use serde_json::{from_value, json};
+
     use super::*;
 
     #[test]
@@ -335,5 +338,77 @@ mod test {
                 _ => panic!("Effort mismatch"),
             }
         }
+    }
+
+    #[test]
+    fn test_simple_message_deserialization() {
+        let data = json!(                {
+                    "role": "user",
+                    "content": "hello!"
+        });
+
+        let model = from_value::<ChatMessage>(data).unwrap();
+        println!("Chat Message: {:?}", model);
+    }
+
+    #[test]
+    fn test_text_type_message_deserialization() {
+        let data = json!(                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "hii!"
+                        }
+                    ]
+        });
+
+        let model = from_value::<ChatMessage>(data).unwrap();
+        println!("Chat Message: {:?}", model);
+    }
+
+    #[test]
+    fn test_image_type_message_deserialization() {
+        let data = json!(                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
+                            }
+                        }
+                    ]
+        });
+
+        let model = from_value::<ChatMessage>(data).unwrap();
+        println!("Chat Message: {:?}", model);
+    }
+
+    #[test]
+    fn test_complex_request_deserialization() {
+        let data = json!({
+            "model": "google/gemini-2.0-flash-001",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "What's in this image?"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
+                            }
+                        }
+                    ]
+                }
+            ]
+        });
+
+        let model = from_value::<ChatRequest>(data).unwrap();
+        println!("Complex Chat Message: {:?}", model);
     }
 }
