@@ -14,4 +14,7 @@ pub enum OrpheusError {
     Http(#[from] reqwest::Error),
     #[error("Invalid SSE line: {0}")]
     InvalidSSE(String),
+    #[cfg(feature = "anyhow")]
+    #[error("Anyhow error: {0}")]
+    Anyhow(#[from] anyhow::Error),
 }

@@ -12,8 +12,10 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 python = ["pyo3", "pyo3-async-runtimes", "pythonize"]
+anyhow = ["dep:anyhow"]
 
 [dependencies]
+anyhow = { version = "1.0.98", optional = true }
 bon = "3.6.3"
 bytes = "1.10.1"
 futures-lite = "2.6.0"

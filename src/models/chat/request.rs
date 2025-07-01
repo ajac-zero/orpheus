@@ -140,10 +140,10 @@ impl ChatMessage {
         }
     }
 
-    pub fn user(content: Content) -> Self {
+    pub fn user(content: impl Into<Content>) -> Self {
         Self {
             role: MessageRole::User,
-            content,
+            content: content.into(),
         }
     }
 
@@ -167,6 +167,12 @@ impl ChatMessage {
 pub enum Content {
     Simple(String),
     Complex(Vec<Part>),
+}
+
+impl From<Vec<Part>> for Content {
+    fn from(value: Vec<Part>) -> Self {
+        Self::Complex(value)
+    }
 }
 
 impl Content {
