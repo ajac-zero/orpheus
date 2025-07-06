@@ -470,6 +470,92 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_chat_request_with_web_plugin() {
+        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
+
+        let client = AsyncOrpheus::new(api_key);
+
+        let response = client
+            .chat()
+            .model("google/gemini-2.0-flash-001")
+            .messages(vec![ChatMessage::user(Content::simple(
+                "What are the latest crypto news?",
+            ))])
+            .plugins(vec![Plugins::Web {
+                max_results: None,
+                search_prompt: None,
+            }])
+            .send()
+            .await;
+        println!("{:?}", response);
+
+        assert!(response.is_ok());
+
+        let chat_response = response.unwrap();
+        assert!(chat_response.id.is_some());
+        assert!(chat_response.choices.is_some());
+
+        let choices = chat_response.choices.unwrap();
+        assert!(!choices.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_chat_stream_request_with_web_plugin() {
+        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
+
+        let client = AsyncOrpheus::new(api_key);
+
+        let response = client
+            .chat_stream()
+            .model("google/gemini-2.0-flash-001")
+            .messages(vec![ChatMessage::user(Content::simple(
+                "What are the latest crypto news!",
+            ))])
+            .plugins(vec![Plugins::Web {
+                max_results: None,
+                search_prompt: None,
+            }])
+            .send()
+            .await;
+        println!("{:?}", response);
+
+        assert!(response.is_ok());
+
+        let mut chat_response = response.unwrap();
+
+        let mut accumulated_content = String::new();
+        let mut is_finished = false;
+
+        let mut count = 0;
+        while let Some(chunk) = chat_response.next().await {
+            count = count + 1;
+            let chunk = chunk.unwrap();
+            assert_eq!(chunk.object, "chat.completion.chunk");
+            assert_eq!(chunk.choices.len(), 1);
+
+            let choice = &chunk.choices[0];
+
+            // Accumulate content
+            if let Some(content) = &choice.delta.content {
+                accumulated_content.push_str(content);
+            }
+
+            // Check for completion
+            if choice.finish_reason.is_some() {
+                is_finished = true;
+                assert_eq!(choice.finish_reason, Some("stop".to_string()));
+            }
+        }
+
+        println!("Processed chunks: {}", count);
+        assert!(is_finished);
+        println!(
+            "Successfully processed streaming chat completion: '{}'",
+            accumulated_content
+        );
+    }
+
+    #[tokio::test]
     async fn test_completion_request() {
         let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
 

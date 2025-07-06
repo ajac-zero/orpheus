@@ -130,13 +130,24 @@ pub struct ChatMessage {
 
     /// The message content
     pub content: Content,
+
+    pub annotations: Option<Vec<Annotations>>,
 }
 
 impl ChatMessage {
+    pub fn new(role: MessageRole, content: Content) -> Self {
+        Self {
+            role,
+            content,
+            annotations: None,
+        }
+    }
+
     pub fn system(content: Content) -> Self {
         Self {
             role: MessageRole::System,
             content,
+            annotations: None,
         }
     }
 
@@ -144,6 +155,7 @@ impl ChatMessage {
         Self {
             role: MessageRole::User,
             content: content.into(),
+            annotations: None,
         }
     }
 
@@ -151,6 +163,7 @@ impl ChatMessage {
         Self {
             role: MessageRole::Assistant,
             content,
+            annotations: None,
         }
     }
 
@@ -158,6 +171,7 @@ impl ChatMessage {
         Self {
             role: MessageRole::Tool,
             content,
+            annotations: None,
         }
     }
 }
@@ -334,6 +348,21 @@ pub enum Plugins {
     },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Annotations {
+    UrlCitation { url_citation: UrlCitation },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UrlCitation {
+    url: String,
+    title: String,
+    content: Option<String>,
+    start_index: u64,
+    end_index: u64,
+}
+
 #[cfg(test)]
 mod test {
     use serde_json::{from_value, json};
@@ -345,6 +374,7 @@ mod test {
         let message = ChatMessage {
             role: MessageRole::User,
             content: Content::Simple("Hello world!".to_string()),
+            annotations: None,
         };
 
         let json = serde_json::to_string(&message).unwrap();
@@ -371,6 +401,7 @@ mod test {
             let message = ChatMessage {
                 role: role.clone(),
                 content: Content::Simple("test".to_string()),
+                annotations: None,
             };
 
             let json = serde_json::to_string(&message).unwrap();
