@@ -363,6 +363,39 @@ pub struct UrlCitation {
     end_index: u64,
 }
 
+#[serde_with::skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "function", rename_all = "snake_case")]
+pub enum Tool {
+    Function {
+        name: String,
+        description: Option<String>,
+        parameters: FunctionParams,
+    },
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum FunctionParams {
+    Integer {
+        description: Option<i64>,
+    },
+    r#String {
+        description: Option<String>,
+        r#enum: Option<Vec<String>>,
+    },
+    Array {
+        description: Option<String>,
+        items: Box<FunctionParams>,
+    },
+    Object {
+        description: Option<String>,
+        properties: HashMap<String, FunctionParams>,
+        required: Option<Vec<String>>,
+    },
+}
+
 #[cfg(test)]
 mod test {
     use serde_json::{from_value, json};
@@ -576,5 +609,158 @@ mod test {
             }
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn test_deserialize_tool_call() {
+        let payload = json!({
+          "type": "function",
+          "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The city and state, e.g. San Francisco, CA",
+                },
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+              },
+              "required": ["location"],
+            },
+          }
+        });
+
+        let function: Tool = serde_json::from_value(payload).unwrap();
+        println!("Function 1: {:?}\n", function);
+
+        let payload = json!({
+          "type": "function",
+          "function": {
+            "name": "search_gutenberg_books",
+            "description": "Search for books in the Project Gutenberg library based on specified search terms",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "search_terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)"
+                }
+              },
+              "required": ["search_terms"]
+            }
+          }
+        });
+
+        let function: Tool = serde_json::from_value(payload).unwrap();
+        println!("Function 2: {:?}\n", function);
+    }
+
+    #[test]
+    fn test_serialize_tool_call() {
+        let tool = Tool::Function {
+            name: String::from("get_current_weather"),
+            description: Some(String::from("Get the current weather in a given location")),
+            parameters: FunctionParams::Object {
+                description: None,
+                properties: HashMap::from([
+                    (
+                        String::from("location"),
+                        FunctionParams::String {
+                            description: Some(String::from(
+                                "The city and state, e.g. San Francisco, CA",
+                            )),
+                            r#enum: None,
+                        },
+                    ),
+                    (
+                        String::from("unit"),
+                        FunctionParams::String {
+                            description: None,
+                            r#enum: Some(Vec::from([
+                                String::from("celsius"),
+                                String::from("fahrenheit"),
+                            ])),
+                        },
+                    ),
+                ]),
+                required: Some(Vec::from([String::from("location")])),
+            },
+        };
+
+        let function = serde_json::to_value(&tool).unwrap();
+
+        let payload = json!({
+          "type": "function",
+          "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The city and state, e.g. San Francisco, CA",
+                },
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+              },
+              "required": ["location"],
+            },
+          }
+        });
+
+        assert_eq!(function, payload);
+
+        let tool = Tool::Function {
+            name: String::from("search_gutenberg_books"),
+            description: Some(String::from(
+                "Search for books in the Project Gutenberg library based on specified search terms",
+            )),
+            parameters: FunctionParams::Object {
+                description: None,
+                properties: HashMap::from([(
+                    String::from("search_terms"),
+                    FunctionParams::Array {
+                        description: Some(String::from(
+                            "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)",
+                        )),
+                        items: Box::new(FunctionParams::String {
+                            description: None,
+                            r#enum: None,
+                        }),
+                    },
+                )]),
+                required: Some(Vec::from([String::from("search_terms")])),
+            },
+        };
+
+        let function = serde_json::to_value(&tool).unwrap();
+
+        let payload = json!({
+          "type": "function",
+          "function": {
+            "name": "search_gutenberg_books",
+            "description": "Search for books in the Project Gutenberg library based on specified search terms",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "search_terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)"
+                }
+              },
+              "required": ["search_terms"]
+            }
+          }
+        });
+
+        assert_eq!(function, payload);
     }
 }
