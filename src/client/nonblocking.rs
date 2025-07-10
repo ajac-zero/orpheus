@@ -569,9 +569,9 @@ mod tests {
             .name("extract_info")
             .description("extract some data fields from a sentence")
             .parameters(
-                FunctionParams::object()
-                    .property("name", FunctionParams::string().call())
-                    .property("age", FunctionParams::integer().call())
+                Param::object()
+                    .property("name", Param::string().call())
+                    .property("age", Param::integer().call())
                     .required(["name", "age"])
                     .call(),
             )

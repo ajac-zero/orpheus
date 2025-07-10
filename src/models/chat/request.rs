@@ -394,14 +394,14 @@ pub enum Tool {
     Function {
         name: String,
         description: Option<String>,
-        parameters: FunctionParams,
+        parameters: Param,
     },
 }
 
 #[bon]
 impl Tool {
     #[builder(on(String, into))]
-    pub fn function(name: String, description: Option<String>, parameters: FunctionParams) -> Self {
+    pub fn function(name: String, description: Option<String>, parameters: Param) -> Self {
         Self::Function {
             name,
             description,
@@ -417,12 +417,10 @@ impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
     ) -> ToolFunctionBuilder<tool_function_builder::SetParameters<S>>
     where
         S::Parameters: tool_function_builder::IsUnset,
-        F: FnOnce(
-            FunctionParamsObjectBuilder<function_params_object_builder::Empty>,
-        ) -> FunctionParamsObjectBuilder<C>,
-        C: function_params_object_builder::IsComplete,
+        F: FnOnce(ParamObjectBuilder<param_object_builder::Empty>) -> ParamObjectBuilder<C>,
+        C: param_object_builder::IsComplete,
     {
-        let builder = FunctionParams::object();
+        let builder = Param::object();
         let parameters = build(builder).call();
         self.parameters(parameters)
     }
@@ -431,7 +429,7 @@ impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
-pub enum FunctionParams {
+pub enum Param {
     Integer {
         description: Option<String>,
     },
@@ -441,17 +439,17 @@ pub enum FunctionParams {
     },
     Array {
         description: Option<String>,
-        items: Box<FunctionParams>,
+        items: Box<Param>,
     },
     Object {
         description: Option<String>,
-        properties: HashMap<String, FunctionParams>,
+        properties: HashMap<String, Param>,
         required: Option<Vec<String>>,
     },
 }
 
 #[bon]
-impl FunctionParams {
+impl Param {
     #[builder]
     pub fn object(
         #[builder(field)] properties: HashMap<String, Self>,
@@ -484,7 +482,7 @@ impl FunctionParams {
     }
 
     #[builder(on(String, into))]
-    pub fn array(description: Option<String>, items: FunctionParams) -> Self {
+    pub fn array(description: Option<String>, items: Param) -> Self {
         Self::Array {
             description,
             items: Box::new(items),
@@ -492,13 +490,13 @@ impl FunctionParams {
     }
 }
 
-impl<S: function_params_object_builder::State> FunctionParamsObjectBuilder<S> {
-    pub fn property(mut self, key: impl Into<String>, value: FunctionParams) -> Self {
+impl<S: param_object_builder::State> ParamObjectBuilder<S> {
+    pub fn property(mut self, key: impl Into<String>, value: Param) -> Self {
         self.properties.insert(key.into(), value);
         self
     }
 
-    pub fn properties(mut self, properties: HashMap<String, FunctionParams>) -> Self {
+    pub fn properties(mut self, properties: HashMap<String, Param>) -> Self {
         self.properties = properties;
         self
     }
@@ -506,7 +504,7 @@ impl<S: function_params_object_builder::State> FunctionParamsObjectBuilder<S> {
 
 #[cfg(test)]
 mod test {
-    use serde_json::{from_value, json};
+    use serde_json::{Value, from_value, json};
 
     use super::*;
 
@@ -721,9 +719,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_deserialize_tool_call() {
-        let payload = json!({
+    fn get_current_weather_json() -> Value {
+        json!({
           "type": "function",
           "function": {
             "name": "get_current_weather",
@@ -740,12 +737,11 @@ mod test {
               "required": ["location"],
             },
           }
-        });
+        })
+    }
 
-        let function: Tool = serde_json::from_value(payload).unwrap();
-        println!("Function 1: {:?}\n", function);
-
-        let payload = json!({
+    fn search_gutenberg_books_json() -> Value {
+        json!({
           "type": "function",
           "function": {
             "name": "search_gutenberg_books",
@@ -764,9 +760,19 @@ mod test {
               "required": ["search_terms"]
             }
           }
-        });
+        })
+    }
 
-        let function: Tool = serde_json::from_value(payload).unwrap();
+    #[test]
+    fn test_deserialize_tool_call() {
+        let get_current_weather = get_current_weather_json();
+
+        let function: Tool = serde_json::from_value(get_current_weather).unwrap();
+        println!("Function 1: {:?}\n", function);
+
+        let search_gutenberg_books = search_gutenberg_books_json();
+
+        let function: Tool = serde_json::from_value(search_gutenberg_books).unwrap();
         println!("Function 2: {:?}\n", function);
     }
 
@@ -776,18 +782,16 @@ mod test {
             .name("get_current_weather")
             .description("Get the current weather in a given location")
             .parameters(
-                FunctionParams::object()
+                Param::object()
                     .property(
                         "location",
-                        FunctionParams::string()
+                        Param::string()
                             .description("The city and state, e.g. San Francisco, CA")
                             .call(),
                     )
                     .property(
                         "unit",
-                        FunctionParams::string()
-                            .r#enum(["celsius", "fahrenheit"])
-                            .call(),
+                        Param::string().r#enum(["celsius", "fahrenheit"]).call(),
                     )
                     .required(["location"])
                     .call(),
@@ -796,24 +800,7 @@ mod test {
 
         let function = serde_json::to_value(&tool).unwrap();
 
-        let payload = json!({
-          "type": "function",
-          "function": {
-            "name": "get_current_weather",
-            "description": "Get the current weather in a given location",
-            "parameters": {
-              "type": "object",
-              "properties": {
-                "location": {
-                  "type": "string",
-                  "description": "The city and state, e.g. San Francisco, CA",
-                },
-                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
-              },
-              "required": ["location"],
-            },
-          }
-        });
+        let payload = get_current_weather_json();
 
         assert_eq!(function, payload);
 
@@ -821,12 +808,12 @@ mod test {
             .name("search_gutenberg_books")
             .description("Search for books in the Project Gutenberg library based on specified search terms")
             .parameters(
-                FunctionParams::object()
+                Param::object()
                     .property(
                         "search_terms",
-                        FunctionParams::array()
+                        Param::array()
                             .description("List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)")
-                            .items(FunctionParams::string().call())
+                            .items(Param::string().call())
                             .call()
                     )
                     .required(["search_terms"])
@@ -836,26 +823,7 @@ mod test {
 
         let function = serde_json::to_value(&tool).unwrap();
 
-        let payload = json!({
-          "type": "function",
-          "function": {
-            "name": "search_gutenberg_books",
-            "description": "Search for books in the Project Gutenberg library based on specified search terms",
-            "parameters": {
-              "type": "object",
-              "properties": {
-                "search_terms": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)"
-                }
-              },
-              "required": ["search_terms"]
-            }
-          }
-        });
+        let payload = search_gutenberg_books_json();
 
         assert_eq!(function, payload);
     }
@@ -870,15 +838,13 @@ mod test {
                 params
                     .property(
                         "location",
-                        FunctionParams::string()
+                        Param::string()
                             .description("The city and state, e.g. San Francisco, CA")
                             .call(),
                     )
                     .property(
                         "unit",
-                        FunctionParams::string()
-                            .r#enum(["celsius", "fahrenheit"])
-                            .call(),
+                        Param::string().r#enum(["celsius", "fahrenheit"]).call(),
                     )
                     .required(["location"])
             })
@@ -886,27 +852,7 @@ mod test {
 
         let function = serde_json::to_value(&tool).unwrap();
 
-        let payload = json!({
-          "type": "function",
-          "function": {
-            "name": "get_current_weather",
-            "description": "Get the current weather in a given location",
-            "parameters": {
-              "type": "object",
-              "properties": {
-                "location": {
-                  "type": "string",
-                  "description": "The city and state, e.g. San Francisco, CA"
-                },
-                "unit": {
-                  "type": "string",
-                  "enum": ["celsius", "fahrenheit"]
-                }
-              },
-              "required": ["location"]
-            }
-          }
-        });
+        let payload = get_current_weather_json();
 
         assert_eq!(function, payload);
 
@@ -916,9 +862,9 @@ mod test {
             .with_parameters(|params| {
                     params.property(
                         "search_terms",
-                        FunctionParams::array()
+                        Param::array()
                             .description("List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)")
-                            .items(FunctionParams::string().call())
+                            .items(Param::string().call())
                             .call()
                     )
                     .required(["search_terms"])
@@ -928,26 +874,7 @@ mod test {
 
         let function = serde_json::to_value(&tool).unwrap();
 
-        let payload = json!({
-          "type": "function",
-          "function": {
-            "name": "search_gutenberg_books",
-            "description": "Search for books in the Project Gutenberg library based on specified search terms",
-            "parameters": {
-              "type": "object",
-              "properties": {
-                "search_terms": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)"
-                }
-              },
-              "required": ["search_terms"]
-            }
-          }
-        });
+        let payload = search_gutenberg_books_json();
 
         assert_eq!(function, payload);
     }
