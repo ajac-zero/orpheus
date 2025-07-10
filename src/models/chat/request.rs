@@ -410,6 +410,24 @@ impl Tool {
     }
 }
 
+impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
+    pub fn with_parameters<F, C>(
+        self,
+        build: F,
+    ) -> ToolFunctionBuilder<tool_function_builder::SetParameters<S>>
+    where
+        S::Parameters: tool_function_builder::IsUnset,
+        F: FnOnce(
+            FunctionParamsObjectBuilder<function_params_object_builder::Empty>,
+        ) -> FunctionParamsObjectBuilder<C>,
+        C: function_params_object_builder::IsComplete,
+    {
+        let builder = FunctionParams::object();
+        let parameters = build(builder).call();
+        self.parameters(parameters)
+    }
+}
+
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -813,6 +831,98 @@ mod test {
                     )
                     .required(["search_terms"])
                     .call()
+            )
+            .call();
+
+        let function = serde_json::to_value(&tool).unwrap();
+
+        let payload = json!({
+          "type": "function",
+          "function": {
+            "name": "search_gutenberg_books",
+            "description": "Search for books in the Project Gutenberg library based on specified search terms",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "search_terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)"
+                }
+              },
+              "required": ["search_terms"]
+            }
+          }
+        });
+
+        assert_eq!(function, payload);
+    }
+
+    #[test]
+    fn test_serialize_tool_call_with_closure() {
+        // Test the new simplified API using closure
+        let tool = Tool::function()
+            .name("get_current_weather")
+            .description("Get the current weather in a given location")
+            .with_parameters(|params| {
+                params
+                    .property(
+                        "location",
+                        FunctionParams::string()
+                            .description("The city and state, e.g. San Francisco, CA")
+                            .call(),
+                    )
+                    .property(
+                        "unit",
+                        FunctionParams::string()
+                            .r#enum(["celsius", "fahrenheit"])
+                            .call(),
+                    )
+                    .required(["location"])
+            })
+            .call();
+
+        let function = serde_json::to_value(&tool).unwrap();
+
+        let payload = json!({
+          "type": "function",
+          "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The city and state, e.g. San Francisco, CA"
+                },
+                "unit": {
+                  "type": "string",
+                  "enum": ["celsius", "fahrenheit"]
+                }
+              },
+              "required": ["location"]
+            }
+          }
+        });
+
+        assert_eq!(function, payload);
+
+        let tool = Tool::function()
+            .name("search_gutenberg_books")
+            .description("Search for books in the Project Gutenberg library based on specified search terms")
+            .with_parameters(|params| {
+                    params.property(
+                        "search_terms",
+                        FunctionParams::array()
+                            .description("List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)")
+                            .items(FunctionParams::string().call())
+                            .call()
+                    )
+                    .required(["search_terms"])
+                }
             )
             .call();
 
