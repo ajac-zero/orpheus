@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use bon::bon;
 use serde::{Deserialize, Serialize};
 
 #[serde_with::skip_serializing_none]
@@ -13,6 +14,8 @@ pub struct ChatRequest {
 
     /// Alternate list of models for routing overrides.
     pub models: Option<Vec<String>>,
+
+    pub tools: Option<Vec<Tool>>,
 
     pub plugins: Option<Vec<Plugins>>,
 
@@ -76,6 +79,7 @@ impl ChatRequest {
         model: String,
         messages: Vec<ChatMessage>,
         models: Option<Vec<String>>,
+        tools: Option<Vec<Tool>>,
         plugins: Option<Vec<Plugins>>,
         provider: Option<ProviderPreferences>,
         reasoning: Option<ReasoningConfig>,
@@ -100,6 +104,7 @@ impl ChatRequest {
             model,
             messages,
             models,
+            tools,
             plugins,
             provider,
             reasoning,
@@ -131,6 +136,8 @@ pub struct ChatMessage {
     /// The message content
     pub content: Content,
 
+    pub tool_calls: Option<Vec<ToolCall>>,
+
     pub annotations: Option<Vec<Annotations>>,
 }
 
@@ -139,6 +146,7 @@ impl ChatMessage {
         Self {
             role,
             content,
+            tool_calls: None,
             annotations: None,
         }
     }
@@ -147,6 +155,7 @@ impl ChatMessage {
         Self {
             role: MessageRole::System,
             content,
+            tool_calls: None,
             annotations: None,
         }
     }
@@ -155,6 +164,7 @@ impl ChatMessage {
         Self {
             role: MessageRole::User,
             content: content.into(),
+            tool_calls: None,
             annotations: None,
         }
     }
@@ -163,6 +173,7 @@ impl ChatMessage {
         Self {
             role: MessageRole::Assistant,
             content,
+            tool_calls: None,
             annotations: None,
         }
     }
@@ -171,6 +182,7 @@ impl ChatMessage {
         Self {
             role: MessageRole::Tool,
             content,
+            tool_calls: None,
             annotations: None,
         }
     }
@@ -291,6 +303,18 @@ impl MessageRole {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ToolCall {
+    Function { id: String, function: Function },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Function {
+    name: String,
+    arguments: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderPreferences {
     /// Sort preference (e.g., price, throughput).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -374,12 +398,24 @@ pub enum Tool {
     },
 }
 
+#[bon]
+impl Tool {
+    #[builder(on(String, into))]
+    pub fn function(name: String, description: Option<String>, parameters: FunctionParams) -> Self {
+        Self::Function {
+            name,
+            description,
+            parameters,
+        }
+    }
+}
+
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum FunctionParams {
     Integer {
-        description: Option<i64>,
+        description: Option<String>,
     },
     r#String {
         description: Option<String>,
@@ -396,6 +432,60 @@ pub enum FunctionParams {
     },
 }
 
+#[bon]
+impl FunctionParams {
+    #[builder]
+    pub fn object(
+        #[builder(field)] properties: HashMap<String, Self>,
+        #[builder(into)] description: Option<String>,
+        #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
+        required: Option<Vec<String>>,
+    ) -> Self {
+        Self::Object {
+            description,
+            properties,
+            required,
+        }
+    }
+
+    #[builder(on(String, into))]
+    pub fn string(
+        description: Option<String>,
+        #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
+        r#enum: Option<Vec<String>>,
+    ) -> Self {
+        Self::String {
+            description,
+            r#enum,
+        }
+    }
+
+    #[builder(on(String, into))]
+    pub fn integer(description: Option<String>) -> Self {
+        Self::Integer { description }
+    }
+
+    #[builder(on(String, into))]
+    pub fn array(description: Option<String>, items: FunctionParams) -> Self {
+        Self::Array {
+            description,
+            items: Box::new(items),
+        }
+    }
+}
+
+impl<S: function_params_object_builder::State> FunctionParamsObjectBuilder<S> {
+    pub fn property(mut self, key: impl Into<String>, value: FunctionParams) -> Self {
+        self.properties.insert(key.into(), value);
+        self
+    }
+
+    pub fn properties(mut self, properties: HashMap<String, FunctionParams>) -> Self {
+        self.properties = properties;
+        self
+    }
+}
+
 #[cfg(test)]
 mod test {
     use serde_json::{from_value, json};
@@ -407,6 +497,7 @@ mod test {
         let message = ChatMessage {
             role: MessageRole::User,
             content: Content::Simple("Hello world!".to_string()),
+            tool_calls: None,
             annotations: None,
         };
 
@@ -434,6 +525,7 @@ mod test {
             let message = ChatMessage {
                 role: role.clone(),
                 content: Content::Simple("test".to_string()),
+                tool_calls: None,
                 annotations: None,
             };
 
@@ -662,35 +754,27 @@ mod test {
 
     #[test]
     fn test_serialize_tool_call() {
-        let tool = Tool::Function {
-            name: String::from("get_current_weather"),
-            description: Some(String::from("Get the current weather in a given location")),
-            parameters: FunctionParams::Object {
-                description: None,
-                properties: HashMap::from([
-                    (
-                        String::from("location"),
-                        FunctionParams::String {
-                            description: Some(String::from(
-                                "The city and state, e.g. San Francisco, CA",
-                            )),
-                            r#enum: None,
-                        },
-                    ),
-                    (
-                        String::from("unit"),
-                        FunctionParams::String {
-                            description: None,
-                            r#enum: Some(Vec::from([
-                                String::from("celsius"),
-                                String::from("fahrenheit"),
-                            ])),
-                        },
-                    ),
-                ]),
-                required: Some(Vec::from([String::from("location")])),
-            },
-        };
+        let tool = Tool::function()
+            .name("get_current_weather")
+            .description("Get the current weather in a given location")
+            .parameters(
+                FunctionParams::object()
+                    .property(
+                        "location",
+                        FunctionParams::string()
+                            .description("The city and state, e.g. San Francisco, CA")
+                            .call(),
+                    )
+                    .property(
+                        "unit",
+                        FunctionParams::string()
+                            .r#enum(["celsius", "fahrenheit"])
+                            .call(),
+                    )
+                    .required(["location"])
+                    .call(),
+            )
+            .call();
 
         let function = serde_json::to_value(&tool).unwrap();
 
@@ -715,28 +799,22 @@ mod test {
 
         assert_eq!(function, payload);
 
-        let tool = Tool::Function {
-            name: String::from("search_gutenberg_books"),
-            description: Some(String::from(
-                "Search for books in the Project Gutenberg library based on specified search terms",
-            )),
-            parameters: FunctionParams::Object {
-                description: None,
-                properties: HashMap::from([(
-                    String::from("search_terms"),
-                    FunctionParams::Array {
-                        description: Some(String::from(
-                            "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)",
-                        )),
-                        items: Box::new(FunctionParams::String {
-                            description: None,
-                            r#enum: None,
-                        }),
-                    },
-                )]),
-                required: Some(Vec::from([String::from("search_terms")])),
-            },
-        };
+        let tool = Tool::function()
+            .name("search_gutenberg_books")
+            .description("Search for books in the Project Gutenberg library based on specified search terms")
+            .parameters(
+                FunctionParams::object()
+                    .property(
+                        "search_terms",
+                        FunctionParams::array()
+                            .description("List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)")
+                            .items(FunctionParams::string().call())
+                            .call()
+                    )
+                    .required(["search_terms"])
+                    .call()
+            )
+            .call();
 
         let function = serde_json::to_value(&tool).unwrap();
 

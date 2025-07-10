@@ -137,6 +137,7 @@ impl AsyncOrpheus {
         model: String,
         messages: Vec<ChatMessage>,
         models: Option<Vec<String>>,
+        tools: Option<Vec<Tool>>,
         plugins: Option<Vec<Plugins>>,
         provider: Option<ProviderPreferences>,
         reasoning: Option<ReasoningConfig>,
@@ -161,6 +162,7 @@ impl AsyncOrpheus {
             model,
             messages,
             models,
+            tools,
             plugins,
             provider,
             reasoning,
@@ -195,6 +197,7 @@ impl AsyncOrpheus {
         model: String,
         messages: Vec<ChatMessage>,
         models: Option<Vec<String>>,
+        tools: Option<Vec<Tool>>,
         plugins: Option<Vec<Plugins>>,
         provider: Option<ProviderPreferences>,
         reasoning: Option<ReasoningConfig>,
@@ -219,6 +222,7 @@ impl AsyncOrpheus {
             model,
             messages,
             models,
+            tools,
             plugins,
             provider,
             reasoning,
@@ -553,6 +557,45 @@ mod tests {
             "Successfully processed streaming chat completion: '{}'",
             accumulated_content
         );
+    }
+
+    #[tokio::test]
+    async fn test_chat_request_with_tool() {
+        let api_key = env::var(API_KEY_ENV_VAR).expect("load env var");
+
+        let client = AsyncOrpheus::new(api_key);
+
+        let tool = Tool::function()
+            .name("extract_info")
+            .description("extract some data fields from a sentence")
+            .parameters(
+                FunctionParams::object()
+                    .property("name", FunctionParams::string().call())
+                    .property("age", FunctionParams::integer().call())
+                    .required(["name", "age"])
+                    .call(),
+            )
+            .call();
+
+        let response = client
+            .chat()
+            .model("google/gemini-2.0-flash-001")
+            .messages(vec![ChatMessage::user(Content::simple(
+                "Isabella is 12 years old.",
+            ))])
+            .tools(Vec::from([tool]))
+            .send()
+            .await;
+        println!("{:?}", response);
+
+        assert!(response.is_ok());
+
+        let chat_response = response.unwrap();
+        assert!(chat_response.id.is_some());
+        assert!(chat_response.choices.is_some());
+
+        let choices = chat_response.choices.unwrap();
+        assert!(!choices.is_empty());
     }
 
     #[tokio::test]
