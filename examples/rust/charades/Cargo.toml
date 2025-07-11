@@ -1,0 +1,9 @@
+[package]
+name = "charades"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+colored = "3.0.0"
+orpheus = { version = "0.1.0", path = "../../..", features = ["anyhow"] }
