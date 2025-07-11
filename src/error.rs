@@ -14,6 +14,10 @@ pub enum OrpheusError {
     Http(#[from] reqwest::Error),
     #[error("Invalid SSE line: {0}")]
     InvalidSSE(String),
+    #[error("Invalid response: {0}")]
+    Response(String),
+    #[error("Missing env var: {0}")]
+    Env(#[from] std::env::VarError),
     #[cfg(feature = "anyhow")]
     #[error("Anyhow error: {0}")]
     Anyhow(#[from] anyhow::Error),

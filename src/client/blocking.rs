@@ -40,6 +40,11 @@ impl Orpheus {
         Self::default().with_api_key(api_key)
     }
 
+    pub fn from_env() -> crate::Result<Self> {
+        let api_key = std::env::var(crate::constants::API_KEY_ENV_VAR)?;
+        Ok(Self::new(api_key))
+    }
+
     /// Set the base URL for the API
     pub fn with_base_url<U>(mut self, base_url: U) -> crate::Result<Self>
     where
@@ -347,10 +352,8 @@ mod tests {
         assert!(response.is_ok());
 
         let chat_response = response.unwrap();
-        assert!(chat_response.id.is_some());
-        assert!(chat_response.choices.is_some());
 
-        let choices = chat_response.choices.unwrap();
+        let choices = chat_response.choices;
         assert!(!choices.is_empty());
     }
 
@@ -421,10 +424,8 @@ mod tests {
         assert!(response.is_ok());
 
         let chat_response = response.unwrap();
-        assert!(chat_response.id.is_some());
-        assert!(chat_response.choices.is_some());
 
-        let choices = chat_response.choices.unwrap();
+        let choices = chat_response.choices;
         assert!(!choices.is_empty());
     }
 
@@ -449,10 +450,8 @@ mod tests {
         assert!(response.is_ok());
 
         let chat_response = response.unwrap();
-        assert!(chat_response.id.is_some());
-        assert!(chat_response.choices.is_some());
 
-        let choices = chat_response.choices.unwrap();
+        let choices = chat_response.choices;
         assert!(!choices.is_empty());
     }
 }

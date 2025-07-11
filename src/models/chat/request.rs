@@ -128,6 +128,7 @@ impl ChatRequest {
     }
 }
 
+#[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     /// The role of the message author
@@ -151,10 +152,10 @@ impl ChatMessage {
         }
     }
 
-    pub fn system(content: Content) -> Self {
+    pub fn system(content: impl Into<Content>) -> Self {
         Self {
             role: MessageRole::System,
-            content,
+            content: content.into(),
             tool_calls: None,
             annotations: None,
         }
@@ -169,19 +170,19 @@ impl ChatMessage {
         }
     }
 
-    pub fn assistant(content: Content) -> Self {
+    pub fn assistant(content: impl Into<Content>) -> Self {
         Self {
             role: MessageRole::Assistant,
-            content,
+            content: content.into(),
             tool_calls: None,
             annotations: None,
         }
     }
 
-    pub fn tool(content: Content) -> Self {
+    pub fn tool(content: impl Into<Content>) -> Self {
         Self {
             role: MessageRole::Tool,
-            content,
+            content: content.into(),
             tool_calls: None,
             annotations: None,
         }
@@ -238,6 +239,27 @@ impl Content {
     }
 }
 
+impl From<String> for Content {
+    fn from(string: String) -> Self {
+        Content::Simple(string)
+    }
+}
+
+impl<'a> From<&'a str> for Content {
+    fn from(s: &'a str) -> Self {
+        Content::Simple(s.to_string())
+    }
+}
+
+impl std::fmt::Display for Content {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Content::Simple(s) => write!(f, "{}", s),
+            Content::Complex(v) => v.iter().try_for_each(|p| write!(f, "{}", p)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ImageUrl {
     url: String,
@@ -279,6 +301,16 @@ impl Part {
     }
 }
 
+impl std::fmt::Display for Part {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Part::Text { text } => write!(f, "{}", text),
+            Part::ImageUrl { image_url } => write!(f, "{}", format!("[Url: {}]", image_url.url)),
+            Part::File { file } => write!(f, "{}", format!("[File: {}]", file.filename)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MessageRole {
@@ -312,6 +344,12 @@ pub enum ToolCall {
 pub struct Function {
     name: String,
     arguments: String,
+}
+
+impl Function {
+    pub fn is(&self, name: &str) -> bool {
+        self.name == name
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -394,14 +432,18 @@ pub enum Tool {
     Function {
         name: String,
         description: Option<String>,
-        parameters: Param,
+        parameters: Option<Param>,
     },
 }
 
 #[bon]
 impl Tool {
-    #[builder(on(String, into))]
-    pub fn function(name: String, description: Option<String>, parameters: Param) -> Self {
+    #[builder(on(String, into), finish_fn = build)]
+    pub fn function(
+        #[builder(start_fn)] name: String,
+        description: Option<String>,
+        parameters: Option<Param>,
+    ) -> Self {
         Self::Function {
             name,
             description,
@@ -778,8 +820,7 @@ mod test {
 
     #[test]
     fn test_serialize_tool_call() {
-        let tool = Tool::function()
-            .name("get_current_weather")
+        let tool = Tool::function("get_current_weather")
             .description("Get the current weather in a given location")
             .parameters(
                 Param::object()
@@ -796,7 +837,7 @@ mod test {
                     .required(["location"])
                     .call(),
             )
-            .call();
+            .build();
 
         let function = serde_json::to_value(&tool).unwrap();
 
@@ -804,8 +845,7 @@ mod test {
 
         assert_eq!(function, payload);
 
-        let tool = Tool::function()
-            .name("search_gutenberg_books")
+        let tool = Tool::function("search_gutenberg_books")
             .description("Search for books in the Project Gutenberg library based on specified search terms")
             .parameters(
                 Param::object()
@@ -819,7 +859,7 @@ mod test {
                     .required(["search_terms"])
                     .call()
             )
-            .call();
+            .build();
 
         let function = serde_json::to_value(&tool).unwrap();
 
@@ -831,8 +871,7 @@ mod test {
     #[test]
     fn test_serialize_tool_call_with_closure() {
         // Test the new simplified API using closure
-        let tool = Tool::function()
-            .name("get_current_weather")
+        let tool = Tool::function("get_current_weather")
             .description("Get the current weather in a given location")
             .with_parameters(|params| {
                 params
@@ -848,7 +887,7 @@ mod test {
                     )
                     .required(["location"])
             })
-            .call();
+            .build();
 
         let function = serde_json::to_value(&tool).unwrap();
 
@@ -856,8 +895,7 @@ mod test {
 
         assert_eq!(function, payload);
 
-        let tool = Tool::function()
-            .name("search_gutenberg_books")
+        let tool = Tool::function("search_gutenberg_books")
             .description("Search for books in the Project Gutenberg library based on specified search terms")
             .with_parameters(|params| {
                     params.property(
@@ -870,7 +908,7 @@ mod test {
                     .required(["search_terms"])
                 }
             )
-            .call();
+            .build();
 
         let function = serde_json::to_value(&tool).unwrap();
 
