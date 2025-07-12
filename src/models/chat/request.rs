@@ -74,60 +74,6 @@ pub struct ChatRequest {
     pub user: Option<String>,
 }
 
-impl ChatRequest {
-    pub fn new(
-        model: String,
-        messages: Vec<ChatMessage>,
-        models: Option<Vec<String>>,
-        tools: Option<Vec<Tool>>,
-        plugins: Option<Vec<Plugins>>,
-        provider: Option<ProviderPreferences>,
-        reasoning: Option<ReasoningConfig>,
-        usage: Option<UsageConfig>,
-        transforms: Option<Vec<String>>,
-        stream: Option<bool>,
-        max_tokens: Option<i32>,
-        temperature: Option<f64>,
-        seed: Option<i32>,
-        top_p: Option<f64>,
-        top_k: Option<i32>,
-        frequency_penalty: Option<f64>,
-        presence_penalty: Option<f64>,
-        repetition_penalty: Option<f64>,
-        logit_bias: Option<HashMap<String, f64>>,
-        top_logprobs: Option<i32>,
-        min_p: Option<f64>,
-        top_a: Option<f64>,
-        user: Option<String>,
-    ) -> Self {
-        Self {
-            model,
-            messages,
-            models,
-            tools,
-            plugins,
-            provider,
-            reasoning,
-            usage,
-            transforms,
-            stream,
-            max_tokens,
-            temperature,
-            seed,
-            top_p,
-            top_k,
-            frequency_penalty,
-            presence_penalty,
-            repetition_penalty,
-            logit_bias,
-            top_logprobs,
-            min_p,
-            top_a,
-            user,
-        }
-    }
-}
-
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {

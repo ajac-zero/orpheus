@@ -156,8 +156,7 @@ impl Orpheus {
         top_a: Option<f64>,
         user: Option<String>,
     ) -> crate::Result<ChatCompletion> {
-        let stream = Some(false);
-        let body = ChatRequest::new(
+        let body = ChatRequest {
             model,
             messages,
             models,
@@ -167,7 +166,7 @@ impl Orpheus {
             reasoning,
             usage,
             transforms,
-            stream,
+            stream: Some(false),
             max_tokens,
             temperature,
             seed,
@@ -181,7 +180,7 @@ impl Orpheus {
             min_p,
             top_a,
             user,
-        );
+        };
 
         let response = self.execute(CHAT_COMPLETION_PATH, body)?;
 
@@ -216,8 +215,7 @@ impl Orpheus {
         top_a: Option<f64>,
         user: Option<String>,
     ) -> crate::Result<ChatStream> {
-        let stream = Some(true);
-        let body = ChatRequest::new(
+        let body = ChatRequest {
             model,
             messages,
             models,
@@ -227,7 +225,7 @@ impl Orpheus {
             reasoning,
             usage,
             transforms,
-            stream,
+            stream: Some(true),
             max_tokens,
             temperature,
             seed,
@@ -241,7 +239,7 @@ impl Orpheus {
             min_p,
             top_a,
             user,
-        );
+        };
 
         let response = self.execute(CHAT_COMPLETION_PATH, body)?;
 
