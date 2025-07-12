@@ -5,77 +5,6 @@ use serde::{Deserialize, Serialize};
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatRequest {
-    /// The model ID to use. If unspecified, the user's default is used.
-    pub model: String,
-
-    /// List of messages in the conversation
-    pub messages: Vec<ChatMessage>,
-
-    /// Alternate list of models for routing overrides.
-    pub models: Option<Vec<String>>,
-
-    pub tools: Option<Vec<Tool>>,
-
-    pub plugins: Option<Vec<Plugins>>,
-
-    /// Preferences for provider routing.
-    pub provider: Option<ProviderPreferences>,
-
-    /// Configuration for model reasoning/thinking tokens
-    pub reasoning: Option<ReasoningConfig>,
-
-    /// Whether to include usage information in the response
-    pub usage: Option<UsageConfig>,
-
-    /// List of prompt transforms (OpenRouter-only).
-    pub transforms: Option<Vec<String>>,
-
-    /// Enable streaming of results. Defaults to false
-    pub stream: Option<bool>,
-
-    /// Maximum number of tokens (range: [1, context_length)).
-    pub max_tokens: Option<i32>,
-
-    /// Sampling temperature (range: [0, 2]).
-    pub temperature: Option<f64>,
-
-    /// Seed for deterministic outputs.
-    pub seed: Option<i32>,
-
-    /// Top-p sampling value (range: (0, 1]).
-    pub top_p: Option<f64>,
-
-    /// Top-k sampling value (range: [1, Infinity)).
-    pub top_k: Option<i32>,
-
-    /// Frequency penalty (range: [-2, 2]).
-    pub frequency_penalty: Option<f64>,
-
-    /// Presence penalty (range: [-2, 2]).
-    pub presence_penalty: Option<f64>,
-
-    /// Repetition penalty (range: (0, 2]).
-    pub repetition_penalty: Option<f64>,
-
-    /// Mapping of token IDs to bias values.
-    pub logit_bias: Option<HashMap<String, f64>>,
-
-    /// Number of top log probabilities to return.
-    pub top_logprobs: Option<i32>,
-
-    /// Minimum probability threshold (range: [0, 1]).
-    pub min_p: Option<f64>,
-
-    /// Alternate top sampling parameter (range: [0, 1]).
-    pub top_a: Option<f64>,
-
-    /// A stable identifier for your end-users. Used to help detect and prevent abuse.
-    pub user: Option<String>,
-}
-
-#[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     /// The role of the message author
     pub role: MessageRole,
@@ -624,9 +553,6 @@ mod test {
     #[test]
     fn test_complex_request_deserialization() {
         let data = json!({
-            "model": "google/gemini-2.0-flash-001",
-            "messages": [
-                {
                     "role": "user",
                     "content": [
                         {
@@ -640,11 +566,9 @@ mod test {
                             }
                         }
                     ]
-                }
-            ]
         });
 
-        let model = from_value::<ChatRequest>(data).unwrap();
+        let model = from_value::<ChatMessage>(data).unwrap();
         println!("Complex Chat Message: {:?}", model);
     }
 
