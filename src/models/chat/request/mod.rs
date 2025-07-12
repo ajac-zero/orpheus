@@ -1,423 +1,18 @@
-use std::collections::HashMap;
+mod content;
+mod message;
+mod plugins;
+mod provider;
+mod reasoning;
+mod tool;
+mod usage;
 
-use bon::bon;
-use serde::{Deserialize, Serialize};
-
-#[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatMessage {
-    /// The role of the message author
-    pub role: MessageRole,
-
-    /// The message content
-    pub content: Content,
-
-    pub tool_calls: Option<Vec<ToolCall>>,
-
-    pub annotations: Option<Vec<Annotations>>,
-}
-
-impl ChatMessage {
-    pub fn new(role: MessageRole, content: Content) -> Self {
-        Self {
-            role,
-            content,
-            tool_calls: None,
-            annotations: None,
-        }
-    }
-
-    pub fn system(content: impl Into<Content>) -> Self {
-        Self {
-            role: MessageRole::System,
-            content: content.into(),
-            tool_calls: None,
-            annotations: None,
-        }
-    }
-
-    pub fn user(content: impl Into<Content>) -> Self {
-        Self {
-            role: MessageRole::User,
-            content: content.into(),
-            tool_calls: None,
-            annotations: None,
-        }
-    }
-
-    pub fn assistant(content: impl Into<Content>) -> Self {
-        Self {
-            role: MessageRole::Assistant,
-            content: content.into(),
-            tool_calls: None,
-            annotations: None,
-        }
-    }
-
-    pub fn tool(content: impl Into<Content>) -> Self {
-        Self {
-            role: MessageRole::Tool,
-            content: content.into(),
-            tool_calls: None,
-            annotations: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Content {
-    Simple(String),
-    Complex(Vec<Part>),
-}
-
-impl From<Vec<Part>> for Content {
-    fn from(value: Vec<Part>) -> Self {
-        Self::Complex(value)
-    }
-}
-
-impl Content {
-    pub fn simple(content: impl Into<String>) -> Self {
-        Content::Simple(content.into())
-    }
-
-    pub fn with_image(self, url: impl Into<String>, detail: Option<String>) -> Self {
-        let image_part = Part::image_url(url.into(), detail);
-        self.add_part(image_part)
-    }
-
-    pub fn with_file(self, filename: impl Into<String>, data: impl Into<String>) -> Self {
-        let file_part = Part::file(filename.into(), data.into());
-        self.add_part(file_part)
-    }
-
-    /// Consumes the current content and creates a new content with the appended part.
-    /// 1. `Self::Simple` variant is transformed into a complex variant with the original text prepended as a "text" part.
-    /// 2. `Self::Complex` variant is modified by appending the new part to the existing parts vector.
-    fn add_part(self, part: Part) -> Self {
-        let new_parts = match self {
-            Self::Simple(string) => vec![Part::text(string), part],
-            Self::Complex(mut parts) => {
-                parts.push(part);
-                parts
-            }
-        };
-        Content::Complex(new_parts)
-    }
-
-    pub fn to_string(&self) -> String {
-        match self {
-            Content::Simple(s) => s.clone(),
-            Content::Complex(_) => todo!(),
-        }
-    }
-}
-
-impl From<String> for Content {
-    fn from(string: String) -> Self {
-        Content::Simple(string)
-    }
-}
-
-impl<'a> From<&'a str> for Content {
-    fn from(s: &'a str) -> Self {
-        Content::Simple(s.to_string())
-    }
-}
-
-impl std::fmt::Display for Content {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Content::Simple(s) => write!(f, "{}", s),
-            Content::Complex(v) => v.iter().try_for_each(|p| write!(f, "{}", p)),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ImageUrl {
-    url: String,
-    detail: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct File {
-    filename: String,
-    file_data: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum Part {
-    Text { text: String },
-    ImageUrl { image_url: ImageUrl },
-    File { file: File },
-}
-
-impl Part {
-    pub fn text(string: String) -> Self {
-        Self::Text { text: string }
-    }
-
-    pub fn image_url(url: String, detail: Option<String>) -> Self {
-        Self::ImageUrl {
-            image_url: ImageUrl { url, detail },
-        }
-    }
-
-    pub fn file(filename: String, data: String) -> Self {
-        Self::File {
-            file: File {
-                filename,
-                file_data: data,
-            },
-        }
-    }
-}
-
-impl std::fmt::Display for Part {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Part::Text { text } => write!(f, "{}", text),
-            Part::ImageUrl { image_url } => write!(f, "{}", format!("[Url: {}]", image_url.url)),
-            Part::File { file } => write!(f, "{}", format!("[File: {}]", file.filename)),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum MessageRole {
-    System,
-    Developer,
-    User,
-    Assistant,
-    Tool,
-}
-
-impl MessageRole {
-    pub fn from_string(string: &str) -> Result<Self, String> {
-        match string {
-            "system" => Ok(MessageRole::System),
-            "developer" => Ok(MessageRole::Developer),
-            "user" => Ok(MessageRole::User),
-            "assistant" => Ok(MessageRole::Assistant),
-            "tool" => Ok(MessageRole::Tool),
-            _ => Err(format!("Invalid message role: {}", string)),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ToolCall {
-    Function { id: String, function: Function },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Function {
-    name: String,
-    arguments: String,
-}
-
-impl Function {
-    pub fn is(&self, name: &str) -> bool {
-        self.name == name
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderPreferences {
-    /// Sort preference (e.g., price, throughput).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sort: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReasoningConfig {
-    /// OpenAI-style reasoning effort setting
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub effort: Option<ReasoningEffort>,
-
-    /// Non-OpenAI-style reasoning effort setting. Cannot be used simultaneously with effort.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_tokens: Option<i32>,
-
-    /// Whether to exclude reasoning from the response. Defaults to false
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub exclude: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ReasoningEffort {
-    High,
-    Medium,
-    Low,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UsageConfig {
-    /// Whether to include usage information in the response
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub include: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "engine", rename_all = "kebab-case")]
-pub enum ParsingEngine {
-    PdfText,
-    MistralOcr,
-    Native,
-}
-
-#[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "id", rename_all = "kebab-case")]
-pub enum Plugins {
-    FileParser {
-        pdf: ParsingEngine,
-    },
-    Web {
-        max_results: Option<u64>,
-        search_prompt: Option<String>,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum Annotations {
-    UrlCitation { url_citation: UrlCitation },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UrlCitation {
-    url: String,
-    title: String,
-    content: Option<String>,
-    start_index: u64,
-    end_index: u64,
-}
-
-#[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", content = "function", rename_all = "snake_case")]
-pub enum Tool {
-    Function {
-        name: String,
-        description: Option<String>,
-        parameters: Option<Param>,
-    },
-}
-
-#[bon]
-impl Tool {
-    #[builder(on(String, into), finish_fn = build)]
-    pub fn function(
-        #[builder(start_fn)] name: String,
-        description: Option<String>,
-        parameters: Option<Param>,
-    ) -> Self {
-        Self::Function {
-            name,
-            description,
-            parameters,
-        }
-    }
-}
-
-impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
-    pub fn with_parameters<F, C>(
-        self,
-        build: F,
-    ) -> ToolFunctionBuilder<tool_function_builder::SetParameters<S>>
-    where
-        S::Parameters: tool_function_builder::IsUnset,
-        F: FnOnce(ParamObjectBuilder<param_object_builder::Empty>) -> ParamObjectBuilder<C>,
-        C: param_object_builder::IsComplete,
-    {
-        let builder = Param::object();
-        let parameters = build(builder).call();
-        self.parameters(parameters)
-    }
-}
-
-#[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum Param {
-    Integer {
-        description: Option<String>,
-    },
-    r#String {
-        description: Option<String>,
-        r#enum: Option<Vec<String>>,
-    },
-    Array {
-        description: Option<String>,
-        items: Box<Param>,
-    },
-    Object {
-        description: Option<String>,
-        properties: HashMap<String, Param>,
-        required: Option<Vec<String>>,
-    },
-}
-
-#[bon]
-impl Param {
-    #[builder]
-    pub fn object(
-        #[builder(field)] properties: HashMap<String, Self>,
-        #[builder(into)] description: Option<String>,
-        #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
-        required: Option<Vec<String>>,
-    ) -> Self {
-        Self::Object {
-            description,
-            properties,
-            required,
-        }
-    }
-
-    #[builder(on(String, into))]
-    pub fn string(
-        description: Option<String>,
-        #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
-        r#enum: Option<Vec<String>>,
-    ) -> Self {
-        Self::String {
-            description,
-            r#enum,
-        }
-    }
-
-    #[builder(on(String, into))]
-    pub fn integer(description: Option<String>) -> Self {
-        Self::Integer { description }
-    }
-
-    #[builder(on(String, into))]
-    pub fn array(description: Option<String>, items: Param) -> Self {
-        Self::Array {
-            description,
-            items: Box::new(items),
-        }
-    }
-}
-
-impl<S: param_object_builder::State> ParamObjectBuilder<S> {
-    pub fn property(mut self, key: impl Into<String>, value: Param) -> Self {
-        self.properties.insert(key.into(), value);
-        self
-    }
-
-    pub fn properties(mut self, properties: HashMap<String, Param>) -> Self {
-        self.properties = properties;
-        self
-    }
-}
+pub use content::Content;
+pub use message::{ChatMessage, MessageRole, ToolCall};
+pub use plugins::{ParsingEngine, Plugin};
+pub use provider::ProviderPreferences;
+pub use reasoning::{ReasoningConfig, ReasoningEffort};
+pub use tool::{Param, Tool};
+pub use usage::UsageConfig;
 
 #[cfg(test)]
 mod test {
@@ -581,12 +176,12 @@ mod test {
               },
         });
 
-        let plugin = from_value::<Plugins>(payload).unwrap();
+        let plugin = from_value::<Plugin>(payload).unwrap();
         println!("Web Plugin: {:?}", plugin);
 
         // assert that the plugin is of variant FileParser
         match plugin {
-            Plugins::FileParser { pdf } => {
+            Plugin::FileParser { pdf } => {
                 assert!(matches!(pdf, ParsingEngine::PdfText));
             }
             _ => unreachable!(),
@@ -597,12 +192,12 @@ mod test {
     fn test_web_plugin_with_params_deserialize() {
         let payload = json!({"id": "web" });
 
-        let plugin = from_value::<Plugins>(payload).unwrap();
+        let plugin = from_value::<Plugin>(payload).unwrap();
         println!("Web Plugin: {:?}", plugin);
 
         // assert that the plugin is of variant FileParser
         match plugin {
-            Plugins::Web {
+            Plugin::Web {
                 max_results,
                 search_prompt,
             } => {
@@ -615,12 +210,12 @@ mod test {
         let payload =
             json!({"id": "web", "max_results": 10, "search_prompt": "Some relevant web results:" });
 
-        let plugin = from_value::<Plugins>(payload).unwrap();
+        let plugin = from_value::<Plugin>(payload).unwrap();
         println!("Web Plugin: {:?}", plugin);
 
         // assert that the plugin is of variant FileParser
         match plugin {
-            Plugins::Web {
+            Plugin::Web {
                 max_results,
                 search_prompt,
             } => {

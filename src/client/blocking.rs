@@ -211,7 +211,7 @@ pub struct ChatRequest {
 
     pub tools: Option<Vec<Tool>>,
 
-    pub plugins: Option<Vec<Plugins>>,
+    pub plugins: Option<Vec<Plugin>>,
 
     /// Preferences for provider routing.
     pub provider: Option<ProviderPreferences>,

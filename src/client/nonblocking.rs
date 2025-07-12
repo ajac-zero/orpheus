@@ -220,7 +220,7 @@ pub struct ChatRequest {
 
     pub tools: Option<Vec<Tool>>,
 
-    pub plugins: Option<Vec<Plugins>>,
+    pub plugins: Option<Vec<Plugin>>,
 
     /// Preferences for provider routing.
     pub provider: Option<ProviderPreferences>,
@@ -479,7 +479,7 @@ mod tests {
             .messages(vec![ChatMessage::user(Content::simple(
                 "What are the latest crypto news?",
             ))])
-            .plugins(vec![Plugins::Web {
+            .plugins(vec![Plugin::Web {
                 max_results: None,
                 search_prompt: None,
             }])
@@ -507,7 +507,7 @@ mod tests {
             .messages(vec![ChatMessage::user(Content::simple(
                 "What are the latest crypto news!",
             ))])
-            .plugins(vec![Plugins::Web {
+            .plugins(vec![Plugin::Web {
                 max_results: None,
                 search_prompt: None,
             }])
