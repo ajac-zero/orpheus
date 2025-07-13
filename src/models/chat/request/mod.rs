@@ -7,7 +7,7 @@ mod tool;
 mod usage;
 
 pub use content::Content;
-pub use message::{ChatMessage, MessageRole, ToolCall};
+pub use message::{ChatMessages, Message, Role, ToolCall};
 pub use plugins::{ParsingEngine, Plugin};
 pub use provider::ProviderPreferences;
 pub use reasoning::{ReasoningConfig, ReasoningEffort};
@@ -22,35 +22,35 @@ mod test {
 
     #[test]
     fn test_chat_message_simple_content() {
-        let message = ChatMessage {
-            role: MessageRole::User,
+        let message = Message {
+            role: Role::User,
             content: Content::Simple("Hello world!".to_string()),
             tool_calls: None,
             annotations: None,
         };
 
         let json = serde_json::to_string(&message).unwrap();
-        let deserialized: ChatMessage = serde_json::from_str(&json).unwrap();
+        let deserialized: Message = serde_json::from_str(&json).unwrap();
 
         match deserialized.content {
             Content::Simple(text) => assert_eq!(text, "Hello world!"),
             _ => panic!("Expected simple content"),
         }
-        assert!(matches!(deserialized.role, MessageRole::User));
+        assert!(matches!(deserialized.role, Role::User));
     }
 
     #[test]
     fn test_message_roles_serialization() {
         let roles = vec![
-            MessageRole::System,
-            MessageRole::Developer,
-            MessageRole::User,
-            MessageRole::Assistant,
-            MessageRole::Tool,
+            Role::System,
+            Role::Developer,
+            Role::User,
+            Role::Assistant,
+            Role::Tool,
         ];
 
         for role in roles {
-            let message = ChatMessage {
+            let message = Message {
                 role: role.clone(),
                 content: Content::Simple("test".to_string()),
                 tool_calls: None,
@@ -58,15 +58,15 @@ mod test {
             };
 
             let json = serde_json::to_string(&message).unwrap();
-            let deserialized: ChatMessage = serde_json::from_str(&json).unwrap();
+            let deserialized: Message = serde_json::from_str(&json).unwrap();
 
             // Test that roles serialize/deserialize correctly
             match (&role, &deserialized.role) {
-                (MessageRole::System, MessageRole::System) => (),
-                (MessageRole::Developer, MessageRole::Developer) => (),
-                (MessageRole::User, MessageRole::User) => (),
-                (MessageRole::Assistant, MessageRole::Assistant) => (),
-                (MessageRole::Tool, MessageRole::Tool) => (),
+                (Role::System, Role::System) => (),
+                (Role::Developer, Role::Developer) => (),
+                (Role::User, Role::User) => (),
+                (Role::Assistant, Role::Assistant) => (),
+                (Role::Tool, Role::Tool) => (),
                 _ => panic!("Role mismatch: {:?} != {:?}", role, deserialized.role),
             }
         }
@@ -107,7 +107,7 @@ mod test {
                     "content": "hello!"
         });
 
-        let model = from_value::<ChatMessage>(data).unwrap();
+        let model = from_value::<Message>(data).unwrap();
         println!("Chat Message: {:?}", model);
     }
 
@@ -123,7 +123,7 @@ mod test {
                     ]
         });
 
-        let model = from_value::<ChatMessage>(data).unwrap();
+        let model = from_value::<Message>(data).unwrap();
         println!("Chat Message: {:?}", model);
     }
 
@@ -141,7 +141,7 @@ mod test {
                     ]
         });
 
-        let model = from_value::<ChatMessage>(data).unwrap();
+        let model = from_value::<Message>(data).unwrap();
         println!("Chat Message: {:?}", model);
     }
 
@@ -163,7 +163,7 @@ mod test {
                     ]
         });
 
-        let model = from_value::<ChatMessage>(data).unwrap();
+        let model = from_value::<Message>(data).unwrap();
         println!("Complex Chat Message: {:?}", model);
     }
 

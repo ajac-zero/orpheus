@@ -1,2 +1,4 @@
-pub mod chat;
+mod chat;
 pub mod completion;
+
+pub use chat::*;

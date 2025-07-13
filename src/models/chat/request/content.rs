@@ -18,20 +18,10 @@ impl Content {
         Content::Simple(content.into())
     }
 
-    pub fn with_image(self, url: impl Into<String>, detail: Option<String>) -> Self {
-        let image_part = Part::image_url(url.into(), detail);
-        self.add_part(image_part)
-    }
-
-    pub fn with_file(self, filename: impl Into<String>, data: impl Into<String>) -> Self {
-        let file_part = Part::file(filename.into(), data.into());
-        self.add_part(file_part)
-    }
-
     /// Consumes the current content and creates a new content with the appended part.
     /// 1. `Self::Simple` variant is transformed into a complex variant with the original text prepended as a "text" part.
     /// 2. `Self::Complex` variant is modified by appending the new part to the existing parts vector.
-    fn add_part(self, part: Part) -> Self {
+    pub fn add_part(self, part: Part) -> Self {
         let new_parts = match self {
             Self::Simple(string) => vec![Part::text(string), part],
             Self::Complex(mut parts) => {
