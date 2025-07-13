@@ -51,6 +51,10 @@ impl ChatCompletion {
     pub fn into_content(self) -> crate::Result<super::Content> {
         Ok(self.into_message()?.content)
     }
+
+    pub fn content(&self) -> crate::Result<&super::Content> {
+        Ok(&self.message()?.content)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

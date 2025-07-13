@@ -500,10 +500,10 @@ mod tests {
             .description("extract some data fields from a sentence")
             .parameters(
                 Param::object()
-                    .property("name", Param::string().call())
-                    .property("age", Param::integer().call())
+                    .property("name", Param::string().end())
+                    .property("age", Param::integer().end())
                     .required(["name", "age"])
-                    .call(),
+                    .end(),
             )
             .build();
 

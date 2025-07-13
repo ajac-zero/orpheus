@@ -11,6 +11,8 @@ use crate::{
     },
 };
 
+/// Client to interface with LLMs;
+/// Follows the OpenAI API specification.
 #[derive(Debug, Clone)]
 pub struct Orpheus {
     client: Client,
@@ -40,6 +42,17 @@ impl Orpheus {
         Self::default().with_api_key(api_key)
     }
 
+    /// Initialize an orpheus client with an API key
+    /// from the environment.
+    ///
+    /// Valid env vars: ORPHEUS_API_KEY
+    ///
+    /// # Example
+    /// ```
+    /// use orpheus::Orpheus;
+    ///
+    /// let client = Orpheus::from_env().expect("ORPHEUS_API_KEY is set");
+    /// ```
     pub fn from_env() -> crate::Result<Self> {
         let api_key = std::env::var(crate::constants::API_KEY_ENV_VAR)?;
         Ok(Self::new(api_key))
@@ -87,6 +100,7 @@ impl Orpheus {
         self
     }
 
+    /// Initialize a builder for a chat completion request
     pub fn chat(
         &self,
         model: impl Into<String>,

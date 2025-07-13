@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::content::{Content, Part};
 
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Message {
     /// The role of the message author
     pub role: Role,
@@ -26,6 +26,18 @@ impl Message {
         }
     }
 
+    /// Create a new `Message` with role `Role::System`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use orpheus::{Message, Role};
+    ///
+    /// let system_message = Message::system("You are an AI");
+    /// let generic_message = Message::new(Role::System, "You are an AI".into());
+    ///
+    /// assert_eq!(system_message, generic_message);
+    /// ```
     pub fn system(content: impl Into<Content>) -> Self {
         Self {
             role: Role::System,
@@ -110,13 +122,13 @@ impl Role {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ToolCall {
     Function { id: String, function: Function },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Function {
     name: String,
     arguments: String,
@@ -132,13 +144,13 @@ impl Function {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Annotation {
     UrlCitation { url_citation: UrlCitation },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct UrlCitation {
     url: String,
     title: String,

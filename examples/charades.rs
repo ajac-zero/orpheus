@@ -1,74 +1,86 @@
 use colored::Colorize;
-use orpheus::{
-    Orpheus,
-    models::chat::{ChatMessage, Tool, ToolCall},
-};
+use orpheus::{Message, Orpheus, Param, Tool, ToolCall};
+use rand::seq::IndexedRandom;
 
 // Config
 const PROMPT: &str = "You are a charades game master.
-Choose an animal, and help the user guess what it is.
-When the user guesses correctly, use the end game tool.
-Give clues only in riddles.
-Only allow the user three guesses before using the game over tool.";
+Choose one animal, and the user must guess what it is.
+The user is only allowed three guesses.
+Before every guess, chat a riddle about your animal.
+If the user guesses correctly withint those three guesses, they win.
+If the user runs out of guesses, you win.
+Use the 'player_win' tool if the player guesses correctly.
+Use the 'game_over' tool if the player runs out of guesses.
+Don't hold back.";
+
+const MODELS: [&str; 5] = [
+    "google/gemini-2.0-flash-001",
+    "anthropic/claude-3.5-haiku",
+    "openai/gpt-4o-mini",
+    "x-ai/grok-3-mini-beta",
+    "mistralai/mistral-small-3.2-24b-instruct",
+];
+
+#[derive(serde::Deserialize)]
+struct GameOverArgs {
+    answer: String,
+}
 
 // Logic
 fn main() -> anyhow::Result<()> {
-    // Set an OpenRouter model ID
-    let model = "google/gemini-2.0-flash-001";
-
-    // Start orpheus router from environment variables
+    // Start orpheus client from environment variables
     let orpheus = Orpheus::from_env()?;
 
-    // Define the game tools with the builder pattern
-    // These help the llm control the flow of the program
-    // Since no parameters are needed, we can just provide the names of the tools
-    // NOTE: Not all providers accept tools without parameters
-    let end_game_tool = Tool::function("end_game").build();
-    let game_over_tool = Tool::function("game_over").build();
-    let tools = Vec::from([end_game_tool, game_over_tool]);
+    // Choose a random model from the list
+    let mut rng = rand::rng();
+    let model = *MODELS.choose(&mut rng).expect("is not empty");
+    println!("Using model: {}", model.yellow());
 
-    // Start the conversation array, starting with the system prompt
-    // Let's make this mutable as we will update it on every turn.
-    let system_message = ChatMessage::system(PROMPT);
-    let mut messages = Vec::from([system_message]);
+    // Make the messages vec, starting with the system prompt
+    let mut messages = vec![Message::system(PROMPT)];
+
+    // Define the game control tools
+    let tools = vec![
+        Tool::function("player_win").empty(),
+        Tool::function("game_over")
+            .with_parameters(|p| p.property("answer", Param::string().end()))
+            .build(),
+    ];
 
     // Start infinite loop that will only stop once we win or lose
     loop {
-        // Call the llm with the given models, messages, and tools
+        // Call the llm
         let response = orpheus
-            .chat()
-            .model(model)
-            .messages(messages.clone())
+            .chat(model, messages.clone())
             .tools(tools.clone())
-            .temperature(2.0) // Set temperature to 2.0 for more creative responses
+            .temperature(0.9) // For more creative responses
             .send()?;
 
         // Check if the llm used a tool
         if let Some(ToolCall::Function { function, .. }) = response.tool_call()? {
-            // If llm calls this tool, the player won
-            if function.is("end_game") {
-                // Print win message
-                println!("{}", FINISH_BANNER.green().bold());
+            if function.is("player_win") {
+                println!("{}", FINISH_BANNER.green().bold())
             }
 
-            // If llm calls this tool, the player lost
             if function.is("game_over") {
-                // Print game over message
                 println!("{}", GAME_OVER_BANNER.red().bold());
+
+                let args: GameOverArgs = function.get_args()?;
+                println!("Real answer: {}", args.answer);
             }
 
-            // Either way, the game is over so let's exit the loop
+            // Exit the loop
             return Ok(());
         }
 
-        // Extract the content from the llm response
-        let content = response.into_content()?;
+        // Get a reference to the content from the llm response
+        let content = response.content()?;
 
         // Print the llm response content
         println!("{}", "Game Master ================".yellow());
         println!("{}", content);
         // Add the llm response content to the conversation array
-        messages.push(ChatMessage::assistant(content));
+        messages.push(response.into_message()?);
 
         // Ask the user for input
         println!("{}", "Answer =====================".blue());
@@ -76,7 +88,7 @@ fn main() -> anyhow::Result<()> {
         std::io::stdin().read_line(&mut input)?;
         println!();
         // Add the user input to the conversation array
-        messages.push(ChatMessage::user(input));
+        messages.push(Message::user(input));
     }
 }
 

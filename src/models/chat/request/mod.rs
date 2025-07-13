@@ -293,14 +293,14 @@ mod test {
                         "location",
                         Param::string()
                             .description("The city and state, e.g. San Francisco, CA")
-                            .call(),
+                            .end(),
                     )
                     .property(
                         "unit",
-                        Param::string().r#enum(["celsius", "fahrenheit"]).call(),
+                        Param::string().r#enum(["celsius", "fahrenheit"]).end(),
                     )
                     .required(["location"])
-                    .call(),
+                    .end(),
             )
             .build();
 
@@ -318,11 +318,11 @@ mod test {
                         "search_terms",
                         Param::array()
                             .description("List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)")
-                            .items(Param::string().call())
-                            .call()
+                            .items(Param::string().end())
+                            .end()
                     )
                     .required(["search_terms"])
-                    .call()
+                    .end()
             )
             .build();
 
@@ -344,11 +344,11 @@ mod test {
                         "location",
                         Param::string()
                             .description("The city and state, e.g. San Francisco, CA")
-                            .call(),
+                            .end(),
                     )
                     .property(
                         "unit",
-                        Param::string().r#enum(["celsius", "fahrenheit"]).call(),
+                        Param::string().r#enum(["celsius", "fahrenheit"]).end(),
                     )
                     .required(["location"])
             })
@@ -367,8 +367,8 @@ mod test {
                         "search_terms",
                         Param::array()
                             .description("List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)")
-                            .items(Param::string().call())
-                            .call()
+                            .items(Param::string().end())
+                            .end()
                     )
                     .required(["search_terms"])
                 }

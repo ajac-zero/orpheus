@@ -16,6 +16,93 @@ pub enum Tool {
 
 #[bon]
 impl Tool {
+    /// Initialize a builder to create a tool function definition.
+    ///
+    /// # Examples
+    /// ```
+    /// use orpheus::{Tool, Param};
+    /// use serde_json::json;
+    ///
+    /// let target =  json!({
+    ///     "type": "function",
+    ///     "function": {
+    ///         "name": "get_current_weather",
+    ///         "description": "Get the current weather in a given location",
+    ///         "parameters": {
+    ///             "type": "object",
+    ///             "properties": {
+    ///                 "location": {
+    ///                     "type": "string",
+    ///                     "description": "The city and state, e.g. San Francisco, CA",
+    ///                 },
+    ///                 "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+    ///             },
+    ///             "required": ["location"],
+    ///         },
+    ///     }
+    /// });
+    ///
+    /// let tool = Tool::function("get_current_weather")
+    ///         .description("Get the current weather in a given location")
+    ///         .with_parameters(|p| {
+    ///             p.property("location", Param::string().description("The city and state, e.g. San Francisco, CA").end())
+    ///             .property("unit", Param::string().r#enum(["celsius", "fahrenheit"]).end())
+    ///             .required(["location"])
+    ///         })
+    ///         .build();
+    ///
+    /// let tool_json = serde_json::to_value(&tool).unwrap();
+    ///
+    /// assert_eq!(target, tool_json);
+    /// ```
+    ///
+    /// ## Name-Only Tool
+    ///
+    /// Some providers allow name-only tools; These can be useful as simple
+    /// switches to let the model take actions.
+    /// ```
+    /// use orpheus::Tool;
+    /// use serde_json::json;
+    ///
+    /// let target = json!({
+    ///     "type": "function",
+    ///     "function": {
+    ///         "name": "my_tool"
+    ///     }
+    /// });
+    ///
+    /// let tool = Tool::function("my_tool").build();
+    ///
+    /// let tool_json = serde_json::to_value(&tool).unwrap();
+    ///
+    /// assert_eq!(target, tool_json);
+    /// ```
+    /// ## Empty Tool
+    ///
+    /// Some providers require that tools include parameters, even if they are empty.
+    /// The `empty` method is a shortcut to build a Tool with and empty parameters object.
+    ///
+    /// ```
+    /// use orpheus::Tool;
+    /// use serde_json::json;
+    ///
+    /// let target = json!({
+    ///     "type": "function",
+    ///     "function": {
+    ///         "name": "test_tool",
+    ///         "parameters": {
+    ///             "type": "object",
+    ///             "properties": {}
+    ///         }
+    ///     }
+    /// });
+    ///
+    /// let tool = Tool::function("test_tool").empty();
+    ///
+    /// let tool_json = serde_json::to_value(&tool).unwrap();
+    ///
+    /// assert_eq!(target, tool_json);
+    /// ```
     #[builder(on(String, into), finish_fn = build)]
     pub fn function(
         #[builder(start_fn)] name: String,
@@ -30,6 +117,15 @@ impl Tool {
     }
 }
 
+impl<S: tool_function_builder::State> ToolFunctionBuilder<S>
+where
+    S::Parameters: tool_function_builder::IsUnset,
+{
+    pub fn empty(self) -> Tool {
+        self.with_parameters(|p| p).build()
+    }
+}
+
 impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
     pub fn with_parameters<F, C>(
         self,
@@ -41,7 +137,7 @@ impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
         C: param_object_builder::IsComplete,
     {
         let builder = Param::object();
-        let parameters = build(builder).call();
+        let parameters = build(builder).end();
         self.parameters(parameters)
     }
 }
@@ -70,10 +166,10 @@ pub enum Param {
 
 #[bon]
 impl Param {
-    #[builder]
+    #[builder(on(String, into), finish_fn = end)]
     pub fn object(
         #[builder(field)] properties: HashMap<String, Self>,
-        #[builder(into)] description: Option<String>,
+        description: Option<String>,
         #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
         required: Option<Vec<String>>,
     ) -> Self {
@@ -84,7 +180,7 @@ impl Param {
         }
     }
 
-    #[builder(on(String, into))]
+    #[builder(on(String, into), finish_fn = end)]
     pub fn string(
         description: Option<String>,
         #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
@@ -96,12 +192,12 @@ impl Param {
         }
     }
 
-    #[builder(on(String, into))]
+    #[builder(on(String, into), finish_fn = end)]
     pub fn integer(description: Option<String>) -> Self {
         Self::Integer { description }
     }
 
-    #[builder(on(String, into))]
+    #[builder(on(String, into), finish_fn = end)]
     pub fn array(description: Option<String>, items: Param) -> Self {
         Self::Array {
             description,
