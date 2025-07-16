@@ -18,7 +18,8 @@ pub enum OrpheusError {
     Response(String),
     #[error("MCP related error: {0}")]
     Mcp(String),
-    #[error("{0}")]
+    #[cfg(feature = "mcp")]
+    #[error("MCP service error: {0}")]
     McpService(#[from] rmcp::ServiceError),
     #[error("{0}")]
     Join(#[from] tokio::task::JoinError),

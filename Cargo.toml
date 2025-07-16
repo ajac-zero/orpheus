@@ -11,8 +11,9 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = []
-python = ["pyo3", "pyo3-async-runtimes", "pythonize"]
+python = ["dep:pyo3", "dep:pyo3-async-runtimes", "dep:pythonize"]
 anyhow = ["dep:anyhow"]
+mcp = ["dep:rmcp", "tokio/rt-multi-thread"]
 
 [dependencies]
 anyhow = { version = "1.0.98", optional = true }
@@ -39,7 +40,10 @@ reqwest = { version = "0.12.12", features = [
     "rustls-tls",
     "stream",
 ] }
-rmcp = { version = "0.2.1", features = ["client"] }
+rmcp = { version = "0.2.1", optional = true, features = [
+    "client",
+    "transport-child-process",
+] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
 serde_with = { version = "3.12.0", features = ["json"] }
@@ -48,12 +52,5 @@ tokio = { version = "1.44.1", features = ["rt", "macros"] }
 url = "2.5.4"
 
 [dev-dependencies]
-anyhow = "1.0.98"
 colored = "3.0.0"
 rand = "0.9.1"
-rmcp = { version = "0.2.1", features = ["transport-child-process"] }
-tokio = { version = "1.44.1", features = [
-    "macros",
-    "process",
-    "rt-multi-thread",
-] }
