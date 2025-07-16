@@ -9,10 +9,7 @@ use rmcp::{
 };
 use tokio::process::Command;
 
-use crate::{
-    Message, Part, Tools,
-    error::{McpError, RuntimeError},
-};
+use crate::{Error, Message, Part, Result, Tools};
 
 pub struct ModelContext {
     pub service: RunningService<RoleClient, ()>,
@@ -27,7 +24,7 @@ impl ModelContext {
         args: Vec<String>,
         cwd: Option<PathBuf>,
         env: Option<HashMap<String, String>>,
-    ) -> crate::Result<Self> {
+    ) -> Result<Self> {
         let cmd = Command::new(&command).configure(|cmd| {
             cmd.args(&args);
             if let Some(cwd) = cwd {
@@ -37,8 +34,8 @@ impl ModelContext {
                 cmd.envs(env);
             }
         });
-        let process = TokioChildProcess::new(cmd).map_err(RuntimeError::Io)?;
-        let service = ().serve(process).await.map_err(|e| McpError::Init(e.to_string()))?;
+        let process = TokioChildProcess::new(cmd).map_err(Error::io)?;
+        let service = ().serve(process).await.map_err(|e| Error::init(e.to_string()))?;
         Ok(Self { service })
     }
 
@@ -46,11 +43,11 @@ impl ModelContext {
     pub async fn call(
         &self,
         #[builder(start_fn)] name: String,
-        #[builder(with = |value: impl serde::Serialize| -> crate::Result<_> {
-            serde_json::to_value(value).map_err(|e| RuntimeError::Serde(e).into())
+        #[builder(with = |value: impl serde::Serialize| -> Result<_> {
+            serde_json::to_value(value).map_err(Error::serde)
         })]
         arguments: Option<serde_json::Value>,
-    ) -> crate::Result<ToolResult> {
+    ) -> Result<ToolResult> {
         let mut request = CallToolRequestParam {
             name: name.into(),
             arguments: None,
@@ -60,7 +57,7 @@ impl ModelContext {
             if let serde_json::Value::Object(map) = args {
                 request.arguments = Some(map);
             } else {
-                return Err(McpError::ToolSchema("Expected a JSON object".to_string()).into());
+                return Err(Error::tool_schema("Expected a JSON object"));
             }
         }
 
@@ -68,7 +65,7 @@ impl ModelContext {
             .service
             .call_tool(request)
             .await
-            .map_err(McpError::Service)?;
+            .map_err(Error::service)?;
 
         Ok(ToolResult(result))
     }
@@ -92,24 +89,24 @@ where
     pub fn literal_arguments(
         self,
         value: &str,
-    ) -> crate::Result<ModelContextCallBuilder<'a, SetArguments<S>>> {
-        let args: serde_json::Value = serde_json::from_str(value).map_err(RuntimeError::Serde)?;
+    ) -> Result<ModelContextCallBuilder<'a, SetArguments<S>>> {
+        let args: serde_json::Value = serde_json::from_str(value).map_err(Error::serde)?;
         self.arguments(args)
     }
 }
 
 impl ModelContext {
-    pub async fn get_tools(&self) -> crate::Result<Tools> {
+    pub async fn get_tools(&self) -> Result<Tools> {
         Ok(self
             .service
             .list_tools(Default::default())
             .await
-            .map_err(McpError::Service)?
+            .map_err(Error::service)?
             .try_into()?)
     }
 
-    pub async fn close(self) -> crate::Result<QuitReason> {
-        Ok(self.service.cancel().await.map_err(McpError::Close)?)
+    pub async fn close(self) -> Result<QuitReason> {
+        Ok(self.service.cancel().await.map_err(Error::close)?)
     }
 }
 

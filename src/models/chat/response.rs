@@ -10,7 +10,7 @@ use reqwest::blocking;
 use serde::{Deserialize, Serialize};
 
 use super::Message;
-use crate::error::{RequestError, RuntimeError};
+use crate::{Error, Result};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatCompletion {
@@ -22,38 +22,43 @@ pub struct ChatCompletion {
 }
 
 impl ChatCompletion {
-    pub fn message(&self) -> crate::Result<&super::Message> {
+    pub fn message(&self) -> Result<&super::Message> {
         let message = &self
             .choices
             .iter()
             .next()
-            .ok_or(RequestError::MalformedResponse(
-                "Choices array in response is empty".to_owned(),
+            .ok_or(Error::malformed_response(
+                "Choices array in response is empty",
             ))?
             .message;
 
         Ok(message)
     }
 
-    pub fn tool_calls(&self) -> crate::Result<Option<&Vec<super::ToolCall>>> {
+    pub fn tool_calls(&self) -> Result<Option<&Vec<super::ToolCall>>> {
         Ok(self.message()?.tool_calls.as_ref())
     }
 
-    pub fn tool_call(&self) -> crate::Result<Option<&super::ToolCall>> {
+    pub fn tool_call(&self) -> Result<Option<&super::ToolCall>> {
         Ok(self.tool_calls()?.and_then(|tools| tools.first()))
     }
 
-    pub fn into_message(self) -> crate::Result<super::Message> {
-        let err = RequestError::MalformedResponse("Responses choices array is empty".to_owned());
-        let message = self.choices.into_iter().next().ok_or(err)?.message;
-        Ok(message)
+    pub fn into_message(self) -> Result<super::Message> {
+        Ok(self
+            .choices
+            .into_iter()
+            .next()
+            .ok_or(Error::malformed_response(
+                "Responses choices array is empty",
+            ))?
+            .message)
     }
 
-    pub fn into_content(self) -> crate::Result<super::Content> {
+    pub fn into_content(self) -> Result<super::Content> {
         Ok(self.into_message()?.content)
     }
 
-    pub fn content(&self) -> crate::Result<&super::Content> {
+    pub fn content(&self) -> Result<&super::Content> {
         Ok(&self.message()?.content)
     }
 }
@@ -181,12 +186,12 @@ impl ChatStream {
         Self(reader)
     }
 
-    pub fn next(&mut self) -> crate::Result<Option<ChatStreamChunk>> {
+    pub fn next(&mut self) -> Result<Option<ChatStreamChunk>> {
         let mut line = String::new();
 
         loop {
             line.clear();
-            match self.0.read_line(&mut line).map_err(RuntimeError::Io)? {
+            match self.0.read_line(&mut line).map_err(Error::io)? {
                 0 => break Ok(None),
                 _ => {
                     let line = line.trim();
@@ -202,7 +207,7 @@ impl ChatStream {
                         break Ok(None);
                     }
 
-                    let chunk = serde_json::from_str(json_str).map_err(RuntimeError::Serde)?;
+                    let chunk = serde_json::from_str(json_str).map_err(Error::serde)?;
                     return Ok(Some(chunk));
                 }
             }
@@ -232,7 +237,7 @@ impl AsyncStream {
 }
 
 impl Stream for AsyncStream {
-    type Item = crate::Result<ChatStreamChunk>;
+    type Item = Result<ChatStreamChunk>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -250,7 +255,7 @@ impl Stream for AsyncStream {
 
                 // Validate SSE format
                 if !line.starts_with("data: ") {
-                    break Some(Err(RequestError::InvalidSSE(line.into()).into()));
+                    break Some(Err(Error::invalid_sse(line)));
                 }
 
                 let json_str = &line[6..]; // Remove "data: " prefix
@@ -258,9 +263,7 @@ impl Stream for AsyncStream {
                     break None;
                 }
 
-                break Some(
-                    serde_json::from_str(json_str).map_err(|e| RuntimeError::Serde(e).into()),
-                );
+                break Some(serde_json::from_str(json_str).map_err(Error::serde));
             }
 
             // No complete line found, need more data from stream
@@ -282,9 +285,7 @@ impl Stream for AsyncStream {
                         }
 
                         if !line.starts_with("data: ") {
-                            return Poll::Ready(Some(Err(
-                                RequestError::InvalidSSE(line.into()).into()
-                            )));
+                            return Poll::Ready(Some(Err(Error::invalid_sse(line))));
                         }
 
                         let json_str = &line[6..];
@@ -295,14 +296,14 @@ impl Stream for AsyncStream {
                         match serde_json::from_str::<ChatStreamChunk>(json_str) {
                             Ok(chunk) => return Poll::Ready(Some(Ok(chunk))),
                             Err(e) => {
-                                return Poll::Ready(Some(Err(RuntimeError::Serde(e).into())));
+                                return Poll::Ready(Some(Err(Error::serde(e))));
                             }
                         }
                     }
                 }
                 Poll::Ready(Some(item)) => match item {
                     Ok(bytes) => this.buffer.extend_from_slice(&bytes),
-                    Err(e) => break Some(Err(RequestError::Http(e).into())),
+                    Err(e) => break Some(Err(Error::http(e))),
                 },
             }
         };

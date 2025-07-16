@@ -4,8 +4,8 @@ use reqwest::{Client, header::CONTENT_TYPE};
 use url::Url;
 
 use crate::{
+    Error, Result,
     constants::*,
-    error::{ConfigError, OpenRouterError, RequestError},
     models::{
         completion::{self, CompletionRequest, CompletionResponse},
         *,
@@ -41,18 +41,17 @@ impl AsyncOrpheus {
         Self::default().with_api_key(api_key)
     }
 
-    pub fn from_env() -> crate::Result<Self> {
-        let api_key = std::env::var(crate::constants::API_KEY_ENV_VAR).map_err(ConfigError::Env)?;
+    pub fn from_env() -> Result<Self> {
+        let api_key = std::env::var(API_KEY_ENV_VAR).map_err(Error::env)?;
         Ok(Self::new(api_key))
     }
 
     /// Set the base URL for the API
-    pub fn with_base_url<U>(mut self, base_url: U) -> crate::Result<Self>
-    where
-        U: TryInto<Url>,
-        U::Error: Into<ConfigError>,
-    {
-        self.base_url = base_url.try_into().map_err(Into::into)?;
+    pub fn with_base_url(
+        mut self,
+        base_url: impl TryInto<Url, Error = url::ParseError>,
+    ) -> Result<Self> {
+        self.base_url = base_url.try_into().map_err(Error::invalid_url)?;
         Ok(self)
     }
 
@@ -66,8 +65,8 @@ impl AsyncOrpheus {
         &self,
         path: &str,
         body: impl serde::Serialize,
-    ) -> crate::Result<reqwest::Response> {
-        let url = self.base_url.join(path).map_err(ConfigError::InvalidUrl)?;
+    ) -> Result<reqwest::Response> {
+        let url = self.base_url.join(path).map_err(Error::invalid_url)?;
         let token = self
             .api_key
             .as_ref()
@@ -80,13 +79,13 @@ impl AsyncOrpheus {
             .json(&body)
             .send()
             .await
-            .map_err(RequestError::Http)?;
+            .map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)
         } else {
-            let err = response.text().await.map_err(RequestError::Http)?;
-            Err(OpenRouterError::Unexpected(err).into())
+            let err = response.text().await.map_err(Error::http)?;
+            Err(Error::openrouter(err))
         }
     }
 
@@ -127,7 +126,7 @@ impl AsyncOrpheus {
         min_p: Option<f64>,
         top_a: Option<f64>,
         user: Option<String>,
-    ) -> crate::Result<CompletionResponse> {
+    ) -> Result<CompletionResponse> {
         let body = CompletionRequest::new(
             model,
             prompt,
@@ -154,8 +153,7 @@ impl AsyncOrpheus {
 
         let response = self.execute(COMPLETION_PATH, body).await?;
 
-        let completion_response: CompletionResponse =
-            response.json().await.map_err(RequestError::Http)?;
+        let completion_response: CompletionResponse = response.json().await.map_err(Error::http)?;
         Ok(completion_response)
     }
 }
@@ -241,7 +239,7 @@ pub struct ChatRequest {
 }
 
 impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
-    pub async fn send(mut self) -> crate::Result<ChatCompletion>
+    pub async fn send(mut self) -> Result<ChatCompletion>
     where
         S: chat_request_builder::IsComplete,
     {
@@ -255,12 +253,12 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
         let chat_completion = response
             .json::<ChatCompletion>()
             .await
-            .map_err(RequestError::Http)?;
+            .map_err(Error::http)?;
 
         Ok(chat_completion)
     }
 
-    pub async fn stream(mut self) -> crate::Result<AsyncStream>
+    pub async fn stream(mut self) -> Result<AsyncStream>
     where
         S: chat_request_builder::IsComplete,
     {
