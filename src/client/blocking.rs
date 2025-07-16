@@ -3,14 +3,7 @@ use std::collections::HashMap;
 use reqwest::{blocking::Client, header::CONTENT_TYPE};
 use url::Url;
 
-use crate::{
-    Error, Result,
-    constants::*,
-    models::{
-        completion::{self, CompletionRequest, CompletionResponse},
-        *,
-    },
-};
+use crate::{Error, Result, constants::*, models::*};
 
 /// Client to interface with LLMs;
 /// Follows the OpenAI API specification.
@@ -121,9 +114,9 @@ impl Orpheus {
         model: String,
         prompt: String,
         models: Option<Vec<String>>,
-        provider: Option<completion::ProviderPreferences>,
-        reasoning: Option<completion::ReasoningConfig>,
-        usage: Option<completion::UsageConfig>,
+        provider: Option<ProviderPreferences>,
+        reasoning: Option<ReasoningConfig>,
+        usage: Option<UsageConfig>,
         transforms: Option<Vec<String>>,
         stream: Option<bool>,
         max_tokens: Option<i32>,

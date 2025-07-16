@@ -2,6 +2,10 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::models::common::{
+    provider::ProviderPreferences, reasoning::ReasoningConfig, usage::UsageConfig,
+};
+
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionRequest {
@@ -117,39 +121,4 @@ impl CompletionRequest {
             user,
         }
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderPreferences {
-    /// Sort preference (e.g., price, throughput).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sort: Option<String>,
-}
-
-#[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReasoningConfig {
-    /// OpenAI-style reasoning effort setting
-    pub effort: Option<ReasoningEffort>,
-
-    /// Non-OpenAI-style reasoning effort setting. Cannot be used simultaneously with effort.
-    pub max_tokens: Option<i32>,
-
-    /// Whether to exclude reasoning from the response. Defaults to false
-    pub exclude: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ReasoningEffort {
-    High,
-    Medium,
-    Low,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UsageConfig {
-    /// Whether to include usage information in the response
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub include: Option<bool>,
 }

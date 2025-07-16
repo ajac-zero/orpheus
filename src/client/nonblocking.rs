@@ -3,14 +3,7 @@ use std::collections::HashMap;
 use reqwest::{Client, header::CONTENT_TYPE};
 use url::Url;
 
-use crate::{
-    Error, Result,
-    constants::*,
-    models::{
-        completion::{self, CompletionRequest, CompletionResponse},
-        *,
-    },
-};
+use crate::{Error, Result, constants::*, models::*};
 
 #[derive(Debug, Clone)]
 pub struct AsyncOrpheus {
@@ -108,9 +101,9 @@ impl AsyncOrpheus {
         model: String,
         prompt: String,
         models: Option<Vec<String>>,
-        provider: Option<completion::ProviderPreferences>,
-        reasoning: Option<completion::ReasoningConfig>,
-        usage: Option<completion::UsageConfig>,
+        provider: Option<ProviderPreferences>,
+        reasoning: Option<ReasoningConfig>,
+        usage: Option<UsageConfig>,
         transforms: Option<Vec<String>>,
         stream: Option<bool>,
         max_tokens: Option<i32>,
