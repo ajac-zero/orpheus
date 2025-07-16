@@ -180,7 +180,8 @@ pub struct ChatRequest {
     /// Alternate list of models for routing overrides.
     pub models: Option<Vec<String>>,
 
-    pub tools: Option<Vec<Tool>>,
+    #[builder(into)]
+    pub tools: Option<Tools>,
 
     pub plugins: Option<Vec<Plugin>>,
 

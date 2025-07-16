@@ -16,6 +16,12 @@ pub enum OrpheusError {
     InvalidSSE(String),
     #[error("Invalid response: {0}")]
     Response(String),
+    #[error("MCP related error: {0}")]
+    Mcp(String),
+    #[error("{0}")]
+    McpService(#[from] rmcp::ServiceError),
+    #[error("{0}")]
+    Join(#[from] tokio::task::JoinError),
     #[error("Missing env var: {0}")]
     Env(#[from] std::env::VarError),
     #[cfg(feature = "anyhow")]

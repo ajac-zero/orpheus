@@ -10,7 +10,7 @@ pub enum Tool {
     Function {
         name: String,
         description: Option<String>,
-        parameters: Option<Param>,
+        parameters: Option<ParamType>,
     },
 }
 
@@ -107,7 +107,7 @@ impl Tool {
     pub fn function(
         #[builder(start_fn)] name: String,
         description: Option<String>,
-        parameters: Option<Param>,
+        #[builder(into)] parameters: Option<ParamType>,
     ) -> Self {
         Self::Function {
             name,
@@ -142,6 +142,28 @@ impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ParamType {
+    Simple(Param),
+    Any {
+        #[serde(rename = "anyOf")]
+        any_of: Vec<Param>,
+    },
+}
+
+impl From<Param> for ParamType {
+    fn from(param: Param) -> Self {
+        ParamType::Simple(param)
+    }
+}
+
+impl From<Vec<Param>> for ParamType {
+    fn from(params: Vec<Param>) -> Self {
+        ParamType::Any { any_of: params }
+    }
+}
+
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -155,21 +177,34 @@ pub enum Param {
     },
     Array {
         description: Option<String>,
-        items: Box<Param>,
+        items: Box<ParamType>,
     },
     Object {
         description: Option<String>,
-        properties: HashMap<String, Param>,
+        properties: HashMap<String, ParamType>,
         required: Option<Vec<String>>,
     },
+    Number {
+        description: Option<String>,
+    },
+    Boolean {
+        description: Option<String>,
+    },
+    Null,
+}
+
+impl Param {
+    pub fn null() -> Self {
+        Self::Null
+    }
 }
 
 #[bon]
 impl Param {
-    #[builder(on(String, into), finish_fn = end)]
+    #[builder(finish_fn = end)]
     pub fn object(
-        #[builder(field)] properties: HashMap<String, Self>,
-        description: Option<String>,
+        #[builder(field)] properties: HashMap<String, ParamType>,
+        #[builder(into)] description: Option<String>,
         #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
         required: Option<Vec<String>>,
     ) -> Self {
@@ -180,9 +215,9 @@ impl Param {
         }
     }
 
-    #[builder(on(String, into), finish_fn = end)]
+    #[builder(finish_fn = end)]
     pub fn string(
-        description: Option<String>,
+        #[builder(into)] description: Option<String>,
         #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
         r#enum: Option<Vec<String>>,
     ) -> Self {
@@ -192,28 +227,88 @@ impl Param {
         }
     }
 
-    #[builder(on(String, into), finish_fn = end)]
-    pub fn integer(description: Option<String>) -> Self {
+    #[builder(finish_fn = end)]
+    pub fn integer(#[builder(into)] description: Option<String>) -> Self {
         Self::Integer { description }
     }
 
-    #[builder(on(String, into), finish_fn = end)]
-    pub fn array(description: Option<String>, items: Param) -> Self {
+    #[builder(finish_fn = end)]
+    pub fn array(
+        #[builder(into)] description: Option<String>,
+        #[builder(into)] items: ParamType,
+    ) -> Self {
         Self::Array {
             description,
             items: Box::new(items),
         }
     }
+
+    #[builder(finish_fn = end)]
+    pub fn number(#[builder(into)] description: Option<String>) -> Self {
+        Self::Number { description }
+    }
+
+    #[builder(finish_fn = end)]
+    pub fn boolean(#[builder(into)] description: Option<String>) -> Self {
+        Self::Boolean { description }
+    }
 }
 
 impl<S: param_object_builder::State> ParamObjectBuilder<S> {
-    pub fn property(mut self, key: impl Into<String>, value: Param) -> Self {
-        self.properties.insert(key.into(), value);
+    pub fn property(mut self, key: impl Into<String>, value: impl Into<ParamType>) -> Self {
+        self.properties.insert(key.into(), value.into());
         self
     }
 
-    pub fn properties(mut self, properties: HashMap<String, Param>) -> Self {
+    pub fn properties(mut self, properties: HashMap<String, ParamType>) -> Self {
         self.properties = properties;
         self
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Tools(Vec<Tool>);
+
+impl Tools {
+    pub fn new(tools: Vec<Tool>) -> Self {
+        Self(tools)
+    }
+}
+
+impl From<Vec<Tool>> for Tools {
+    fn from(tools: Vec<Tool>) -> Self {
+        Self(tools)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn deser_anyof_tool_def() {
+        let target = json!({
+            "type": "object",
+            "properties": {
+                "base_branch":{
+                    "anyOf":[{"type":"string"},{"type":"null"}],
+                },
+                "branch_name":{
+                    "type":"string"
+                },
+                "repo_path":{
+                    "type":"string"}
+            }
+        });
+
+        let param = Param::object()
+            .property("base_branch", vec![Param::string().end(), Param::null()])
+            .property("branch_name", Param::string().end())
+            .property("repo_path", Param::string().end())
+            .end();
+        let param_value = serde_json::to_value(param).unwrap();
+
+        assert_eq!(target, param_value);
     }
 }

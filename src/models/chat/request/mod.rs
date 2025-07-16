@@ -6,12 +6,12 @@ mod reasoning;
 mod tool;
 mod usage;
 
-pub use content::Content;
+pub use content::{Content, Part};
 pub use message::{ChatMessages, Message, Role, ToolCall};
 pub use plugins::{ParsingEngine, Plugin};
 pub use provider::ProviderPreferences;
 pub use reasoning::{ReasoningConfig, ReasoningEffort};
-pub use tool::{Param, Tool};
+pub use tool::{Param, ParamType, Tool, Tools};
 pub use usage::UsageConfig;
 
 #[cfg(test)]
@@ -25,6 +25,7 @@ mod test {
         let message = Message {
             role: Role::User,
             content: Content::Simple("Hello world!".to_string()),
+            tool_call_id: None,
             tool_calls: None,
             annotations: None,
         };
@@ -53,6 +54,7 @@ mod test {
             let message = Message {
                 role: role.clone(),
                 content: Content::Simple("test".to_string()),
+                tool_call_id: None,
                 tool_calls: None,
                 annotations: None,
             };

@@ -58,14 +58,14 @@ fn main() -> anyhow::Result<()> {
 
         // Check if the llm used a tool
         if let Some(ToolCall::Function { function, .. }) = response.tool_call()? {
-            if function.is("player_win") {
+            if function.name == "player_win" {
                 println!("{}", FINISH_BANNER.green().bold())
             }
 
-            if function.is("game_over") {
+            if function.name == "game_over" {
                 println!("{}", GAME_OVER_BANNER.red().bold());
 
-                let args: GameOverArgs = function.get_args()?;
+                let args: GameOverArgs = serde_json::from_str(&function.arguments)?;
                 println!("Real answer: {}", args.answer);
             }
 

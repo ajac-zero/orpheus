@@ -11,6 +11,8 @@ pub struct Message {
     /// The message content
     pub content: Content,
 
+    pub tool_call_id: Option<String>,
+
     pub tool_calls: Option<Vec<ToolCall>>,
 
     pub annotations: Option<Vec<Annotation>>,
@@ -21,6 +23,7 @@ impl Message {
         Self {
             role,
             content,
+            tool_call_id: None,
             tool_calls: None,
             annotations: None,
         }
@@ -42,6 +45,7 @@ impl Message {
         Self {
             role: Role::System,
             content: content.into(),
+            tool_call_id: None,
             tool_calls: None,
             annotations: None,
         }
@@ -51,6 +55,7 @@ impl Message {
         Self {
             role: Role::User,
             content: content.into(),
+            tool_call_id: None,
             tool_calls: None,
             annotations: None,
         }
@@ -60,15 +65,17 @@ impl Message {
         Self {
             role: Role::Assistant,
             content: content.into(),
+            tool_call_id: None,
             tool_calls: None,
             annotations: None,
         }
     }
 
-    pub fn tool(content: impl Into<Content>) -> Self {
+    pub fn tool(id: impl Into<String>, content: impl Into<Content>) -> Self {
         Self {
             role: Role::Tool,
             content: content.into(),
+            tool_call_id: Some(id.into()),
             tool_calls: None,
             annotations: None,
         }
@@ -130,18 +137,8 @@ pub enum ToolCall {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Function {
-    name: String,
-    arguments: String,
-}
-
-impl Function {
-    pub fn is(&self, name: &str) -> bool {
-        self.name == name
-    }
-
-    pub fn get_args<T: serde::de::DeserializeOwned>(&self) -> serde_json::Result<T> {
-        serde_json::from_str(&self.arguments)
-    }
+    pub name: String,
+    pub arguments: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

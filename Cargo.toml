@@ -39,6 +39,7 @@ reqwest = { version = "0.12.12", features = [
     "rustls-tls",
     "stream",
 ] }
+rmcp = { version = "0.2.1", features = ["client"] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
 serde_with = { version = "3.12.0", features = ["json"] }
@@ -50,3 +51,9 @@ url = "2.5.4"
 anyhow = "1.0.98"
 colored = "3.0.0"
 rand = "0.9.1"
+rmcp = { version = "0.2.1", features = ["transport-child-process"] }
+tokio = { version = "1.44.1", features = [
+    "macros",
+    "process",
+    "rt-multi-thread",
+] }
