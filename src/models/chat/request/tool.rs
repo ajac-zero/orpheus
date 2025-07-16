@@ -283,8 +283,9 @@ impl From<Vec<Tool>> for Tools {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn deser_anyof_tool_def() {

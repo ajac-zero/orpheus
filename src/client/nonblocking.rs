@@ -5,6 +5,7 @@ use url::Url;
 
 use crate::{
     constants::*,
+    error::{ConfigError, OpenRouterError, RequestError},
     models::{
         completion::{self, CompletionRequest, CompletionResponse},
         *,
@@ -41,7 +42,7 @@ impl AsyncOrpheus {
     }
 
     pub fn from_env() -> crate::Result<Self> {
-        let api_key = std::env::var(crate::constants::API_KEY_ENV_VAR)?;
+        let api_key = std::env::var(crate::constants::API_KEY_ENV_VAR).map_err(ConfigError::Env)?;
         Ok(Self::new(api_key))
     }
 
@@ -49,7 +50,7 @@ impl AsyncOrpheus {
     pub fn with_base_url<U>(mut self, base_url: U) -> crate::Result<Self>
     where
         U: TryInto<Url>,
-        U::Error: Into<crate::Error>,
+        U::Error: Into<ConfigError>,
     {
         self.base_url = base_url.try_into().map_err(Into::into)?;
         Ok(self)
@@ -66,7 +67,7 @@ impl AsyncOrpheus {
         path: &str,
         body: impl serde::Serialize,
     ) -> crate::Result<reqwest::Response> {
-        let url = self.base_url.join(path)?;
+        let url = self.base_url.join(path).map_err(ConfigError::InvalidUrl)?;
         let token = self
             .api_key
             .as_ref()
@@ -78,13 +79,14 @@ impl AsyncOrpheus {
             .bearer_auth(token)
             .json(&body)
             .send()
-            .await?;
+            .await
+            .map_err(RequestError::Http)?;
 
         if response.status().is_success() {
             Ok(response)
         } else {
-            let err = response.text().await?;
-            Err(crate::Error::OpenRouter(err))
+            let err = response.text().await.map_err(RequestError::Http)?;
+            Err(OpenRouterError::Unexpected(err).into())
         }
     }
 
@@ -152,7 +154,8 @@ impl AsyncOrpheus {
 
         let response = self.execute(COMPLETION_PATH, body).await?;
 
-        let completion_response: CompletionResponse = response.json().await?;
+        let completion_response: CompletionResponse =
+            response.json().await.map_err(RequestError::Http)?;
         Ok(completion_response)
     }
 }
@@ -249,7 +252,10 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
 
         let response = handler.execute(CHAT_COMPLETION_PATH, body).await?;
 
-        let chat_completion = response.json::<ChatCompletion>().await?;
+        let chat_completion = response
+            .json::<ChatCompletion>()
+            .await
+            .map_err(RequestError::Http)?;
 
         Ok(chat_completion)
     }

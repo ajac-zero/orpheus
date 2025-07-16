@@ -1,5 +1,4 @@
 use std::io::{self, Write};
-use std::vec;
 
 use colored::Colorize;
 use orpheus::{AsyncOrpheus, Message, ToolCall, mcp::ModelContext};

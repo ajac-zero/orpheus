@@ -10,6 +10,7 @@ use reqwest::blocking;
 use serde::{Deserialize, Serialize};
 
 use super::Message;
+use crate::error::{RequestError, RuntimeError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatCompletion {
@@ -26,8 +27,8 @@ impl ChatCompletion {
             .choices
             .iter()
             .next()
-            .ok_or(crate::Error::Response(
-                "Responses choices array is empty".to_string(),
+            .ok_or(RequestError::MalformedResponse(
+                "Choices array in response is empty".to_owned(),
             ))?
             .message;
 
@@ -43,7 +44,7 @@ impl ChatCompletion {
     }
 
     pub fn into_message(self) -> crate::Result<super::Message> {
-        let err = crate::Error::Response("Responses choices array is empty".into());
+        let err = RequestError::MalformedResponse("Responses choices array is empty".to_owned());
         let message = self.choices.into_iter().next().ok_or(err)?.message;
         Ok(message)
     }
@@ -185,7 +186,7 @@ impl ChatStream {
 
         loop {
             line.clear();
-            match self.0.read_line(&mut line)? {
+            match self.0.read_line(&mut line).map_err(RuntimeError::Io)? {
                 0 => break Ok(None),
                 _ => {
                     let line = line.trim();
@@ -201,7 +202,8 @@ impl ChatStream {
                         break Ok(None);
                     }
 
-                    return Ok(Some(serde_json::from_str::<ChatStreamChunk>(json_str)?));
+                    let chunk = serde_json::from_str(json_str).map_err(RuntimeError::Serde)?;
+                    return Ok(Some(chunk));
                 }
             }
         }
@@ -248,7 +250,7 @@ impl Stream for AsyncStream {
 
                 // Validate SSE format
                 if !line.starts_with("data: ") {
-                    break Some(Err(crate::Error::InvalidSSE(line.into())));
+                    break Some(Err(RequestError::InvalidSSE(line.into()).into()));
                 }
 
                 let json_str = &line[6..]; // Remove "data: " prefix
@@ -256,11 +258,9 @@ impl Stream for AsyncStream {
                     break None;
                 }
 
-                // Parse JSON - handle the Result properly
-                match serde_json::from_str::<ChatStreamChunk>(json_str) {
-                    Ok(chunk) => break Some(Ok(chunk)),
-                    Err(e) => break Some(Err(crate::Error::Serde(e))),
-                }
+                break Some(
+                    serde_json::from_str(json_str).map_err(|e| RuntimeError::Serde(e).into()),
+                );
             }
 
             // No complete line found, need more data from stream
@@ -282,7 +282,9 @@ impl Stream for AsyncStream {
                         }
 
                         if !line.starts_with("data: ") {
-                            return Poll::Ready(Some(Err(crate::Error::InvalidSSE(line.into()))));
+                            return Poll::Ready(Some(Err(
+                                RequestError::InvalidSSE(line.into()).into()
+                            )));
                         }
 
                         let json_str = &line[6..];
@@ -293,14 +295,14 @@ impl Stream for AsyncStream {
                         match serde_json::from_str::<ChatStreamChunk>(json_str) {
                             Ok(chunk) => return Poll::Ready(Some(Ok(chunk))),
                             Err(e) => {
-                                return Poll::Ready(Some(Err(crate::Error::Serde(e))));
+                                return Poll::Ready(Some(Err(RuntimeError::Serde(e).into())));
                             }
                         }
                     }
                 }
                 Poll::Ready(Some(item)) => match item {
                     Ok(bytes) => this.buffer.extend_from_slice(&bytes),
-                    Err(e) => break Some(Err(crate::Error::Http(e))),
+                    Err(e) => break Some(Err(RequestError::Http(e).into())),
                 },
             }
         };

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{ParamType, Tool, Tools};
+use crate::{
+    ParamType, Tool, Tools,
+    error::{McpError, RuntimeError},
+};
 
 impl TryFrom<rmcp::model::Tool> for Tool {
     type Error = crate::Error;
@@ -11,14 +14,16 @@ impl TryFrom<rmcp::model::Tool> for Tool {
         let properties = schema
             .get("properties")
             .map(serde_json::to_string)
-            .ok_or(crate::Error::Mcp("Missing properties key".into()))?
-            .map(|s| serde_json::from_str::<HashMap<String, ParamType>>(&s))??;
+            .ok_or(McpError::ToolSchema("Missing properties key".into()))?
+            .and_then(|s| serde_json::from_str::<HashMap<String, ParamType>>(&s))
+            .map_err(RuntimeError::Serde)?;
 
         let required = schema
             .get("required")
             .map(serde_json::to_string)
-            .ok_or(crate::Error::Mcp("Missing required key".into()))?
-            .map(|s| serde_json::from_str::<Vec<String>>(&s))??;
+            .ok_or(McpError::ToolSchema("Missing required key".into()))?
+            .and_then(|s| serde_json::from_str::<Vec<String>>(&s))
+            .map_err(RuntimeError::Serde)?;
 
         let tool = Tool::function(value.name)
             .maybe_description(value.description)
@@ -45,8 +50,9 @@ impl TryFrom<rmcp::model::ListToolsResult> for Tools {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn deserialize_mcp_tool_json() {
