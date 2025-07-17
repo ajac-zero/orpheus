@@ -171,6 +171,9 @@ pub struct ChatRequest {
     #[builder(field)]
     pub stream: Option<bool>,
 
+    #[builder(into)]
+    pub response_format: Option<ResponseFormat>,
+
     /// Alternate list of models for routing overrides.
     pub models: Option<Vec<String>>,
 

@@ -31,13 +31,6 @@ impl Content {
         };
         Content::Complex(new_parts)
     }
-
-    pub fn to_string(&self) -> String {
-        match self {
-            Content::Simple(s) => s.clone(),
-            Content::Complex(_) => todo!(),
-        }
-    }
 }
 
 impl From<String> for Content {

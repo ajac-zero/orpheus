@@ -183,6 +183,8 @@ pub enum Param {
         description: Option<String>,
         properties: HashMap<String, ParamType>,
         required: Option<Vec<String>>,
+        #[serde(rename = "additionalProperties")]
+        additional_properties: Option<bool>,
     },
     Number {
         description: Option<String>,
@@ -201,17 +203,19 @@ impl Param {
 
 #[bon]
 impl Param {
-    #[builder(finish_fn = end)]
+    #[builder(finish_fn = end, state_mod(vis = "pub(crate)"))]
     pub fn object(
         #[builder(field)] properties: HashMap<String, ParamType>,
         #[builder(into)] description: Option<String>,
         #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
         required: Option<Vec<String>>,
+        additional_properties: Option<bool>,
     ) -> Self {
         Self::Object {
             description,
             properties,
             required,
+            additional_properties,
         }
     }
 
