@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::models::common::{
     provider::ProviderPreferences, reasoning::ReasoningConfig, usage::UsageConfig,
 };
 
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CompletionRequest {
     /// The model ID to use. If unspecified, the user's default is used.
     pub model: String,

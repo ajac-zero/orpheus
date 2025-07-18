@@ -184,6 +184,10 @@ pub struct ChatRequest {
     #[builder(field)]
     pub stream: Option<bool>,
 
+    /// Preferences for provider routing.
+    #[builder(field)]
+    pub provider: Option<ProviderPreferences>,
+
     #[builder(into)]
     pub response_format: Option<ResponseFormat>,
 
@@ -194,9 +198,6 @@ pub struct ChatRequest {
     pub tools: Option<Tools>,
 
     pub plugins: Option<Vec<Plugin>>,
-
-    /// Preferences for provider routing.
-    pub provider: Option<ProviderPreferences>,
 
     /// Configuration for model reasoning/thinking tokens
     pub reasoning: Option<ReasoningConfig>,
@@ -276,6 +277,24 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
         let response = handler.execute(CHAT_COMPLETION_PATH, body)?;
 
         Ok(response.into())
+    }
+}
+
+impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
+    pub fn preferences(mut self, preferences: ProviderPreferences) -> Self {
+        self.provider = Some(preferences);
+        self
+    }
+
+    pub fn with_preferences<F, C>(mut self, build_preferences: F) -> Self
+    where
+        F: FnOnce(ProviderPreferencesBuilder) -> ProviderPreferencesBuilder<C>,
+        C: provider_preferences_builder::IsComplete,
+    {
+        let builder = ProviderPreferences::builder();
+        let preferences = build_preferences(builder).build();
+        self.provider = Some(preferences);
+        self
     }
 }
 
