@@ -1,5 +1,5 @@
 use colored::Colorize;
-use orpheus::{Message, Orpheus, Param, Tool, ToolCall};
+use orpheus::prelude::*;
 use rand::seq::IndexedRandom;
 
 // Config

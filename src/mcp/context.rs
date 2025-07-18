@@ -9,7 +9,10 @@ use rmcp::{
 };
 use tokio::process::Command;
 
-use crate::{Error, Message, Part, Result, Tools};
+use crate::{
+    Error, Result,
+    models::chat::{Message, Part, Tools},
+};
 
 pub struct ModelContext {
     pub service: RunningService<RoleClient, ()>,

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{Error, ParamType, Result, Tool, Tools};
+use crate::{
+    Error, Result,
+    models::chat::{ParamType, Tool, Tools},
+};
 
 impl TryFrom<rmcp::model::Tool> for Tool {
     type Error = Error;

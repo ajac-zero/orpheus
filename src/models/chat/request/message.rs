@@ -34,7 +34,7 @@ impl Message {
     /// # Example
     ///
     /// ```
-    /// use orpheus::{Message, Role};
+    /// use orpheus::prelude::*;
     ///
     /// let system_message = Message::system("You are an AI");
     /// let generic_message = Message::new(Role::System, "You are an AI".into());

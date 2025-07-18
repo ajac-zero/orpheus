@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 
 use colored::Colorize;
-use orpheus::{AsyncOrpheus, Message, ToolCall, mcp::ModelContext};
+use orpheus::{mcp::ModelContext, prelude::*};
 
 #[tokio::main]
 async fn main() -> orpheus::Result<()> {

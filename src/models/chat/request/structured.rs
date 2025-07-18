@@ -1,9 +1,9 @@
 use bon::bon;
 use serde::{Deserialize, Serialize};
 
-use crate::{
+use crate::models::chat::{
     Param,
-    models::chat::request::tool::{ParamObjectBuilder, param_object_builder},
+    request::tool::{ParamObjectBuilder, param_object_builder},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,7 +53,10 @@ impl<S: response_format_json_schema_builder::State> ResponseFormatJsonSchemaBuil
 mod test {
     use serde_json::json;
 
-    use crate::{Orpheus, Param, models::chat::request::structured::ResponseFormat};
+    use crate::{
+        client::Orpheus,
+        models::chat::{Param, request::structured::ResponseFormat},
+    };
 
     #[test]
     fn serialize_response_format() {

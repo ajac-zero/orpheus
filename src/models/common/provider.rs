@@ -198,7 +198,7 @@ pub enum Quantization {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct MaxPrice {
+pub struct MaxPrice {
     prompt: Option<i64>,
     completion: Option<i64>,
 }
@@ -207,7 +207,7 @@ struct MaxPrice {
 mod test {
     use serde_json::json;
 
-    use crate::{models::common::provider::MaxPrice, *};
+    use crate::prelude::*;
 
     #[test]
     fn provider_preferences_serialization() {

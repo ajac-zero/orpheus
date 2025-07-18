@@ -20,7 +20,7 @@ impl Tool {
     ///
     /// # Examples
     /// ```
-    /// use orpheus::{Tool, Param};
+    /// use orpheus::prelude::*;
     /// use serde_json::json;
     ///
     /// let target =  json!({
@@ -61,7 +61,7 @@ impl Tool {
     /// Some providers allow name-only tools; These can be useful as simple
     /// switches to let the model take actions.
     /// ```
-    /// use orpheus::Tool;
+    /// use orpheus::prelude::*;
     /// use serde_json::json;
     ///
     /// let target = json!({
@@ -83,7 +83,7 @@ impl Tool {
     /// The `empty` method is a shortcut to build a Tool with and empty parameters object.
     ///
     /// ```
-    /// use orpheus::Tool;
+    /// use orpheus::prelude::*;
     /// use serde_json::json;
     ///
     /// let target = json!({
