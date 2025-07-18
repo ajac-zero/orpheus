@@ -51,7 +51,8 @@ fn main() -> anyhow::Result<()> {
     loop {
         // Call the llm
         let response = orpheus
-            .chat(model, messages.clone())
+            .chat(messages.clone())
+            .model(model)
             .tools(tools.clone())
             .temperature(0.9) // For more creative responses
             .send()?;

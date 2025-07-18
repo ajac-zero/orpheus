@@ -205,9 +205,9 @@ struct MaxPrice {
 
 #[cfg(test)]
 mod test {
-    use crate::{models::common::provider::MaxPrice, *};
-
     use serde_json::json;
+
+    use crate::{models::common::provider::MaxPrice, *};
 
     #[test]
     fn provider_preferences_serialization() {
@@ -252,7 +252,8 @@ mod test {
             .build();
 
         let response = client
-            .chat("moonshotai/kimi-k2", "Tell me about the Romans")
+            .chat("Tell me about the Romans")
+            .model("moonshotai/kimi-k2")
             .preferences(provider)
             .send();
         println!("{:?}", response);
@@ -270,7 +271,8 @@ mod test {
         let client = Orpheus::from_env().unwrap();
 
         let response = client
-            .chat("moonshotai/kimi-k2", "Tell me about the Romans")
+            .chat("Tell me about the Romans")
+            .model("moonshotai/kimi-k2")
             .with_preferences(|pref| pref.only([Provider::Groq]))
             .send();
         println!("{:?}", response);

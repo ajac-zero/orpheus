@@ -38,7 +38,8 @@ async fn main() -> orpheus::Result<()> {
             io::stdout().flush().unwrap();
 
             let response = client
-                .chat("google/gemini-2.0-flash-001", messages.clone())
+                .chat(messages.clone())
+                .model("google/gemini-2.0-flash-001")
                 .tools(tools.clone())
                 .send()
                 .await?;

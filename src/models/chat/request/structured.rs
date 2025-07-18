@@ -136,10 +136,8 @@ mod test {
             .build();
 
         let response = client
-            .chat(
-                "openai/gpt-4o",
-                "What is the weather like in New York City?",
-            )
+            .chat("What is the weather like in New York City?")
+            .model("openai/gpt-4o")
             .response_format(response_format)
             .send()
             .unwrap();
