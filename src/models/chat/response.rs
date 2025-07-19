@@ -19,6 +19,10 @@ pub struct ChatCompletion {
 
     /// List of chat completion choices
     pub choices: Vec<ChatChoice>,
+
+    pub provider: String,
+
+    pub model: String,
 }
 
 impl ChatCompletion {
@@ -97,15 +101,39 @@ pub struct ChatStreamChunk {
     pub usage: Option<ChatUsage>,
 }
 
-impl From<ChatStreamChunk> for String {
-    fn from(value: ChatStreamChunk) -> Self {
-        let content = value.choices.first().unwrap().clone().delta.content;
+impl ChatStreamChunk {
+    pub fn delta(&self) -> Result<&super::ChatStreamDelta> {
+        let message = &self
+            .choices
+            .iter()
+            .next()
+            .ok_or(Error::malformed_response(
+                "Choices array in response is empty",
+            ))?
+            .delta;
 
-        if let Some(content) = content {
-            content
-        } else {
-            "".to_string()
-        }
+        Ok(message)
+    }
+
+    pub fn into_delta(self) -> Result<super::ChatStreamDelta> {
+        let message = self
+            .choices
+            .into_iter()
+            .next()
+            .ok_or(Error::malformed_response(
+                "Choices array in response is empty",
+            ))?
+            .delta;
+
+        Ok(message)
+    }
+
+    pub fn into_content(self) -> Result<String> {
+        Ok(self.into_delta()?.content)
+    }
+
+    pub fn content(&self) -> Result<&String> {
+        Ok(&self.delta()?.content)
     }
 }
 
@@ -132,10 +160,10 @@ pub struct ChatStreamChoice {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatStreamDelta {
     /// The role of the message (typically "assistant" for responses)
-    pub role: Option<String>,
+    pub role: String,
 
     /// The incremental content of the message
-    pub content: Option<String>,
+    pub content: String,
 }
 
 #[serde_with::skip_serializing_none]
@@ -185,33 +213,50 @@ impl ChatStream {
         let reader = BufReader::new(response);
         Self(reader)
     }
+}
 
-    pub fn next(&mut self) -> Result<Option<ChatStreamChunk>> {
+impl Iterator for ChatStream {
+    type Item = Result<ChatStreamChunk>;
+
+    fn next(&mut self) -> Option<Self::Item> {
         let mut line = String::new();
 
-        loop {
+        let item = loop {
             line.clear();
-            match self.0.read_line(&mut line).map_err(Error::io)? {
-                0 => break Ok(None),
-                _ => {
-                    let line = line.trim();
-                    if line.is_empty() || line.starts_with(":") {
-                        continue;
-                    }
 
-                    assert!(line.starts_with("data: "), "Invalid SSE line: {}", line);
+            let bytes_read = match self.0.read_line(&mut line) {
+                Ok(bytes_read) => bytes_read,
+                Err(e) => break Err(Error::io(e)),
+            };
 
-                    let json_str = &line[6..]; // Remove "data: " prefix and trailing whitespace
-
-                    if json_str == "[DONE]" {
-                        break Ok(None);
-                    }
-
-                    let chunk = serde_json::from_str(json_str).map_err(Error::serde)?;
-                    return Ok(Some(chunk));
-                }
+            if bytes_read == 0 {
+                return None; // Stream is empty
             }
-        }
+
+            let line = line.trim();
+            if line.is_empty() || line.starts_with(":") {
+                continue; // Skip comments/keepalives
+            }
+
+            if !line.starts_with("data: ") {
+                break Err(Error::invalid_sse(line));
+            }
+
+            let json_str = &line[6..]; // Remove "data: " prefix and trailing whitespace
+
+            if json_str == "[DONE]" {
+                return None; // Stream is explicitly over
+            }
+
+            let chunk = match serde_json::from_str(json_str) {
+                Ok(chunk) => chunk,
+                Err(e) => break Err(Error::serde(e)),
+            };
+
+            break Ok(chunk);
+        };
+
+        Some(item)
     }
 }
 
@@ -357,7 +402,9 @@ mod test {
                             "content": "Hello! I'm doing well, thank you for asking. How can I assist you today?"
                         }
                     }
-                ]
+                ],
+                "provider": "OpenAI",
+                "model": "openai/gpt-4o"
             }"#;
 
         let response: ChatCompletion = serde_json::from_str(response_json).unwrap();
@@ -410,8 +457,8 @@ mod test {
 
         let choice = &chunk.choices[0];
         assert_eq!(choice.index, 0);
-        assert_eq!(choice.delta.role, Some("assistant".to_string()));
-        assert_eq!(choice.delta.content, Some("Hello".to_string()));
+        assert_eq!(choice.delta.role, "assistant".to_string());
+        assert_eq!(choice.delta.content, "Hello".to_string());
         assert_eq!(choice.finish_reason, None);
     }
 

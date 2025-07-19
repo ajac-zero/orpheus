@@ -106,9 +106,7 @@ mod tests {
             let choice = &chunk.choices[0];
 
             // Accumulate content
-            if let Some(content) = &choice.delta.content {
-                accumulated_content.push_str(content);
-            }
+            accumulated_content.push_str(&choice.delta.content);
 
             // Check for completion
             if choice.finish_reason.is_some() {
@@ -180,9 +178,7 @@ mod tests {
             let choice = &chunk.choices[0];
 
             // Accumulate content
-            if let Some(content) = &choice.delta.content {
-                accumulated_content.push_str(content);
-            }
+            accumulated_content.push_str(&choice.delta.content);
 
             // Check for completion
             if choice.finish_reason.is_some() {

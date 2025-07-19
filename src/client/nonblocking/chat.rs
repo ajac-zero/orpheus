@@ -37,7 +37,7 @@ pub struct ChatRequest {
     pub response_format: Option<ResponseFormat>,
 
     /// Alternate list of models for routing overrides.
-    #[builder(name = "fallbacks", with = FromIterator::from_iter)]
+    #[builder(name = "fallbacks", with = |models: impl IntoIterator<Item: Into<String>>| models.into_iter().map(Into::into).collect())]
     pub models: Option<Vec<String>>,
 
     #[builder(into)]

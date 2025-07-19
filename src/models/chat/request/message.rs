@@ -165,6 +165,12 @@ impl From<Vec<Message>> for ChatMessages {
     }
 }
 
+impl From<&Vec<Message>> for ChatMessages {
+    fn from(value: &Vec<Message>) -> Self {
+        ChatMessages(value.to_owned())
+    }
+}
+
 impl<const N: usize> From<[Message; N]> for ChatMessages {
     fn from(value: [Message; N]) -> Self {
         ChatMessages(value.to_vec())

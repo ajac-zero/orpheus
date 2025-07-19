@@ -44,16 +44,14 @@ mod tests {
         let mut accumulated_content = String::new();
         let mut is_finished = false;
 
-        while let Some(chunk) = chat_response.next().unwrap() {
+        while let Some(Ok(chunk)) = chat_response.next() {
             assert_eq!(chunk.object, "chat.completion.chunk");
             assert_eq!(chunk.choices.len(), 1);
 
             let choice = &chunk.choices[0];
 
             // Accumulate content
-            if let Some(content) = &choice.delta.content {
-                accumulated_content.push_str(content);
-            }
+            accumulated_content.push_str(&choice.delta.content);
 
             // Check for completion
             if choice.finish_reason.is_some() {
