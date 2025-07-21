@@ -1,6 +1,8 @@
-# Orpheus - OpenRouter SDK
+# 🎸 Orpheus
 
-Orpheus is a library made to make it as ergonomic as possible to create AI apps with [OpenRouter](https://openrouter.ai/), allowing immediate access to hundreds of models and dozens of providers you can mix and match to best suit your use case.
+> *Can you hear the music?*
+
+**Orpheus** is a library made to make it as ergonomic as possible to create AI apps with [OpenRouter](https://openrouter.ai/), allowing immediate access to hundreds of models and dozens of providers you can mix and match to best suit your use case.
 
 Orpheus also comes with out-of-the-box support for:
 - ⚡ Async
@@ -25,13 +27,13 @@ cargo add orpheus
 
 You can also include some optional features that might be useful to your use case:
 
-**anyhow**: For most applications, using the anyhow crate greatly simplifies error handling
+**anyhow**: For most applications, using the anyhow crate greatly simplifies error handling.
 
 ```bash
 cargo add orpheus -F anyhow
 ```
 
-**mcp**: If you require MCP integration in your program, enable with feature which uses the official rmcp package by Anthropic under the hood.
+**mcp**: If you require MCP integration in your program, enable this feature which uses the official rmcp package by Anthropic under the hood.
 
 ```bash
 cargo add orpheus -F mcp
@@ -185,72 +187,6 @@ fn main() {
 
 > **Note**: You'll have to run it yourself to see the stream effect
 
-## Async Usage
+--- Delve into it
 
-Calling LLMs takes a long time, and it is largely an IO-bound task, which means your app will spend a lot of time idling while waiting for the response to come in.
-
-Because of this, you will probably want to take advantage of async code so your app can work while waiting on the LLM.
-
-Of course, Orpheus has native async support with tokio. The code remains largely the same as above, except you will want to use the alternative async client and await your requests.
-
-### Async Chat Example
-
-> **Note**: This example needs the tokio runtime. Install it with `cargo add tokio -F full`.
-
-```rust
-use orpheus::prelude::*;
-
-#[tokio::main]
-async fn main() {
-    // Use the alternative async client
-    let client = AsyncOrpheus::from_env().expect("ORPHEUS_API_KEY is set");
-
-    let res = client
-        .chat("Who would win in a fist fight, Einstein or Oppenheimer?")
-        .model("openai/gpt-4o")
-        .send()
-        .await // Await the response after calling `send`
-        .unwrap();
-    println!("{}", res.content().unwrap());
-}
-```
-
-```
->> Predicting the outcome of a hypothetical fist fight between Albert Einstein and J. Robert Oppenheimer is highly speculative and not particularly meaningful, as both individuals were renowned for their intellectual contributions rather than physical prowess. Einstein is famous for his theories of relativity, while Oppenheimer is best known for his role in the development of the atomic bomb during the Manhattan Project.
-```
-
-This alternative client also supports streaming responses, by implementing the Stream extension trait from futures_lite for the response object.
-
-### Async Stream Example
-
-> **Note**: This example needs the tokio runtime and futures_lite. Install them with `cargo add tokio -F full` and `cargo add futures-lite`.
-
-```rust
-use std::io::Write;
-
-use futures_lite::StreamExt;
-use orpheus::prelude::*;
-
-#[tokio::main]
-async fn main() {
-    let client = AsyncOrpheus::from_env().expect("ORPHEUS_API_KEY is set");
-
-    let mut res = client
-        .chat("Who would win in a fist fight, Einstein or Oppenheimer?")
-        .model("openai/gpt-4o")
-        .stream()
-        .await // Await the response after calling `send`
-        .unwrap();
-
-    while let Some(Ok(chunk)) = res.next().await {
-        let content = chunk.content().unwrap();
-
-        print!("{}", content);
-        std::io::stdout().flush().unwrap();
-    }
-}
-```
-
-```
->> In a hypothetical scenario where Albert Einstein and J. Robert Oppenheimer were to engage in a fistfight, it's difficult to predict the outcome as neither were known for physical prowess but rather for their intellectual contributions to science. Both were theoretical physicists who made groundbreaking contributions in their fields—Einstein with his theory of relativity and Oppenheimer as a leading figure in the development of the atomic bomb.
-```
+If you want to learn about additional features, such as async support, structured output, tool calling, MCP, prompt caching, provider configuration, and more, head over to the documentation page!.

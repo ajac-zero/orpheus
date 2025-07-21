@@ -285,6 +285,12 @@ impl From<Vec<Tool>> for Tools {
     }
 }
 
+impl<const N: usize> From<[Tool; N]> for Tools {
+    fn from(tools: [Tool; N]) -> Self {
+        Self(tools.to_vec())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use serde_json::json;
