@@ -1,3 +1,7 @@
+---
+description: Learn how to define your tools with Orpheus
+---
+
 # Defining Tools
 
 Most providers expect tools to be defined using JSON Schema. While this allows for flexibility, it is prone to errors and requires you to remember the specific schema that is expected for a tool definition.
@@ -26,7 +30,7 @@ Say you previously had a Tool definition like this, in JSON Schema.
 }
 ```
 
-Lots of room to mistype a key or forget a coma, so let's use the Tool builder instead. The equivalent with Orpheus would be this.
+Lots of room to mistype a key or forget a comma, so let's use the Tool builder instead. The equivalent with Orpheus would be this.
 
 ```rust
 Tool::function("get_weather")

@@ -1,12 +1,10 @@
-# Tool Calling
+# Using Tools
 
-For more advanced use cases, you will probably want to give the LLM a way to interact with its environment. Tool calling enables this by specifying a set of actions the model can take.
 
-#### Model with Tools Example
 
 > Note: To run this example you'll need to add these crates:
 >
-> * `cargo add reqwest -F blocking`&#x20;
+> * `cargo add reqwest -F blocking`
 > * `cargo add serde`
 > * `cargo add serde_json`
 > * `cargo add orpheus -F anyhow`
@@ -109,8 +107,10 @@ fn main() -> anyhow::Result<()> {
 
 ```
 
+Output:
+
 ```
->> Prompt: How's the weather in New York?
+Prompt: How's the weather in New York?
 Tool function used: get_weather
 Response: Based on the current weather data for New York City, here's what the weather looks like:
 

@@ -23,7 +23,9 @@
 ## Features
 
 * [Async Support](features/async-support.md)
-* [Tool Calling](features/tool-calling.md)
+* [Tool Calling](features/tool-calling/README.md)
+  * [Defining Tools](features/tool-calling/defining-tools.md)
+  * [Using Tools](features/tool-calling/using-tools.md)
 * [MCP](features/mcp.md)
 * [Structured Output](features/structured-output.md)
 
