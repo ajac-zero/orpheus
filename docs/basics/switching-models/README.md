@@ -14,17 +14,17 @@ use orpheus::prelude::*;
 
 fn main() {
     let client = Orpheus::new("Your-API-Key");
-    
+
     let prompt = "Who are you";
-    
+
     let claude = "anthropic/claude-3.5-haiku";
     let res = client.chat(prompt).model(claude).send().unwrap();
     println!("Claude: {}\n", res.content().unwrap());
-    
+
     let chatgpt = "openai/chatgpt-4o-latest";
     let res = client.chat(prompt).model(chatgpt).send().unwrap();
     println!("ChatGPT: {}\n", res.content().unwrap());
-    
+
     let kimi = "moonshotai/kimi-k2";
     let res = client.chat(prompt).model(kimi).send().unwrap();
     println!("Kimi: {}\n", res.content().unwrap());

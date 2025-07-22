@@ -32,7 +32,7 @@ pub struct ProviderPreferences {
     /// Control whether to use providers that may store data.
     ///
     /// [Learn more](https://openrouter.ai/docs/features/provider-routing#requiring-providers-to-comply-with-data-policies)
-    #[builder(default = DataCollection::Allow)]
+    #[builder(into, default = DataCollection::Allow)]
     data_collection: DataCollection,
 
     /// List of provider slugs to allow for this request.
@@ -73,7 +73,7 @@ pub struct ProviderPreferences {
 ///     - `Sort::Throughput`: prioritize highest throughput
 ///     - `Sort::Latency`: prioritize lowest latency
 #[non_exhaustive]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Sort {
     Price,
@@ -182,8 +182,18 @@ pub enum DataCollection {
     Deny,
 }
 
+impl From<bool> for DataCollection {
+    fn from(value: bool) -> Self {
+        if value {
+            DataCollection::Allow
+        } else {
+            DataCollection::Deny
+        }
+    }
+}
+
 #[non_exhaustive]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Quantization {
     Int4,

@@ -13,35 +13,30 @@ use orpheus::prelude::*;
 
 fn main() {
     let client = Orpheus::new("Your-API-Key");
-    
+
     let prompt = "What is 23 + 47?";
     let model = "moonshotai/kimi-k2";
 
-    let res = client
-        .chat(prompt)
-        .model(model)
-        .with_preferences(|pref| pref.sort(Sort::Latency))
-        .send()
-        .unwrap();
-    println!("Provider picked: {}", res.provider);
-    // Provider picked: DeepInfra
+    for priority in [Sort::Latency, Sort::Price, Sort::Throughput] {
+        let res = client
+            .chat(prompt)
+            .model(model)
+            .with_preferences(|pref| pref.sort(priority))
+            .send()
+            .unwrap();
 
-    let res = client
-        .chat(prompt)
-        .model(model)
-        .with_preferences(|pref| pref.sort(Sort::Price))
-        .send()
-        .unwrap();
-    println!("Provider picked: {}", res.provider);
-    // Provider picked: Targon
-
-    let res = client
-        .chat(prompt)
-        .model(model)
-        .with_preferences(|pref| pref.sort(Sort::Throughput))
-        .send()
-        .unwrap();
-    println!("Provider picked: {}", res.provider);
-    // Provider picked: Groq
+        println!(
+            "Provider picked with priority '{:?}': {}",
+            priority, res.provider
+        );
+    }
 }
+```
+
+Output:
+
+```bash
+Provider picked with priority 'Latency': DeepInfra
+Provider picked with priority 'Price': Targon
+Provider picked with priority 'Throughput': Groq
 ```
