@@ -6,9 +6,7 @@ Because of this, you will probably want to take advantage of `async` code so you
 
 Of course, Orpheus has native async support with [tokio](https://tokio.rs/). The code remains largely the same as above, except you will want to use the alternative async client and await your requests.
 
-#### Async Chat Example
-
-Note: This example needs the tokio runtime. Install it with`cargo add tokio -F full`.
+> Note: This example needs the tokio runtime. Install it with`cargo add tokio -F full`.
 
 ```rust
 use orpheus::prelude::*;
@@ -29,14 +27,14 @@ async fn main() {
 ```
 
 ```
->> Predicting the outcome of a hypothetical fist fight between Albert Einstein and J. Robert Oppenheimer is highly speculative and not particularly meaningful, as both individuals were renowned for their intellectual contributions rather than physical prowess. Einstein is famous for his theories of relativity, while Oppenheimer is best known for his role in the development of the atomic bomb during the Manhattan Project.
+Predicting the outcome of a hypothetical fist fight between Albert Einstein and J. Robert Oppenheimer is highly speculative and not particularly meaningful, as both individuals were renowned for their intellectual contributions rather than physical prowess. Einstein is famous for his theories of relativity, while Oppenheimer is best known for his role in the development of the atomic bomb during the Manhattan Project.
 ```
+
+# Async Streaming
 
 This alternative client also supports streaming responses, by implementing the `Stream` extension trait from `futures_lite` for the response object.
 
-#### Async Stream Example
-
-Note: This example needs the tokio runtime and futures\_lite. Install them with`cargo add tokio -F full` and `cargo add futures-lite`.
+> Note: This example needs the tokio runtime and futures\_lite. Install them with`cargo add tokio -F full` and `cargo add futures-lite`.
 
 ```rust
 use std::io::Write;
@@ -66,5 +64,5 @@ async fn main() {
 ```
 
 ```
->> In a hypothetical scenario where Albert Einstein and J. Robert Oppenheimer were to engage in a fistfight, it's difficult to predict the outcome as neither were known for physical prowess but rather for their intellectual contributions to science. Both were theoretical physicists who made groundbreaking contributions in their fields—Einstein with his theory of relativity and Oppenheimer as a leading figure in the development of the atomic bomb.
+In a hypothetical scenario where Albert Einstein and J. Robert Oppenheimer were to engage in a fistfight, it's difficult to predict the outcome as neither were known for physical prowess but rather for their intellectual contributions to science. Both were theoretical physicists who made groundbreaking contributions in their fields—Einstein with his theory of relativity and Oppenheimer as a leading figure in the development of the atomic bomb.
 ```
