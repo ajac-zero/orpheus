@@ -1,3 +1,11 @@
+#!/usr/bin/env rust-script
+//! ```cargo
+//! [dependencies]
+//! anyhow = "1.0.98"
+//! colored = "3.0.0"
+//! orpheus = { version = "0.1.1", features = ["mcp"] }
+//! tokio = { version = "1.28.0", features = ["macros"] }
+//! ```
 use std::io::{self, Write};
 
 use colored::Colorize;

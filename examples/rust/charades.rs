@@ -1,3 +1,13 @@
+#!/usr/bin/env rust-script
+//! ```cargo
+//! [dependencies]
+//! anyhow = "1.0.98"
+//! colored = "3.0.0"
+//! rand = "0.9.1"
+//! serde = "1.0.217"
+//! serde_json = "1.0.134"
+//! orpheus = "0.1.1"
+//! ```
 use colored::Colorize;
 use orpheus::prelude::*;
 use rand::seq::IndexedRandom;

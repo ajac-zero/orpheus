@@ -1,3 +1,14 @@
+#!/usr/bin/env rust-script
+//! ```cargo
+//! [dependencies]
+//! anyhow = "1.0.98"
+//! opentelemetry = "0.30.0"
+//! opentelemetry_sdk = "0.30.0"
+//! tracing = "0.1.41"
+//! tracing-opentelemetry = "0.31.0"
+//! tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+//! orpheus = { version = "0.1.1", features = ["langfuse"] }
+//! ```
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use orpheus::{langfuse::LangfuseExporter, prelude::*};
@@ -9,7 +20,7 @@ fn main() -> anyhow::Result<()> {
         .with_simple_exporter(LangfuseExporter::from_env()?)
         .build();
 
-    let tracer = provider.tracer("langfuse-chat");
+    let tracer = provider.tracer("langfuse-example");
 
     tracing_subscriber::registry()
         .with(EnvFilter::new("orpheus=trace"))
