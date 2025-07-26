@@ -22,3 +22,55 @@ pub enum Effort {
     Medium,
     Low,
 }
+
+#[cfg(test)]
+mod test {
+    use crate::prelude::*;
+
+    #[test]
+    fn test_no_reasoning() {
+        let client = Orpheus::from_env().unwrap();
+
+        let response = client
+            .chat("what is 2 + 2 in latin")
+            .model("google/gemini-2.5-flash-lite")
+            .send()
+            .unwrap()
+            .into_message()
+            .unwrap();
+
+        assert!(response.reasoning.is_none());
+    }
+
+    #[test]
+    fn test_set_reasoning_effort() {
+        let client = Orpheus::from_env().unwrap();
+
+        let response = client
+            .chat("what is 2 + 2 in latin")
+            .model("google/gemini-2.5-flash-lite")
+            .with_reasoning(|r| r.effort(Effort::Low))
+            .send()
+            .unwrap()
+            .into_message()
+            .unwrap();
+
+        assert!(response.reasoning.is_some());
+    }
+
+    #[test]
+    fn test_set_reasoning_budget() {
+        let client = Orpheus::from_env().unwrap();
+
+        let response = client
+            .chat("what is 2 + 2 in latin")
+            .model("google/gemini-2.5-flash-lite")
+            .with_reasoning(|r| r.max_tokens(100))
+            .send()
+            .unwrap()
+            .into_message()
+            .unwrap();
+
+        assert!(response.reasoning.is_some());
+    }
+}
