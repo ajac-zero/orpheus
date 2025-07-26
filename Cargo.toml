@@ -1,6 +1,6 @@
 [package]
 name = "orpheus"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A blazing fast OpenRouter SDK"
 license = "MIT"
@@ -57,15 +57,3 @@ thiserror = "2.0.12"
 tokio = { version = "1.44.1", features = ["rt", "macros"] }
 tracing = "0.1.41"
 url = "2.5.4"
-
-[dev-dependencies]
-base64 = "0.22.1"
-colored = "3.0.0"
-opentelemetry-stdout = "0.30.0"
-opentelemetry_sdk = "0.30.0"
-opentelemetry = "0.30.0"
-opentelemetry-otlp = { version = "0.30.0", features = ["trace"] }
-rand = "0.9.1"
-tokio = { version = "1.44.1", features = ["full"] }
-tracing-opentelemetry = "0.31.0"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }

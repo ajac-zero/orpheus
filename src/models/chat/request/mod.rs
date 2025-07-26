@@ -14,8 +14,6 @@ pub use plugins::{ParsingEngine, Plugin};
 pub use structured::ResponseFormat;
 pub use tool::{Param, ParamType, Tool, Tools};
 
-pub(crate) use super::*;
-
 #[cfg(test)]
 mod test {
     use serde_json::{Value, from_value, json};

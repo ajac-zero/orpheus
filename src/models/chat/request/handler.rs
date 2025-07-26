@@ -1,3 +1,5 @@
+#[cfg(feature = "otel")]
+use crate::models::chat::otel;
 use crate::{
     Error, Result,
     constants::CHAT_COMPLETION_PATH,
@@ -23,7 +25,7 @@ impl<M: Mode> Handler<M> for ChatHandler<M> {
 impl Executor for ChatHandler<Sync> {
     fn execute(self, body: Self::Input) -> Result<Self::Response> {
         #[cfg(feature = "otel")]
-        super::otel::record_input(&body);
+        otel::record_input(&body);
 
         let response = self.0.0.json(&body).send().map_err(Error::http)?;
 
@@ -39,7 +41,7 @@ impl Executor for ChatHandler<Sync> {
 impl AsyncExecutor for ChatHandler<Async> {
     async fn execute(self, body: Self::Input) -> Result<Self::Response> {
         #[cfg(feature = "otel")]
-        super::otel::record_input(&body);
+        otel::record_input(&body);
 
         let response = self.0.0.json(&body).send().await.map_err(Error::http)?;
 

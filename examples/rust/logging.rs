@@ -1,3 +1,11 @@
+#!/usr/bin/env rust-script
+//! ```cargo
+//! [dependencies]
+//! anyhow = "1.0.98"
+//! tracing = "0.1.41"
+//! tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+//! orpheus = "0.1.1"
+//! ```
 use orpheus::prelude::*;
 
 fn main() -> anyhow::Result<()> {
