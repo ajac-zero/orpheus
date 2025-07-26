@@ -30,6 +30,10 @@ pub struct ChatRequest {
     #[builder(field)]
     pub provider: Option<ProviderPreferences>,
 
+    /// Configuration for model reasoning/thinking tokens
+    #[builder(field)]
+    pub reasoning: Option<ReasoningConfig>,
+
     /// The model ID to use. If unspecified, the user's default is used.
     pub model: Option<String>,
 
@@ -44,9 +48,6 @@ pub struct ChatRequest {
     pub tools: Option<Tools>,
 
     pub plugins: Option<Vec<Plugin>>,
-
-    /// Configuration for model reasoning/thinking tokens
-    pub reasoning: Option<ReasoningConfig>,
 
     /// Whether to include usage information in the response
     pub usage: Option<UsageConfig>,
@@ -127,9 +128,7 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
 
         Ok(response.into())
     }
-}
 
-impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
     pub fn preferences(mut self, preferences: ProviderPreferences) -> Self {
         self.provider = Some(preferences);
         self
@@ -143,6 +142,22 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
         let builder = ProviderPreferences::builder();
         let preferences = build_preferences(builder).build();
         self.provider = Some(preferences);
+        self
+    }
+
+    pub fn reasoning(mut self, config: ReasoningConfig) -> Self {
+        self.reasoning = Some(config);
+        self
+    }
+
+    pub fn with_reasoning<F, C>(mut self, build_reasoning: F) -> Self
+    where
+        F: FnOnce(ReasoningConfigBuilder) -> ReasoningConfigBuilder<C>,
+        C: reasoning_config_builder::IsComplete,
+    {
+        let builder = ReasoningConfig::builder();
+        let config = build_reasoning(builder).build();
+        self.reasoning = Some(config);
         self
     }
 }

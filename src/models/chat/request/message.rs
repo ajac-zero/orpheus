@@ -11,11 +11,15 @@ pub struct Message {
     /// The message content
     pub content: Content,
 
+    pub reasoning: Option<String>,
+
     pub tool_call_id: Option<String>,
 
     pub tool_calls: Option<Vec<ToolCall>>,
 
     pub annotations: Option<Vec<Annotation>>,
+
+    pub reasoning_details: Option<Vec<Details>>,
 }
 
 impl Message {
@@ -23,9 +27,11 @@ impl Message {
         Self {
             role,
             content,
+            reasoning: None,
             tool_call_id: None,
             tool_calls: None,
             annotations: None,
+            reasoning_details: None,
         }
     }
 
@@ -45,9 +51,11 @@ impl Message {
         Self {
             role: Role::System,
             content: content.into(),
+            reasoning: None,
             tool_call_id: None,
             tool_calls: None,
             annotations: None,
+            reasoning_details: None,
         }
     }
 
@@ -55,9 +63,11 @@ impl Message {
         Self {
             role: Role::User,
             content: content.into(),
+            reasoning: None,
             tool_call_id: None,
             tool_calls: None,
             annotations: None,
+            reasoning_details: None,
         }
     }
 
@@ -65,9 +75,11 @@ impl Message {
         Self {
             role: Role::Assistant,
             content: content.into(),
+            reasoning: None,
             tool_call_id: None,
             tool_calls: None,
             annotations: None,
+            reasoning_details: None,
         }
     }
 
@@ -75,9 +87,11 @@ impl Message {
         Self {
             role: Role::Tool,
             content: content.into(),
+            reasoning: None,
             tool_call_id: Some(id.into()),
             tool_calls: None,
             annotations: None,
+            reasoning_details: None,
         }
     }
 
@@ -193,4 +207,11 @@ impl From<&str> for ChatMessages {
     fn from(value: &str) -> Self {
         ChatMessages(vec![Message::from(value)])
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Details {
+    format: String,
+    text: String,
+    signature: Option<String>,
 }

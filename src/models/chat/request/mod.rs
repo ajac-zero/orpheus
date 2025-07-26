@@ -15,17 +15,11 @@ mod test {
     use serde_json::{Value, from_value, json};
 
     use super::*;
-    use crate::models::common::reasoning::{ReasoningConfig, ReasoningEffort};
+    use crate::models::common::reasoning::{Effort, ReasoningConfig};
 
     #[test]
     fn test_chat_message_simple_content() {
-        let message = Message {
-            role: Role::User,
-            content: Content::Simple("Hello world!".to_string()),
-            tool_call_id: None,
-            tool_calls: None,
-            annotations: None,
-        };
+        let message = Message::user("Hello world!");
 
         let json = serde_json::to_string(&message).unwrap();
         let deserialized: Message = serde_json::from_str(&json).unwrap();
@@ -48,13 +42,7 @@ mod test {
         ];
 
         for role in roles {
-            let message = Message {
-                role: role.clone(),
-                content: Content::Simple("test".to_string()),
-                tool_call_id: None,
-                tool_calls: None,
-                annotations: None,
-            };
+            let message = Message::new(role.clone(), "test".into());
 
             let json = serde_json::to_string(&message).unwrap();
             let deserialized: Message = serde_json::from_str(&json).unwrap();
@@ -73,11 +61,7 @@ mod test {
 
     #[test]
     fn test_reasoning_effort_serialization() {
-        let efforts = vec![
-            ReasoningEffort::High,
-            ReasoningEffort::Medium,
-            ReasoningEffort::Low,
-        ];
+        let efforts = vec![Effort::High, Effort::Medium, Effort::Low];
 
         for effort in efforts {
             let config = ReasoningConfig {
@@ -91,9 +75,9 @@ mod test {
 
             assert!(deserialized.effort.is_some());
             match (&effort, deserialized.effort.as_ref().unwrap()) {
-                (ReasoningEffort::High, ReasoningEffort::High) => (),
-                (ReasoningEffort::Medium, ReasoningEffort::Medium) => (),
-                (ReasoningEffort::Low, ReasoningEffort::Low) => (),
+                (Effort::High, Effort::High) => (),
+                (Effort::Medium, Effort::Medium) => (),
+                (Effort::Low, Effort::Low) => (),
                 _ => panic!("Effort mismatch"),
             }
         }

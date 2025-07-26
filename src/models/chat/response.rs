@@ -39,6 +39,10 @@ impl ChatCompletion {
         Ok(message)
     }
 
+    pub fn reasoning(&self) -> Result<Option<&String>> {
+        Ok(self.message()?.reasoning.as_ref())
+    }
+
     pub fn tool_calls(&self) -> Result<Option<&Vec<super::ToolCall>>> {
         Ok(self.message()?.tool_calls.as_ref())
     }
@@ -102,7 +106,7 @@ pub struct ChatStreamChunk {
 }
 
 impl ChatStreamChunk {
-    pub fn delta(&self) -> Result<&super::ChatStreamDelta> {
+    pub fn delta(&self) -> Result<&super::Message> {
         let message = &self
             .choices
             .iter()
@@ -115,7 +119,7 @@ impl ChatStreamChunk {
         Ok(message)
     }
 
-    pub fn into_delta(self) -> Result<super::ChatStreamDelta> {
+    pub fn into_delta(self) -> Result<super::Message> {
         let message = self
             .choices
             .into_iter()
@@ -128,12 +132,16 @@ impl ChatStreamChunk {
         Ok(message)
     }
 
-    pub fn into_content(self) -> Result<String> {
+    pub fn into_content(self) -> Result<super::Content> {
         Ok(self.into_delta()?.content)
     }
 
-    pub fn content(&self) -> Result<&String> {
+    pub fn content(&self) -> Result<&super::Content> {
         Ok(&self.delta()?.content)
+    }
+
+    pub fn reasoning(&self) -> Result<Option<&String>> {
+        Ok(self.delta()?.reasoning.as_ref())
     }
 }
 
@@ -144,7 +152,7 @@ pub struct ChatStreamChoice {
     pub index: u32,
 
     /// The delta containing incremental message content
-    pub delta: ChatStreamDelta,
+    pub delta: Message,
 
     /// The reason the completion finished
     pub finish_reason: Option<String>,
@@ -154,16 +162,6 @@ pub struct ChatStreamChoice {
 
     /// Log probabilities for the choice
     pub logprobs: Option<serde_json::Value>,
-}
-
-#[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatStreamDelta {
-    /// The role of the message (typically "assistant" for responses)
-    pub role: String,
-
-    /// The incremental content of the message
-    pub content: String,
 }
 
 #[serde_with::skip_serializing_none]
@@ -457,8 +455,8 @@ mod test {
 
         let choice = &chunk.choices[0];
         assert_eq!(choice.index, 0);
-        assert_eq!(choice.delta.role, "assistant".to_string());
-        assert_eq!(choice.delta.content, "Hello".to_string());
+        assert_eq!(choice.delta.role, Role::Assistant);
+        assert_eq!(choice.delta.content, "Hello".into());
         assert_eq!(choice.finish_reason, None);
     }
 

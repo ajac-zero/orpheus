@@ -1,10 +1,12 @@
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Builder)]
+#[builder(state_mod(vis = "pub(crate)"))]
 pub struct ReasoningConfig {
     /// OpenAI-style reasoning effort setting
-    pub effort: Option<ReasoningEffort>,
+    pub effort: Option<Effort>,
 
     /// Non-OpenAI-style reasoning effort setting. Cannot be used simultaneously with effort.
     pub max_tokens: Option<i32>,
@@ -15,7 +17,7 @@ pub struct ReasoningConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum ReasoningEffort {
+pub enum Effort {
     High,
     Medium,
     Low,

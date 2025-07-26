@@ -217,6 +217,7 @@ pub struct MaxPrice {
 mod test {
     use serde_json::json;
 
+    use crate::models::common::provider::ProviderPreferences;
     use crate::prelude::*;
 
     #[test]

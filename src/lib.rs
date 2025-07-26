@@ -3,7 +3,7 @@
 mod client;
 mod constants;
 mod error;
-mod models;
+pub mod models;
 
 pub type Error = error::OrpheusError;
 pub type Result<T, E = Error> = core::result::Result<T, E>;
@@ -16,7 +16,8 @@ pub mod prelude {
         client::{AsyncOrpheus, Orpheus},
         models::{
             chat::{Message, Param, ParsingEngine, Plugin, Role, Tool, ToolCall},
-            common::provider::{MaxPrice, Provider, ProviderPreferences, Quantization, Sort},
+            common::provider::{MaxPrice, Provider, Quantization, Sort},
+            common::reasoning::Effort,
         },
     };
 }
