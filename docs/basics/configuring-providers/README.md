@@ -1,9 +1,13 @@
+---
+icon: gear
+---
+
 # Configuring Providers
 
 You can customize what providers your requests are routed to with the `preferences` parameter in the `chat` and `completions` builders. This allows you to modify your requests to best suit your use case. For example, you could:
 
 * Set Groq as the only provider to get lightning-fast responses.
-* Only allow providers that support tool-calling for Agents.&#x20;
+* Only allow providers that support tool-calling for Agents.
 * Only allow providers that do not collect your data for privacy concerns.
 * Allow providers with a specific level of quantization to reduce costs.
 * Give priority to providers with lower latency/cost, or higher throughput.

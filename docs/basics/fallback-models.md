@@ -1,3 +1,7 @@
+---
+icon: parachute-box
+---
+
 # Fallback Models
 
 OpenRouter allows you to define a list of **fallback** models in case the main model fails for _any_ reason, including rate limits, safety filters, multimodal support, and any other type of error.
@@ -17,8 +21,7 @@ Say you are using GPT-4o with Azure as your provider, you'll find that Azure ret
 
 To get around this limitation, you can set a fallback model with a more lenient filter, such as Grok 4, to take over the request and respond with a proper refusal in case of failure.
 
-```rust
-use orpheus::prelude::*;
+<pre class="language-rust"><code class="lang-rust">use orpheus::prelude::*;
 
 fn main() {
     let client = Orpheus::new("Your-API-Key");
@@ -33,10 +36,10 @@ fn main() {
         .send()
         .unwrap();
 
-    println!("Model that responded: {}", &res.model);
-    println!("Response: {}", &res.content().unwrap());
-}
-```
+    println!("Model that responded: {}", &#x26;res.model);
+<strong>    println!("Response: {}", &#x26;res.content().unwrap());
+</strong>}
+</code></pre>
 
 Output:
 

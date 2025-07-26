@@ -1,3 +1,7 @@
+---
+icon: bolt
+---
+
 # Async Support
 
 Calling LLMs takes a long time, and it is largely an IO-bound task, which means your app will spend a lot of time idling while waiting for the response to come in.

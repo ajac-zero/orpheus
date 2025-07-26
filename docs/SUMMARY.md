@@ -9,16 +9,13 @@
   * [Streaming responses](basics/getting-started/streaming-responses.md)
 * [Switching Models](basics/switching-models/README.md)
   * [Model Routers](basics/switching-models/model-routers.md)
-
-***
-
-* [Fallback Models](fallback-models.md)
-* [Configuring Providers](configuring-providers/README.md)
-  * [Latency vs Price vs Throughput](configuring-providers/latency-vs-price-vs-throughput.md)
-  * [Limiting the provider list](configuring-providers/limiting-the-provider-list.md)
-  * [Setting requirements](configuring-providers/setting-requirements.md)
-  * [Allow/Deny data collection](configuring-providers/allow-deny-data-collection.md)
-  * [Using quantization](configuring-providers/using-quantization.md)
+* [Fallback Models](basics/fallback-models.md)
+* [Configuring Providers](basics/configuring-providers/README.md)
+  * [Latency vs Price vs Throughput](basics/configuring-providers/latency-vs-price-vs-throughput.md)
+  * [Limiting the provider list](basics/configuring-providers/limiting-the-provider-list.md)
+  * [Setting requirements](basics/configuring-providers/setting-requirements.md)
+  * [Allow/Deny data collection](basics/configuring-providers/allow-deny-data-collection.md)
+  * [Using quantization](basics/configuring-providers/using-quantization.md)
 
 ## Features
 
@@ -26,12 +23,15 @@
 * [Tool Calling](features/tool-calling/README.md)
   * [Defining Tools](features/tool-calling/defining-tools.md)
   * [Using Tools](features/tool-calling/using-tools.md)
-* [MCP](features/mcp.md)
+* [Reasoning](features/reasoning.md)
 * [Structured Output](features/structured-output.md)
+* [Multimodality](features/multimodality.md)
+* [Plugins](features/plugins.md)
+* [Caching](features/caching.md)
+* [Transforms](features/transforms.md)
 
-***
+## INTEGRATIONS
 
-* [Multimodality](multimodality.md)
-* [Plugins](plugins.md)
-* [Caching](caching.md)
-* [Transforms](transforms.md)
+* [MCP](integrations/mcp.md)
+* [AI SDK](integrations/ai-sdk.md)
+* [A2A](integrations/a2a.md)

@@ -1,5 +1,6 @@
 ---
 description: Start building AI applications with the OpenRouter API
+icon: hand-wave
 ---
 
 # Introduction
@@ -67,4 +68,4 @@ A quick overview of where to find what in our docs:
 3. Examples:
 4. API Reference:
 
-Alternatively, you can follow the links at the bottom of each page to go through this documentation as a proctored, in-depth guide!&#x20;
+Alternatively, you can follow the links at the bottom of each page to go through this documentation as a proctored, in-depth guide!

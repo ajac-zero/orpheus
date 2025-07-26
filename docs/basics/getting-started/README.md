@@ -1,3 +1,7 @@
+---
+icon: person-chalkboard
+---
+
 # Getting Started
 
 ## Installation
@@ -12,7 +16,7 @@ cargo add orpheus
 
 Let's learn how to use Orpheus with a practical example. Here, we will create a CLI program that allows us to send a chat request to an LLM.
 
-#### One-shot Prompt Example&#x20;
+#### One-shot Prompt Example
 
 ```rust
 // The prelude includes everything you will need to use Orpheus  

@@ -1,5 +1,6 @@
 ---
 description: Learn the basic interface of tool calling within Orpheus.
+icon: wrench
 ---
 
 # Tool Calling

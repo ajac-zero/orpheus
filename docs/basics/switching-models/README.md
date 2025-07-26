@@ -1,3 +1,7 @@
+---
+icon: arrows-repeat
+---
+
 # Switching Models
 
 OpenRouter enables access to over 100 models by simply changing the model ID.
