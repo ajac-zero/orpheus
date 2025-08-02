@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use tracing::{info, instrument};
 
 use super::main::Orpheus;
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, serde::Serialize, bon::Builder)]
-#[builder(on(String, into))]
+#[builder(on(String, into), derive(Debug))]
 pub struct ChatRequest {
     #[serde(skip)]
     #[builder(start_fn)]
@@ -96,10 +97,12 @@ pub struct ChatRequest {
 }
 
 impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
+    #[instrument(name = "orpheus.blocking.send", skip(self))]
     pub fn send(mut self) -> Result<ChatCompletion>
     where
         S: chat_request_builder::IsComplete,
     {
+        info!("Sending chat request");
         let handler = self.handler.take().unwrap();
 
         self.stream = Some(false);
@@ -107,11 +110,13 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
 
         let response = handler.execute(CHAT_COMPLETION_PATH, body)?;
 
+        info!("Serializing chat request response body");
         let chat_completion = response.json::<ChatCompletion>().map_err(Error::http)?;
 
         Ok(chat_completion)
     }
 
+    #[instrument(name = "orpheus.blocking.stream")]
     pub fn stream(mut self) -> Result<ChatStream>
     where
         S: chat_request_builder::IsComplete,
