@@ -9,9 +9,7 @@ pub mod models;
 pub type Error = error::OrpheusError;
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
-#[cfg(feature = "mcp")]
-pub mod mcp;
-
+#[allow(unused_imports)]
 pub use integrations::*;
 
 pub mod prelude {
