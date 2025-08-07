@@ -173,6 +173,12 @@ pub struct UrlCitation {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChatMessages(Vec<Message>);
 
+impl ChatMessages {
+    pub fn iter(&self) -> std::slice::Iter<'_, Message> {
+        self.0.iter()
+    }
+}
+
 impl From<Vec<Message>> for ChatMessages {
     fn from(value: Vec<Message>) -> Self {
         ChatMessages(value)

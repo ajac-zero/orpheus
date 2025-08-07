@@ -86,11 +86,34 @@ impl Orpheus {
         }
     }
 
+    pub fn create_handler<H: Handler>(&self) -> H {
+        let url = self.base_url.join(H::PATH).expect("Is valid url");
+        let mut builder = self
+            .client
+            .post(url)
+            .header(CONTENT_TYPE, "application/json");
+
+        if let Some(token) = self.api_key.as_ref() {
+            builder = builder.bearer_auth(token);
+        }
+
+        H::new(builder)
+    }
+
     /// Set the base URL for the API
     pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
         self.api_key = Some(api_key.into());
         self
     }
+}
+
+pub trait Handler {
+    const PATH: &str;
+    type Input: serde::Serialize;
+
+    fn new(builder: reqwest::blocking::RequestBuilder) -> Self;
+
+    fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response>;
 }
 
 #[cfg(test)]
