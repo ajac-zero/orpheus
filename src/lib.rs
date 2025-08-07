@@ -3,6 +3,7 @@
 mod client;
 mod constants;
 mod error;
+mod integrations;
 pub mod models;
 
 pub type Error = error::OrpheusError;
@@ -10,6 +11,8 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 
 #[cfg(feature = "mcp")]
 pub mod mcp;
+
+pub use integrations::*;
 
 pub mod prelude {
     pub use crate::{
