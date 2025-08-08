@@ -208,12 +208,6 @@ pub struct ChatStream {
     span: tracing::Span,
 }
 
-impl From<blocking::Response> for ChatStream {
-    fn from(value: blocking::Response) -> Self {
-        Self::new(value)
-    }
-}
-
 impl ChatStream {
     pub fn new(response: reqwest::blocking::Response) -> Self {
         let reader = BufReader::new(response);
@@ -222,6 +216,12 @@ impl ChatStream {
             #[cfg(feature = "otel")]
             span: tracing::Span::current(),
         }
+    }
+
+    #[cfg(feature = "otel")]
+    pub fn with_span(mut self, span: tracing::Span) -> Self {
+        self.span = span;
+        self
     }
 }
 

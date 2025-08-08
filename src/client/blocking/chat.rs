@@ -15,6 +15,11 @@ use crate::{
 #[derive(Debug, serde::Serialize, bon::Builder)]
 #[builder(on(String, into), derive(Debug))]
 pub struct ChatRequest {
+    #[cfg(feature = "otel")]
+    #[serde(skip)]
+    #[builder(start_fn)]
+    span: Span,
+
     #[serde(skip)]
     #[builder(start_fn)]
     handler: Option<ChatHandler>,
@@ -97,36 +102,13 @@ pub struct ChatRequest {
 }
 
 impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
-    #[cfg_attr(feature = "otel", instrument(
-        name = "chat orpheus",
-        fields(
-            otel.kind = "client",
-            otel.status_code = Empty,
-            gen_ai.operation.name = "chat",
-            gen_ai.system = "openrouter",
-            gen_ai.output.type = Empty,
-            gen_ai.request.choice.count = Empty,
-            gen_ai.request.model = Empty,
-            gen_ai.request.seed = Empty,
-            gen_ai.request.frequency_penalty = Empty,
-            gen_ai.request.max_tokens = Empty,
-            gen_ai.request.presence_penalty = Empty,
-            gen_ai.request.stop_sequences = Empty,
-            gen_ai.request.temperature = Empty,
-            gen_ai.request.top_k = Empty,
-            gen_ai.request.top_p = Empty,
-            gen_ai.response.finish_reasons = Empty,
-            gen_ai.response.id = Empty,
-            gen_ai.response.model = Empty,
-            gen_ai.usage.input_tokens = Empty,
-            gen_ai.usage.output_tokens = Empty,
-        ),
-        skip(self)
-    ))]
     pub fn send(mut self) -> Result<ChatCompletion>
     where
         S: chat_request_builder::IsComplete,
     {
+        #[cfg(feature = "otel")]
+        let span = self.span.clone();
+
         let handler = self.handler.take().unwrap();
 
         self.stream = Some(false);
@@ -140,10 +122,11 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
 
         #[cfg(feature = "otel")]
         {
-            let span = Span::current();
+            let _guard = span.enter();
 
-            if let Ok(content) = chat_completion.content() {
-                info!(name: "gen_ai.choice", content = content.to_string());
+            for choice in chat_completion.choices.iter() {
+                let content = serde_json::to_string(choice).expect("serializable");
+                tracing::info!(name: "gen_ai.choice", content);
             }
 
             span.record("gen_ai.response.id", &chat_completion.id);
@@ -168,11 +151,13 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
         Ok(chat_completion)
     }
 
-    #[instrument(name = "orpheus.blocking.stream")]
     pub fn stream(mut self) -> Result<ChatStream>
     where
         S: chat_request_builder::IsComplete,
     {
+        #[cfg(feature = "otel")]
+        let span = self.span.clone();
+
         let handler = self.handler.take().unwrap();
 
         self.stream = Some(true);
@@ -180,7 +165,12 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
 
         let response = handler.execute(body)?;
 
-        Ok(response.into())
+        let stream = ChatStream::new(response);
+
+        #[cfg(feature = "otel")]
+        let stream = stream.with_span(span);
+
+        Ok(stream)
     }
 
     pub fn preferences(mut self, preferences: ProviderPreferences) -> Self {
@@ -218,9 +208,40 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
 
 impl Orpheus {
     /// Initialize a builder for a chat completion request
+    #[cfg_attr(feature = "otel", instrument(
+        name = "chat orpheus",
+        fields(
+            otel.kind = "client",
+            otel.status_code = Empty,
+            gen_ai.operation.name = "chat",
+            gen_ai.system = "openrouter",
+            gen_ai.output.type = Empty,
+            gen_ai.request.choice.count = Empty,
+            gen_ai.request.model = Empty,
+            gen_ai.request.seed = Empty,
+            gen_ai.request.frequency_penalty = Empty,
+            gen_ai.request.max_tokens = Empty,
+            gen_ai.request.presence_penalty = Empty,
+            gen_ai.request.stop_sequences = Empty,
+            gen_ai.request.temperature = Empty,
+            gen_ai.request.top_k = Empty,
+            gen_ai.request.top_p = Empty,
+            gen_ai.response.finish_reasons = Empty,
+            gen_ai.response.id = Empty,
+            gen_ai.response.model = Empty,
+            gen_ai.usage.input_tokens = Empty,
+            gen_ai.usage.output_tokens = Empty,
+        ),
+        skip_all
+    ))]
     pub fn chat(&self, messages: impl Into<ChatMessages>) -> ChatRequestBuilder {
         let handler = self.create_handler();
-        ChatRequest::builder(Some(handler), messages)
+        ChatRequest::builder(
+            #[cfg(feature = "otel")]
+            Span::current(),
+            Some(handler),
+            messages,
+        )
     }
 }
 
@@ -240,7 +261,8 @@ impl Handler for ChatHandler {
     fn execute(self, body: ChatRequest) -> Result<reqwest::blocking::Response> {
         #[cfg(feature = "otel")]
         {
-            let span = Span::current();
+            let span = &body.span;
+            let _guard = span.enter();
 
             span.record(
                 "gen_ai.output.type",
