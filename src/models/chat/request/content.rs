@@ -7,6 +7,29 @@ pub enum Content {
     Complex(Vec<Part>),
 }
 
+impl std::ops::Add for Content {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Simple(s1), Self::Simple(s2)) => Self::Simple(s1 + &s2),
+            (Self::Simple(s), Self::Complex(parts)) => {
+                let mut result = vec![Part::text(s)];
+                result.extend(parts);
+                Self::Complex(result)
+            }
+            (Self::Complex(mut parts), Self::Simple(s)) => {
+                parts.push(Part::text(s));
+                Self::Complex(parts)
+            }
+            (Self::Complex(mut parts1), Self::Complex(parts2)) => {
+                parts1.extend(parts2);
+                Self::Complex(parts1)
+            }
+        }
+    }
+}
+
 impl From<Vec<Part>> for Content {
     fn from(value: Vec<Part>) -> Self {
         Self::Complex(value)
@@ -102,5 +125,106 @@ impl std::fmt::Display for Part {
             Part::ImageUrl { image_url } => write!(f, "{}", format!("[Url: {}]", image_url.url)),
             Part::File { file } => write!(f, "{}", format!("[File: {}]", file.filename)),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_add_simple_to_simple() {
+        let content1 = Content::Simple("Hello ".to_string());
+        let content2 = Content::Simple("World!".to_string());
+        let result = content1 + content2;
+
+        assert_eq!(result, Content::Simple("Hello World!".to_string()));
+    }
+
+    #[test]
+    fn test_add_simple_to_complex() {
+        let content1 = Content::Simple("Hello".to_string());
+        let content2 = Content::Complex(vec![
+            Part::text("World".to_string()),
+            Part::image_url("http://example.com/image.jpg".to_string(), None),
+        ]);
+        let result = content1 + content2;
+
+        let expected = Content::Complex(vec![
+            Part::text("Hello".to_string()),
+            Part::text("World".to_string()),
+            Part::image_url("http://example.com/image.jpg".to_string(), None),
+        ]);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_add_complex_to_simple() {
+        let content1 = Content::Complex(vec![
+            Part::text("Hello".to_string()),
+            Part::file("test.txt".to_string(), "content".to_string()),
+        ]);
+        let content2 = Content::Simple(" World!".to_string());
+        let result = content1 + content2;
+
+        let expected = Content::Complex(vec![
+            Part::text("Hello".to_string()),
+            Part::file("test.txt".to_string(), "content".to_string()),
+            Part::text(" World!".to_string()),
+        ]);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_add_complex_to_complex() {
+        let content1 = Content::Complex(vec![
+            Part::text("First".to_string()),
+            Part::image_url(
+                "http://example.com/1.jpg".to_string(),
+                Some("high".to_string()),
+            ),
+        ]);
+        let content2 = Content::Complex(vec![
+            Part::text("Second".to_string()),
+            Part::file("data.json".to_string(), "{}".to_string()),
+        ]);
+        let result = content1 + content2;
+
+        let expected = Content::Complex(vec![
+            Part::text("First".to_string()),
+            Part::image_url(
+                "http://example.com/1.jpg".to_string(),
+                Some("high".to_string()),
+            ),
+            Part::text("Second".to_string()),
+            Part::file("data.json".to_string(), "{}".to_string()),
+        ]);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_add_part_to_simple() {
+        let content = Content::Simple("Hello".to_string());
+        let part = Part::image_url("http://example.com/image.jpg".to_string(), None);
+        let result = content.add_part(part);
+
+        let expected = Content::Complex(vec![
+            Part::text("Hello".to_string()),
+            Part::image_url("http://example.com/image.jpg".to_string(), None),
+        ]);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_add_part_to_complex() {
+        let content = Content::Complex(vec![Part::text("Existing".to_string())]);
+        let part = Part::file("test.txt".to_string(), "data".to_string());
+        let result = content.add_part(part);
+
+        let expected = Content::Complex(vec![
+            Part::text("Existing".to_string()),
+            Part::file("test.txt".to_string(), "data".to_string()),
+        ]);
+        assert_eq!(result, expected);
     }
 }
