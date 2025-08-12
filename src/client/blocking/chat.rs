@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use tracing::{Span, debug, field::Empty, info, instrument};
+use tracing::debug;
+
+#[cfg(feature = "otel")]
+use tracing::{Span, field::Empty, info, instrument};
 
 use super::main::{Handler, Orpheus};
 use crate::{
