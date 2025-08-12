@@ -159,6 +159,14 @@ pub struct Function {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Annotation {
     UrlCitation { url_citation: UrlCitation },
+    File { file: FileAnnotation },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FileAnnotation {
+    pub hash: String,
+    pub name: String,
+    pub content: Vec<Part>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
