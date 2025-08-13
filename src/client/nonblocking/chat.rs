@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use super::main::AsyncOrpheus;
+#[cfg(feature = "otel")]
+use tracing::{Span, field::Empty, info, instrument};
+
+use super::main::{AsyncHandler, AsyncOrpheus};
 use crate::{
     Error, Result,
     constants::*,
@@ -14,9 +17,14 @@ use crate::{
 #[derive(Debug, serde::Serialize, bon::Builder)]
 #[builder(on(String, into))]
 pub struct ChatRequest {
+    #[cfg(feature = "otel")]
     #[serde(skip)]
     #[builder(start_fn)]
-    handler: Option<AsyncOrpheus>,
+    span: Span,
+
+    #[serde(skip)]
+    #[builder(start_fn)]
+    handler: Option<ChatHandler>,
 
     /// List of messages in the conversation
     #[builder(start_fn, into)]
@@ -100,17 +108,48 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
     where
         S: chat_request_builder::IsComplete,
     {
+        #[cfg(feature = "otel")]
+        let span = self.span.clone();
+
         let handler = self.handler.take().unwrap();
 
         self.stream = Some(false);
         let body = self.build();
 
-        let response = handler.execute(CHAT_COMPLETION_PATH, body).await?;
+        let response = handler.execute(body).await?;
 
         let chat_completion = response
             .json::<ChatCompletion>()
             .await
             .map_err(Error::http)?;
+
+        #[cfg(feature = "otel")]
+        {
+            let _guard = span.enter();
+
+            for choice in chat_completion.choices.iter() {
+                let content = serde_json::to_string(choice).expect("serializable");
+                tracing::info!(name: "gen_ai.choice", content);
+            }
+
+            span.record("gen_ai.response.id", &chat_completion.id);
+            span.record("gen_ai.response.model", &chat_completion.model);
+
+            let mut finish_reasons = Vec::new();
+            for choice in &chat_completion.choices {
+                finish_reasons.push(choice.finish_reason.clone());
+            }
+            span.record("gen_ai.response.finish_reasons", finish_reasons.join(","));
+
+            span.record(
+                "gen_ai.usage.input_tokens",
+                &chat_completion.usage.prompt_tokens,
+            );
+            span.record(
+                "gen_ai.usage.output_tokens",
+                &chat_completion.usage.completion_tokens,
+            );
+        }
 
         Ok(chat_completion)
     }
@@ -119,14 +158,23 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
     where
         S: chat_request_builder::IsComplete,
     {
+        #[cfg(feature = "otel")]
+        let span = self.span.clone();
+
         let handler = self.handler.take().unwrap();
 
         self.stream = Some(true);
         let body = self.build();
 
-        let response = handler.execute(CHAT_COMPLETION_PATH, body).await?;
+        let response = handler.execute(body).await?;
 
-        Ok(response.into())
+        #[allow(unused_mut)]
+        let mut stream = AsyncStream::new(response);
+
+        #[cfg(feature = "otel")]
+        stream.aggregator.set_span(span);
+
+        Ok(stream)
     }
 
     pub fn preferences(mut self, preferences: ProviderPreferences) -> Self {
@@ -163,8 +211,122 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
 }
 
 impl AsyncOrpheus {
+    #[cfg_attr(feature = "otel", instrument(
+        name = "chat orpheus",
+        fields(
+            otel.kind = "client",
+            otel.status_code = Empty,
+            gen_ai.operation.name = "chat",
+            gen_ai.system = "openrouter",
+            gen_ai.output.type = Empty,
+            gen_ai.request.choice.count = Empty,
+            gen_ai.request.model = Empty,
+            gen_ai.request.seed = Empty,
+            gen_ai.request.frequency_penalty = Empty,
+            gen_ai.request.max_tokens = Empty,
+            gen_ai.request.presence_penalty = Empty,
+            gen_ai.request.stop_sequences = Empty,
+            gen_ai.request.temperature = Empty,
+            gen_ai.request.top_k = Empty,
+            gen_ai.request.top_p = Empty,
+            gen_ai.response.finish_reasons = Empty,
+            gen_ai.response.id = Empty,
+            gen_ai.response.model = Empty,
+            gen_ai.usage.input_tokens = Empty,
+            gen_ai.usage.output_tokens = Empty,
+        ),
+        skip_all
+    ))]
     pub fn chat(&self, messages: impl Into<ChatMessages>) -> ChatRequestBuilder {
-        let handler = self.clone();
-        ChatRequest::builder(Some(handler), messages)
+        let handler = self.create_handler();
+        ChatRequest::builder(
+            #[cfg(feature = "otel")]
+            Span::current(),
+            Some(handler),
+            messages,
+        )
+    }
+}
+
+#[derive(Debug)]
+struct ChatHandler {
+    builder: reqwest::RequestBuilder,
+}
+
+impl AsyncHandler for ChatHandler {
+    const PATH: &str = CHAT_COMPLETION_PATH;
+    type Input = ChatRequest;
+
+    fn new(builder: reqwest::RequestBuilder) -> Self {
+        ChatHandler { builder }
+    }
+
+    async fn execute(self, body: ChatRequest) -> Result<reqwest::Response> {
+        #[cfg(feature = "otel")]
+        {
+            let span = &body.span;
+            let _guard = span.enter();
+
+            span.record(
+                "gen_ai.output.type",
+                if body.response_format.is_some() {
+                    "json"
+                } else {
+                    "text"
+                },
+            );
+            span.record(
+                "gen_ai.request.model",
+                body.model.as_deref().unwrap_or("default"),
+            );
+            if let Some(seed) = body.seed {
+                span.record("gen_ai.request.seed", seed);
+            }
+            if let Some(frequency_penalty) = body.frequency_penalty {
+                span.record("gen_ai.request.frequency_penalty", frequency_penalty);
+            }
+            if let Some(max_tokens) = body.max_tokens {
+                span.record("gen_ai.request.max_tokens", max_tokens);
+            }
+            if let Some(presence_penalty) = body.presence_penalty {
+                span.record("gen_ai.request.presence_penalty", presence_penalty);
+            }
+            if let Some(temperature) = body.temperature {
+                span.record("gen_ai.request.temperature", temperature);
+            }
+            if let Some(top_k) = body.top_k {
+                span.record("gen_ai.request.top_k", top_k);
+            }
+            if let Some(top_p) = body.top_p {
+                span.record("gen_ai.request.top_p", top_p);
+            }
+
+            for message in body.messages.iter() {
+                let content = message.content.to_string();
+                match message.role {
+                    Role::System | Role::Developer => {
+                        info!(name: "gen_ai.system.message", content)
+                    }
+                    Role::User => {
+                        info!(name: "gen_ai.user.message", content)
+                    }
+                    Role::Assistant => {
+                        info!(name: "gen_ai.assistant.message", content)
+                    }
+                    Role::Tool => {
+                        info!(name: "gen_ai.tool.message", content)
+                    }
+                }
+            }
+        }
+
+        let response = self.builder.json(&body).send().await.map_err(Error::http)?;
+
+        if response.status().is_success() {
+            Ok(response)
+        } else {
+            let err = response.text().await.map_err(Error::http)?;
+            Err(Error::openrouter(err))
+        }
     }
 }

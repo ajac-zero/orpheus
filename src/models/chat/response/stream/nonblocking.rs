@@ -8,15 +8,14 @@ use futures_lite::Stream;
 
 use crate::{Error, Result};
 
+#[cfg(feature = "otel")]
+use super::common::otel::StreamAggregator;
+
 pub struct AsyncStream {
     stream: Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>,
     buffer: Vec<u8>,
-}
-
-impl From<reqwest::Response> for AsyncStream {
-    fn from(value: reqwest::Response) -> Self {
-        Self::new(value)
-    }
+    #[cfg(feature = "otel")]
+    pub(crate) aggregator: StreamAggregator,
 }
 
 impl AsyncStream {
@@ -25,6 +24,8 @@ impl AsyncStream {
         Self {
             stream,
             buffer: Vec::new(), // Initialize as Vec<u8>
+            #[cfg(feature = "otel")]
+            aggregator: StreamAggregator::default(),
         }
     }
 }
@@ -100,6 +101,11 @@ impl Stream for AsyncStream {
                 },
             }
         };
+
+        #[cfg(feature = "otel")]
+        if let Some(Ok(ref chunk)) = result {
+            this.aggregator.aggregate_chunk(chunk);
+        }
 
         Poll::Ready(result)
     }

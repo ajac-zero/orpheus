@@ -20,6 +20,7 @@ mod test {
                 "id": "chatcmpl-abc123",
                 "choices": [
                     {
+                        "index": 0,
                         "message": {
                             "role": "assistant",
                             "content": "Hello! I'm doing well, thank you for asking. How can I assist you today?"
