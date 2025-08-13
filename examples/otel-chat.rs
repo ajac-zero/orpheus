@@ -16,16 +16,17 @@ fn main() -> anyhow::Result<()> {
 
     let client = Orpheus::from_env()?;
 
-    let response = client
+    let stream = client
         .chat("hiii")
         .model("openai/gpt-4o")
         .top_p(0.95)
         .top_k(5)
         .temperature(0.5)
-        .send()?
-        .into_content()?;
+        .stream()?;
 
-    tracing::info!("Response: {}", response);
+    for _ in stream {
+        continue;
+    }
 
     Ok(())
 }

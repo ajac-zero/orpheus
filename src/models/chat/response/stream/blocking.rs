@@ -2,11 +2,14 @@ use std::io::{BufRead, BufReader};
 
 use crate::{Error, Result};
 
+#[cfg(feature = "otel")]
+use super::common::otel::StreamAggregator;
+
 #[derive(Debug)]
 pub struct ChatStream {
     reader: BufReader<reqwest::blocking::Response>,
     #[cfg(feature = "otel")]
-    span: tracing::Span,
+    pub(crate) aggregated_data: StreamAggregator,
 }
 
 impl ChatStream {
@@ -15,13 +18,13 @@ impl ChatStream {
         Self {
             reader,
             #[cfg(feature = "otel")]
-            span: tracing::Span::current(),
+            aggregated_data: StreamAggregator::default(),
         }
     }
 
     #[cfg(feature = "otel")]
     pub fn with_span(mut self, span: tracing::Span) -> Self {
-        self.span = span;
+        self.aggregated_data.span.set(span);
         self
     }
 }
@@ -66,6 +69,11 @@ impl Iterator for ChatStream {
 
             break Ok(chunk);
         };
+
+        #[cfg(feature = "otel")]
+        if let Ok(ref chunk) = item {
+            self.aggregate_chunk(chunk);
+        }
 
         Some(item)
     }
