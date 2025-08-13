@@ -1,7 +1,7 @@
 use reqwest::{Client, header::CONTENT_TYPE};
 use url::Url;
 
-use crate::{Error, Result, constants::*};
+use crate::{Error, Result, constants::*, models::common::handler::AsyncHandler};
 
 #[derive(Debug, Clone)]
 pub struct AsyncOrpheus {
@@ -93,16 +93,6 @@ impl AsyncOrpheus {
 
         H::new(builder)
     }
-}
-
-pub trait AsyncHandler {
-    const PATH: &str;
-    type Input: serde::Serialize;
-
-    fn new(builder: reqwest::RequestBuilder) -> Self;
-
-    #[allow(async_fn_in_trait)]
-    async fn execute(self, body: Self::Input) -> Result<reqwest::Response>;
 }
 
 #[cfg(test)]
