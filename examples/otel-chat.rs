@@ -1,8 +1,7 @@
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use orpheus::prelude::*;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{EnvFilter, Registry};
+use tracing_subscriber::{EnvFilter, Registry, layer::SubscriberExt};
 
 fn main() -> anyhow::Result<()> {
     let provider = SdkTracerProvider::builder()

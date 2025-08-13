@@ -17,8 +17,10 @@ pub mod prelude {
         client::{AsyncOrpheus, Orpheus},
         models::{
             chat::{Message, Param, ParsingEngine, Plugin, Role, Tool, ToolCall},
-            common::provider::{MaxPrice, Provider, Quantization, Sort},
-            common::reasoning::Effort,
+            common::{
+                provider::{MaxPrice, Provider, Quantization, Sort},
+                reasoning::Effort,
+            },
         },
     };
 }
