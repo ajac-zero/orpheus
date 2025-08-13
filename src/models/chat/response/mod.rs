@@ -2,10 +2,11 @@ mod completion;
 mod stream;
 mod usage;
 
-pub use super::*;
 pub use completion::*;
 pub use stream::*;
 pub use usage::*;
+
+pub use super::*;
 
 #[cfg(test)]
 mod test {

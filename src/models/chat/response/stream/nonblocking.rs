@@ -6,10 +6,9 @@ use std::{
 
 use futures_lite::Stream;
 
-use crate::{Error, Result};
-
 #[cfg(feature = "otel")]
 use super::common::otel::StreamAggregator;
+use crate::{Error, Result};
 
 pub struct AsyncStream {
     stream: Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>,

@@ -1,9 +1,8 @@
 use std::io::{BufRead, BufReader};
 
-use crate::{Error, Result};
-
 #[cfg(feature = "otel")]
 use super::common::otel::StreamAggregator;
+use crate::{Error, Result};
 
 #[derive(Debug)]
 pub struct ChatStream {

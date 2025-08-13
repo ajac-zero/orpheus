@@ -1,14 +1,11 @@
 #![cfg(feature = "langfuse")]
 
-use std::collections::HashMap;
-use std::env;
+use std::{collections::HashMap, env};
 
 use base64::prelude::*;
-use opentelemetry_otlp::{Protocol, SpanExporter};
-use opentelemetry_otlp::{WithExportConfig, WithHttpConfig};
+use opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig, WithHttpConfig};
 
-use crate::Result;
-use crate::error::ConfigError;
+use crate::{Result, error::ConfigError};
 
 #[derive(Debug)]
 pub struct LangfuseExporter;
