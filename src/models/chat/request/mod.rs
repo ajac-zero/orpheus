@@ -1,10 +1,14 @@
+mod body;
 mod content;
+mod handler;
 mod message;
 mod plugins;
 mod structured;
 mod tool;
 
+pub use body::{ChatRequest, ChatRequestBuilder};
 pub use content::{Content, Part};
+pub use handler::{Async, ChatHandler, Mode, Sync};
 pub use message::{ChatMessages, Message, Role, ToolCall};
 pub use plugins::{ParsingEngine, Plugin};
 pub use structured::ResponseFormat;

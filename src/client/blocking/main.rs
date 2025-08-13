@@ -1,7 +1,7 @@
 use reqwest::{blocking::Client, header::CONTENT_TYPE};
 use url::Url;
 
-use crate::{Error, Result, constants::*};
+use crate::{Error, Result, constants::*, models::common::handler::Handler};
 
 /// Client to interface with LLMs;
 /// Follows the OpenAI API specification.
@@ -105,15 +105,6 @@ impl Orpheus {
         self.api_key = Some(api_key.into());
         self
     }
-}
-
-pub trait Handler {
-    const PATH: &str;
-    type Input: serde::Serialize;
-
-    fn new(builder: reqwest::blocking::RequestBuilder) -> Self;
-
-    fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response>;
 }
 
 #[cfg(test)]
