@@ -93,28 +93,11 @@ pub struct ChatStreamChoice {
 pub mod otel {
     use std::collections::HashMap;
 
-    #[derive(Debug)]
-    pub struct SpanWrapper(tracing::Span);
-
-    impl SpanWrapper {
-        pub fn get(&self) -> tracing::Span {
-            self.0.clone()
-        }
-
-        pub fn set(&mut self, span: tracing::Span) {
-            self.0 = span;
-        }
-    }
-
-    impl Default for SpanWrapper {
-        fn default() -> Self {
-            Self(tracing::Span::current())
-        }
-    }
+    use super::super::{ChatChoice, ChatStreamChunk, Content, Message};
 
     #[derive(Debug, Default)]
     pub struct StreamAggregator {
-        pub span: SpanWrapper,
+        span: Option<tracing::Span>,
         response_id: Option<String>,
         model: Option<String>,
         provider: Option<String>,
@@ -127,7 +110,7 @@ pub mod otel {
     #[derive(Debug, Clone)]
     struct AggregatedChoice {
         /// Aggregated message from all deltas
-        message: super::super::Message,
+        message: Message,
         /// Final finish reason
         finish_reason: Option<String>,
         /// Native finish reason if provided
@@ -136,39 +119,38 @@ pub mod otel {
 
     impl Default for AggregatedChoice {
         fn default() -> Self {
-            use super::super::{Content, Message, Role};
             Self {
-                message: Message::new(Role::Assistant, Content::Simple(String::new())),
+                message: Message::assistant(""),
                 finish_reason: None,
                 native_finish_reason: None,
             }
         }
     }
 
-    impl super::super::ChatStream {
-        fn span(&self) -> tracing::Span {
-            self.aggregated_data.span.get()
+    impl StreamAggregator {
+        fn get_span(&self) -> tracing::Span {
+            self.span.clone().expect("Span is present")
         }
 
-        pub fn aggregate_chunk(&mut self, chunk: &super::ChatStreamChunk) {
-            use super::super::Content;
+        pub(crate) fn set_span(&mut self, span: tracing::Span) {
+            self.span = Some(span);
+        }
 
-            let data = &mut self.aggregated_data;
-
+        pub fn aggregate_chunk(&mut self, chunk: &ChatStreamChunk) {
             // Track response metadata (usually from first chunk)
-            if data.response_id.is_none() {
-                data.response_id = Some(chunk.id.clone());
+            if self.response_id.is_none() {
+                self.response_id = Some(chunk.id.clone());
             }
-            if data.model.is_none() && chunk.model.is_some() {
-                data.model = chunk.model.clone();
+            if self.model.is_none() && chunk.model.is_some() {
+                self.model = chunk.model.clone();
             }
-            if data.provider.is_none() && chunk.provider.is_some() {
-                data.provider = chunk.provider.clone();
+            if self.provider.is_none() && chunk.provider.is_some() {
+                self.provider = chunk.provider.clone();
             }
 
             // Aggregate each choice by its index
             for choice in &chunk.choices {
-                let aggregated = data.choices.entry(choice.index).or_default();
+                let aggregated = self.choices.entry(choice.index).or_default();
 
                 // Aggregate content from delta
                 if let Content::Simple(ref text) = choice.delta.content {
@@ -225,31 +207,28 @@ pub mod otel {
 
             // Track usage from final chunk
             if let Some(ref usage) = chunk.usage {
-                data.prompt_tokens = Some(usage.prompt_tokens);
-                data.completion_tokens = Some(usage.completion_tokens);
+                self.prompt_tokens = Some(usage.prompt_tokens);
+                self.completion_tokens = Some(usage.completion_tokens);
             }
         }
     }
 
-    impl Drop for super::super::ChatStream {
+    impl Drop for StreamAggregator {
         fn drop(&mut self) {
-            use super::super::ChatChoice;
-
-            let data = &self.aggregated_data;
-            let span = data.span.get();
+            let span = self.get_span();
             let _guard = span.enter();
 
             // Record response metadata
-            if let Some(ref id) = data.response_id {
+            if let Some(ref id) = self.response_id {
                 span.record("gen_ai.response.id", id);
             }
-            if let Some(ref model) = data.model {
+            if let Some(ref model) = self.model {
                 span.record("gen_ai.response.model", model);
             }
 
             // Emit gen_ai.choice events for each aggregated choice (matching non-streaming behavior)
             let mut finish_reasons = Vec::new();
-            for (index, choice) in &data.choices {
+            for (index, choice) in &self.choices {
                 // Create a ChatChoice structure matching the non-streaming version
                 let chat_choice = ChatChoice {
                     index: index.clone(),
@@ -277,10 +256,10 @@ pub mod otel {
             }
 
             // Record usage statistics
-            if let Some(prompt_tokens) = data.prompt_tokens {
+            if let Some(prompt_tokens) = self.prompt_tokens {
                 span.record("gen_ai.usage.input_tokens", prompt_tokens);
             }
-            if let Some(completion_tokens) = data.completion_tokens {
+            if let Some(completion_tokens) = self.completion_tokens {
                 span.record("gen_ai.usage.output_tokens", completion_tokens);
             }
         }

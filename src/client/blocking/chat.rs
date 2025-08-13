@@ -168,10 +168,11 @@ impl<S: chat_request_builder::State> ChatRequestBuilder<S> {
 
         let response = handler.execute(body)?;
 
-        let stream = ChatStream::new(response);
+        #[allow(unused_mut)]
+        let mut stream = ChatStream::new(response);
 
         #[cfg(feature = "otel")]
-        let stream = stream.with_span(span);
+        stream.aggregator.set_span(span);
 
         Ok(stream)
     }

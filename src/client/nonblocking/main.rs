@@ -79,6 +79,30 @@ impl AsyncOrpheus {
             Err(Error::openrouter(err))
         }
     }
+
+    pub fn create_handler<H: AsyncHandler>(&self) -> H {
+        let url = self.base_url.join(H::PATH).expect("Is valid url");
+        let mut builder = self
+            .client
+            .post(url)
+            .header(CONTENT_TYPE, "application/json");
+
+        if let Some(token) = self.api_key.as_ref() {
+            builder = builder.bearer_auth(token);
+        }
+
+        H::new(builder)
+    }
+}
+
+pub trait AsyncHandler {
+    const PATH: &str;
+    type Input: serde::Serialize;
+
+    fn new(builder: reqwest::RequestBuilder) -> Self;
+
+    #[allow(async_fn_in_trait)]
+    async fn execute(self, body: Self::Input) -> Result<reqwest::Response>;
 }
 
 #[cfg(test)]

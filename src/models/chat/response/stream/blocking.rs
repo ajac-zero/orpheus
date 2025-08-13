@@ -9,7 +9,7 @@ use super::common::otel::StreamAggregator;
 pub struct ChatStream {
     reader: BufReader<reqwest::blocking::Response>,
     #[cfg(feature = "otel")]
-    pub(crate) aggregated_data: StreamAggregator,
+    pub(crate) aggregator: StreamAggregator,
 }
 
 impl ChatStream {
@@ -18,14 +18,8 @@ impl ChatStream {
         Self {
             reader,
             #[cfg(feature = "otel")]
-            aggregated_data: StreamAggregator::default(),
+            aggregator: StreamAggregator::default(),
         }
-    }
-
-    #[cfg(feature = "otel")]
-    pub fn with_span(mut self, span: tracing::Span) -> Self {
-        self.aggregated_data.span.set(span);
-        self
     }
 }
 
@@ -72,7 +66,7 @@ impl Iterator for ChatStream {
 
         #[cfg(feature = "otel")]
         if let Ok(ref chunk) = item {
-            self.aggregate_chunk(chunk);
+            self.aggregator.aggregate_chunk(chunk);
         }
 
         Some(item)
