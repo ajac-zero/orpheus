@@ -1,7 +1,7 @@
 #[cfg(feature = "otel")]
 use tracing::{Span, field::Empty, instrument};
 
-use super::main::Orpheus;
+use super::Orpheus;
 use crate::models::{chat::*, common::mode::Sync};
 
 impl Orpheus {

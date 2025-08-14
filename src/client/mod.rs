@@ -1,5 +1,5 @@
 mod blocking;
+mod core;
 mod nonblocking;
 
-pub use blocking::Orpheus;
-pub use nonblocking::AsyncOrpheus;
+pub use core::{AsyncOrpheus, Orpheus};

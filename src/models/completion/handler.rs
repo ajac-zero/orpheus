@@ -3,7 +3,7 @@ use crate::{
     constants::COMPLETION_PATH,
     models::{
         common::{
-            handler::{AsyncHandler, Handler},
+            handler::{AsyncExecutor, Executor, Handler},
             mode::{Async, Mode, Sync},
         },
         completion::CompletionRequest,
@@ -11,22 +11,21 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct CompletionHandler<M: Mode> {
-    builder: M,
+pub struct CompletionHandler<M: Mode>(M);
+
+impl<M: Mode> Handler<M> for CompletionHandler<M> {
+    const PATH: &str = COMPLETION_PATH;
+    type Input = CompletionRequest<M>;
+    type Response = M::Response;
+
+    fn new(builder: M::Builder) -> Self {
+        Self(M::new(builder))
+    }
 }
 
-impl Handler for CompletionHandler<Sync> {
-    const PATH: &str = COMPLETION_PATH;
-    type Input = CompletionRequest<Sync>;
-
-    fn new(builder: reqwest::blocking::RequestBuilder) -> Self {
-        Self {
-            builder: Sync(builder),
-        }
-    }
-
+impl Executor for CompletionHandler<Sync> {
     fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response> {
-        let response = self.builder.0.json(&body).send().map_err(Error::http)?;
+        let response = self.0.0.json(&body).send().map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)
@@ -37,24 +36,9 @@ impl Handler for CompletionHandler<Sync> {
     }
 }
 
-impl AsyncHandler for CompletionHandler<Async> {
-    const PATH: &str = COMPLETION_PATH;
-    type Input = CompletionRequest<Async>;
-
-    fn new(builder: reqwest::RequestBuilder) -> Self {
-        Self {
-            builder: Async(builder),
-        }
-    }
-
+impl AsyncExecutor for CompletionHandler<Async> {
     async fn execute(self, body: Self::Input) -> Result<reqwest::Response> {
-        let response = self
-            .builder
-            .0
-            .json(&body)
-            .send()
-            .await
-            .map_err(Error::http)?;
+        let response = self.0.0.json(&body).send().await.map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)

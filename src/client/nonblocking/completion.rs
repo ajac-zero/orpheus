@@ -1,4 +1,4 @@
-use super::main::AsyncOrpheus;
+use super::AsyncOrpheus;
 use crate::models::{
     common::mode::Async,
     completion::{CompletionRequest, CompletionRequestBuilder},

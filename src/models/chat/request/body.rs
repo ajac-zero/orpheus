@@ -9,7 +9,7 @@ use crate::{
     models::{
         chat::*,
         common::{
-            handler::{AsyncHandler, Handler},
+            handler::{AsyncExecutor, Executor},
             mode::{Async, Mode, Sync},
             provider::*,
             reasoning::*,

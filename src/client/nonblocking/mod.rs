@@ -1,14 +1,12 @@
 mod chat;
 mod completion;
-mod main;
 
-pub use main::AsyncOrpheus;
+use super::AsyncOrpheus;
 
 #[cfg(test)]
 mod tests {
     use futures_lite::StreamExt;
 
-    use super::*;
     use crate::prelude::*;
 
     #[tokio::test]

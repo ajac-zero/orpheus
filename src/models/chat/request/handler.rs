@@ -8,27 +8,26 @@ use crate::{
     Error, Result,
     constants::CHAT_COMPLETION_PATH,
     models::common::{
-        handler::{AsyncHandler, Handler},
+        handler::{AsyncExecutor, Executor, Handler},
         mode::{Async, Mode, Sync},
     },
 };
 
 #[derive(Debug)]
-pub struct ChatHandler<M: Mode> {
-    builder: M,
+pub struct ChatHandler<M: Mode>(M);
+
+impl<M: Mode> Handler<M> for ChatHandler<M> {
+    const PATH: &str = CHAT_COMPLETION_PATH;
+    type Input = ChatRequest<M>;
+    type Response = M::Response;
+
+    fn new(builder: M::Builder) -> Self {
+        Self(M::new(builder))
+    }
 }
 
-impl Handler for ChatHandler<Sync> {
-    const PATH: &str = CHAT_COMPLETION_PATH;
-    type Input = ChatRequest<Sync>;
-
-    fn new(builder: reqwest::blocking::RequestBuilder) -> Self {
-        ChatHandler {
-            builder: Sync(builder),
-        }
-    }
-
-    fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response> {
+impl Executor for ChatHandler<Sync> {
+    fn execute(self, body: Self::Input) -> Result<Self::Response> {
         #[cfg(feature = "otel")]
         {
             let span = &body.span;
@@ -87,7 +86,7 @@ impl Handler for ChatHandler<Sync> {
             }
         }
 
-        let response = self.builder.0.json(&body).send().map_err(Error::http)?;
+        let response = self.0.0.json(&body).send().map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)
@@ -98,17 +97,8 @@ impl Handler for ChatHandler<Sync> {
     }
 }
 
-impl AsyncHandler for ChatHandler<Async> {
-    const PATH: &str = CHAT_COMPLETION_PATH;
-    type Input = ChatRequest<Async>;
-
-    fn new(builder: reqwest::RequestBuilder) -> Self {
-        ChatHandler {
-            builder: Async(builder),
-        }
-    }
-
-    async fn execute(self, body: Self::Input) -> Result<reqwest::Response> {
+impl AsyncExecutor for ChatHandler<Async> {
+    async fn execute(self, body: Self::Input) -> Result<Self::Response> {
         #[cfg(feature = "otel")]
         {
             let span = &body.span;
@@ -167,13 +157,7 @@ impl AsyncHandler for ChatHandler<Async> {
             }
         }
 
-        let response = self
-            .builder
-            .0
-            .json(&body)
-            .send()
-            .await
-            .map_err(Error::http)?;
+        let response = self.0.0.json(&body).send().await.map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)
