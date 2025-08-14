@@ -231,9 +231,8 @@ mod tests {
         let client = AsyncOrpheus::from_env().unwrap();
 
         let response = client
-            .completion()
+            .completion("The best city in the world is ")
             .model("openai/gpt-3.5-turbo")
-            .prompt("The best city in the world is ")
             .send()
             .await;
         println!("{:?}", response);

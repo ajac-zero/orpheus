@@ -2,7 +2,7 @@
 use tracing::{Span, field::Empty, instrument};
 
 use super::main::Orpheus;
-use crate::models::chat::*;
+use crate::models::{chat::*, common::mode::Sync};
 
 impl Orpheus {
     /// Initialize a builder for a chat completion request

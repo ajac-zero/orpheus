@@ -1,22 +1,17 @@
+#[cfg(feature = "otel")]
+use crate::prelude::Role;
+#[cfg(feature = "otel")]
 use tracing::info;
 
 use super::ChatRequest;
 use crate::{
     Error, Result,
     constants::CHAT_COMPLETION_PATH,
-    models::common::handler::{AsyncHandler, Handler},
-    prelude::Role,
+    models::common::{
+        handler::{AsyncHandler, Handler},
+        mode::{Async, Mode, Sync},
+    },
 };
-
-pub trait Mode {}
-
-#[derive(Debug)]
-pub struct Sync(reqwest::blocking::RequestBuilder);
-impl Mode for Sync {}
-
-#[derive(Debug)]
-pub struct Async(reqwest::RequestBuilder);
-impl Mode for Async {}
 
 #[derive(Debug)]
 pub struct ChatHandler<M: Mode> {

@@ -2,7 +2,7 @@
 use tracing::{Span, field::Empty, instrument};
 
 use super::main::AsyncOrpheus;
-use crate::models::chat::*;
+use crate::models::{chat::*, common::mode::Async};
 
 impl AsyncOrpheus {
     #[cfg_attr(feature = "otel", instrument(
