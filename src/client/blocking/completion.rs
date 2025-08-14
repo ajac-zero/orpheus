@@ -1,4 +1,4 @@
-use super::main::Orpheus;
+use super::Orpheus;
 use crate::models::{
     common::mode::Sync,
     completion::{CompletionRequest, CompletionRequestBuilder},

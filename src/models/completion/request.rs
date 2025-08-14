@@ -7,7 +7,7 @@ use crate::{
     Error, Result,
     models::{
         common::{
-            handler::{AsyncHandler, Handler},
+            handler::{AsyncExecutor, Executor},
             mode::{Async, Mode, Sync},
             provider::ProviderPreferences,
             reasoning::ReasoningConfig,

@@ -1,20 +1,21 @@
-use crate::Result;
+use crate::{
+    Result,
+    models::common::mode::{Async, Mode, Sync},
+};
 
-pub trait Handler {
+pub trait Handler<M: Mode> {
     const PATH: &str;
     type Input: serde::Serialize;
+    type Response;
 
-    fn new(builder: reqwest::blocking::RequestBuilder) -> Self;
+    fn new(builder: M::Builder) -> Self;
+}
 
-    fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response>;
+pub trait Executor: Handler<Sync> {
+    fn execute(self, body: Self::Input) -> Result<Self::Response>;
 }
 
 #[allow(async_fn_in_trait)]
-pub trait AsyncHandler {
-    const PATH: &str;
-    type Input: serde::Serialize;
-
-    fn new(builder: reqwest::RequestBuilder) -> Self;
-
-    async fn execute(self, body: Self::Input) -> Result<reqwest::Response>;
+pub trait AsyncExecutor: Handler<Async> {
+    async fn execute(self, body: Self::Input) -> Result<Self::Response>;
 }

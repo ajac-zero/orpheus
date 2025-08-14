@@ -1,12 +1,10 @@
 mod chat;
 mod completion;
-mod main;
 
-pub use main::Orpheus;
+use super::Orpheus;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::prelude::*;
 
     #[test]
