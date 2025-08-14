@@ -1,19 +1,37 @@
 use std::collections::HashMap;
 
+use bon::{Builder, builder};
 use serde::Serialize;
 
-use crate::models::common::{
-    provider::ProviderPreferences, reasoning::ReasoningConfig, usage::UsageConfig,
+use crate::{
+    Error, Result,
+    models::{
+        common::{
+            handler::{AsyncHandler, Handler},
+            mode::{Async, Mode, Sync},
+            provider::ProviderPreferences,
+            reasoning::ReasoningConfig,
+            usage::UsageConfig,
+        },
+        completion::{CompletionHandler, CompletionResponse},
+    },
 };
+use completion_request_builder::{IsComplete, State};
 
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Clone, Serialize)]
-pub struct CompletionRequest {
-    /// The model ID to use. If unspecified, the user's default is used.
-    pub model: String,
+#[derive(Debug, Serialize, Builder)]
+#[builder(on(String, into))]
+pub struct CompletionRequest<M: Mode> {
+    #[serde(skip)]
+    #[builder(start_fn)]
+    handler: Option<CompletionHandler<M>>,
 
     /// The text prompt to complete
+    #[builder(start_fn)]
     pub prompt: String,
+
+    /// The model ID to use. If unspecified, the user's default is used.
+    pub model: String,
 
     /// Alternate list of models for routing overrides.
     pub models: Option<Vec<String>>,
@@ -73,52 +91,36 @@ pub struct CompletionRequest {
     pub user: Option<String>,
 }
 
-impl CompletionRequest {
-    pub fn new(
-        model: String,
-        prompt: String,
-        models: Option<Vec<String>>,
-        provider: Option<ProviderPreferences>,
-        reasoning: Option<ReasoningConfig>,
-        usage: Option<UsageConfig>,
-        transforms: Option<Vec<String>>,
-        stream: Option<bool>,
-        max_tokens: Option<i32>,
-        temperature: Option<f64>,
-        seed: Option<i32>,
-        top_p: Option<f64>,
-        top_k: Option<i32>,
-        frequency_penalty: Option<f64>,
-        presence_penalty: Option<f64>,
-        repetition_penalty: Option<f64>,
-        logit_bias: Option<HashMap<String, f64>>,
-        top_logprobs: Option<i32>,
-        min_p: Option<f64>,
-        top_a: Option<f64>,
-        user: Option<String>,
-    ) -> Self {
-        Self {
-            model,
-            prompt,
-            models,
-            provider,
-            reasoning,
-            usage,
-            transforms,
-            stream,
-            max_tokens,
-            temperature,
-            seed,
-            top_p,
-            top_k,
-            frequency_penalty,
-            presence_penalty,
-            repetition_penalty,
-            logit_bias,
-            top_logprobs,
-            min_p,
-            top_a,
-            user,
-        }
+impl<S: State> CompletionRequestBuilder<Sync, S>
+where
+    S: IsComplete,
+{
+    pub fn send(mut self) -> Result<CompletionResponse> {
+        let handler = self.handler.take().expect("Has handler");
+
+        let body = self.build();
+
+        let response = handler.execute(body)?;
+
+        let completion_response = response.json().map_err(Error::http)?;
+
+        Ok(completion_response)
+    }
+}
+
+impl<S: State> CompletionRequestBuilder<Async, S>
+where
+    S: IsComplete,
+{
+    pub async fn send(mut self) -> Result<CompletionResponse> {
+        let handler = self.handler.take().expect("Has handler");
+
+        let body = self.build();
+
+        let response = handler.execute(body).await?;
+
+        let completion_response = response.json().await.map_err(Error::http)?;
+
+        Ok(completion_response)
     }
 }

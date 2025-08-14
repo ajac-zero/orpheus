@@ -10,6 +10,7 @@ use crate::{
         chat::*,
         common::{
             handler::{AsyncHandler, Handler},
+            mode::{Async, Mode, Sync},
             provider::*,
             reasoning::*,
             usage::*,
