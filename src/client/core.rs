@@ -67,37 +67,30 @@ impl<M: Mode> OrpheusCore<M> {
     }
 }
 
-impl OrpheusCore<Sync> {
-    pub fn create_handler<H: Executor>(&self) -> H {
-        let url = self.base_url.join(H::PATH).expect("Is valid url");
-        let mut builder = self
-            .client
-            .post(url)
-            .header(CONTENT_TYPE, "application/json");
+// Macro to implement create_handler for both Sync and Async modes
+macro_rules! impl_create_handler {
+    ($mode:ty, $trait_bound:path) => {
+        impl OrpheusCore<$mode> {
+            pub fn create_handler<H: $trait_bound>(&self) -> H {
+                let url = self.base_url.join(H::PATH).expect("Is valid url");
+                let mut builder = self
+                    .client
+                    .post(url)
+                    .header(CONTENT_TYPE, "application/json");
 
-        if let Some(token) = self.api_key.as_ref() {
-            builder = builder.bearer_auth(token);
+                if let Some(token) = self.api_key.as_ref() {
+                    builder = builder.bearer_auth(token);
+                }
+
+                H::new(builder)
+            }
         }
-
-        H::new(builder)
-    }
+    };
 }
 
-impl OrpheusCore<Async> {
-    pub fn create_handler<H: AsyncExecutor>(&self) -> H {
-        let url = self.base_url.join(H::PATH).expect("Is valid url");
-        let mut builder = self
-            .client
-            .post(url)
-            .header(CONTENT_TYPE, "application/json");
-
-        if let Some(token) = self.api_key.as_ref() {
-            builder = builder.bearer_auth(token);
-        }
-
-        H::new(builder)
-    }
-}
+// Apply the macro for both Sync and Async modes
+impl_create_handler!(Sync, Executor);
+impl_create_handler!(Async, AsyncExecutor);
 
 pub type Orpheus = OrpheusCore<Sync>;
 pub type AsyncOrpheus = OrpheusCore<Async>;

@@ -10,42 +10,45 @@ pub trait Mode {
     fn client() -> Self::Client;
 }
 
-#[derive(Debug)]
-pub struct Sync(pub reqwest::blocking::RequestBuilder);
-impl Mode for Sync {
-    type Client = reqwest::blocking::Client;
-    type Builder = reqwest::blocking::RequestBuilder;
-    type Response = reqwest::blocking::Response;
+// Macro to implement Mode trait for both Sync and Async
+macro_rules! impl_mode {
+    ($name:ident, {
+        Client: $client:ty,
+        RequestBuilder: $builder:ty,
+        Response: $response:ty
+    }) => {
+        #[derive(Debug)]
+        pub struct $name(pub $builder);
 
-    fn new(builder: Self::Builder) -> Self {
-        Self(builder)
-    }
+        impl Mode for $name {
+            type Client = $client;
+            type Builder = $builder;
+            type Response = $response;
 
-    fn client() -> Self::Client {
-        Self::Client::builder()
-            .user_agent(USER_AGENT_NAME)
-            .use_rustls_tls()
-            .build()
-            .expect("build request client")
-    }
+            fn new(builder: Self::Builder) -> Self {
+                Self(builder)
+            }
+
+            fn client() -> Self::Client {
+                Self::Client::builder()
+                    .user_agent(USER_AGENT_NAME)
+                    .use_rustls_tls()
+                    .build()
+                    .expect("build request client")
+            }
+        }
+    };
 }
 
-#[derive(Debug)]
-pub struct Async(pub reqwest::RequestBuilder);
-impl Mode for Async {
-    type Client = reqwest::Client;
-    type Builder = reqwest::RequestBuilder;
-    type Response = reqwest::Response;
+// Apply the macro for both Sync and Async modes
+impl_mode!(Sync, {
+    Client: reqwest::blocking::Client,
+    RequestBuilder: reqwest::blocking::RequestBuilder,
+    Response: reqwest::blocking::Response
+});
 
-    fn new(builder: Self::Builder) -> Self {
-        Self(builder)
-    }
-
-    fn client() -> Self::Client {
-        Self::Client::builder()
-            .user_agent(USER_AGENT_NAME)
-            .use_rustls_tls()
-            .build()
-            .expect("build request client")
-    }
-}
+impl_mode!(Async, {
+    Client: reqwest::Client,
+    RequestBuilder: reqwest::RequestBuilder,
+    Response: reqwest::Response
+});
