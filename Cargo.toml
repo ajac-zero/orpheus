@@ -16,6 +16,7 @@ anyhow = ["dep:anyhow"]
 mcp = ["dep:rmcp", "tokio/rt-multi-thread"]
 otel = ["dep:opentelemetry"]
 langfuse = ["otel", "dep:base64", "dep:opentelemetry-otlp"]
+all = ["anyhow", "mcp", "otel", "langfuse"]
 
 [dependencies]
 anyhow = { version = "1.0.98", optional = true }

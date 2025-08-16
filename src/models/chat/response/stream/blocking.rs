@@ -1,14 +1,12 @@
 use std::io::{BufRead, BufReader};
 
-#[cfg(feature = "otel")]
-use super::common::otel::StreamAggregator;
 use crate::{Error, Result};
 
 #[derive(Debug)]
 pub struct ChatStream {
     reader: BufReader<reqwest::blocking::Response>,
     #[cfg(feature = "otel")]
-    pub(crate) aggregator: StreamAggregator,
+    pub(crate) aggregator: super::otel::StreamAggregator,
 }
 
 impl ChatStream {
@@ -17,7 +15,7 @@ impl ChatStream {
         Self {
             reader,
             #[cfg(feature = "otel")]
-            aggregator: StreamAggregator::default(),
+            aggregator: super::otel::StreamAggregator::default(),
         }
     }
 }

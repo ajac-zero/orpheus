@@ -162,32 +162,7 @@ where
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
-        {
-            let _guard = span.enter();
-
-            for choice in chat_completion.choices.iter() {
-                let content = serde_json::to_string(choice).expect("serializable");
-                tracing::info!(name: "gen_ai.choice", content);
-            }
-
-            span.record("gen_ai.response.id", &chat_completion.id);
-            span.record("gen_ai.response.model", &chat_completion.model);
-
-            let mut finish_reasons = Vec::new();
-            for choice in &chat_completion.choices {
-                finish_reasons.push(choice.finish_reason.clone());
-            }
-            span.record("gen_ai.response.finish_reasons", finish_reasons.join(","));
-
-            span.record(
-                "gen_ai.usage.input_tokens",
-                &chat_completion.usage.prompt_tokens,
-            );
-            span.record(
-                "gen_ai.usage.output_tokens",
-                &chat_completion.usage.completion_tokens,
-            );
-        }
+        otel::record_completion(span, &chat_completion);
 
         Ok(chat_completion)
     }
@@ -235,32 +210,7 @@ where
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
-        {
-            let _guard = span.enter();
-
-            for choice in chat_completion.choices.iter() {
-                let content = serde_json::to_string(choice).expect("serializable");
-                tracing::info!(name: "gen_ai.choice", content);
-            }
-
-            span.record("gen_ai.response.id", &chat_completion.id);
-            span.record("gen_ai.response.model", &chat_completion.model);
-
-            let mut finish_reasons = Vec::new();
-            for choice in &chat_completion.choices {
-                finish_reasons.push(choice.finish_reason.clone());
-            }
-            span.record("gen_ai.response.finish_reasons", finish_reasons.join(","));
-
-            span.record(
-                "gen_ai.usage.input_tokens",
-                &chat_completion.usage.prompt_tokens,
-            );
-            span.record(
-                "gen_ai.usage.output_tokens",
-                &chat_completion.usage.completion_tokens,
-            );
-        }
+        otel::record_completion(span, &chat_completion);
 
         Ok(chat_completion)
     }
