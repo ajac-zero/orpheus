@@ -6,15 +6,13 @@ use std::{
 
 use futures_lite::Stream;
 
-#[cfg(feature = "otel")]
-use super::common::otel::StreamAggregator;
 use crate::{Error, Result};
 
 pub struct AsyncStream {
     stream: Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>,
     buffer: Vec<u8>,
     #[cfg(feature = "otel")]
-    pub(crate) aggregator: StreamAggregator,
+    pub(crate) aggregator: super::otel::StreamAggregator,
 }
 
 impl AsyncStream {
@@ -24,7 +22,7 @@ impl AsyncStream {
             stream,
             buffer: Vec::new(), // Initialize as Vec<u8>
             #[cfg(feature = "otel")]
-            aggregator: StreamAggregator::default(),
+            aggregator: super::otel::StreamAggregator::default(),
         }
     }
 }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bon::{Builder, builder};
+use completion_request_builder::{IsComplete, State};
 use serde::Serialize;
 
 use crate::{
@@ -16,7 +17,6 @@ use crate::{
         completion::{CompletionHandler, CompletionResponse},
     },
 };
-use completion_request_builder::{IsComplete, State};
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Serialize, Builder)]
