@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use tracing::{Level, Span, field::Empty, info, span};
 
 use super::{
-    super::common::mode::Mode, ChatChoice, ChatCompletion, ChatStreamChunk, Content, Message, Role,
+    super::common::mode::Mode, ChatChoice, ChatCompletion, ChatRequest, ChatStreamChunk, Content,
+    Message, Role,
 };
-use crate::models::chat::ChatRequest;
 
 pub fn chat_span() -> Span {
     span!(
