@@ -223,11 +223,11 @@ impl Param {
     pub fn string(
         #[builder(into)] description: Option<String>,
         #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
-        r#enum: Option<Vec<String>>,
+        enums: Option<Vec<String>>,
     ) -> Self {
         Self::String {
             description,
-            r#enum,
+            r#enum: enums,
         }
     }
 
@@ -291,6 +291,34 @@ impl<const N: usize> From<[Tool; N]> for Tools {
     }
 }
 
+pub trait Parameter {
+    fn into_param(self) -> Param;
+}
+
+impl<T: Parameter> From<T> for ParamType {
+    fn from(value: T) -> Self {
+        value.into_param().into()
+    }
+}
+
+macro_rules! impl_parameter_for_builder {
+    ($builder:ident, $state_mod:ident) => {
+        impl<S: $state_mod::State> Parameter for $builder<S>
+        where
+            S: $state_mod::IsComplete,
+        {
+            fn into_param(self) -> Param {
+                self.end()
+            }
+        }
+    };
+}
+
+impl_parameter_for_builder!(ParamStringBuilder, param_string_builder);
+impl_parameter_for_builder!(ParamObjectBuilder, param_object_builder);
+impl_parameter_for_builder!(ParamArrayBuilder, param_array_builder);
+impl_parameter_for_builder!(ParamNumberBuilder, param_number_builder);
+
 #[cfg(test)]
 mod test {
     use serde_json::json;
@@ -298,25 +326,75 @@ mod test {
     use super::*;
 
     #[test]
-    fn deser_anyof_tool_def() {
+    fn test_shorthand_tool_dev() {
         let target = json!({
             "type": "object",
             "properties": {
-                "base_branch":{
-                    "anyOf":[{"type":"string"},{"type":"null"}],
+                "location":{
+                    "type": "object",
+                    "description": "Coordinates of the location",
+                    "properties": {
+                        "latitude": { "type": "string" },
+                        "longitude": { "type": "string" }
+                    },
+                    "required": ["latitude", "longitude"]
                 },
-                "branch_name":{
-                    "type":"string"
-                },
-                "repo_path":{
-                    "type":"string"}
-            }
+                "units": {
+                    "type": "string",
+                    "description": "Units the temperature will be returned in.",
+                    "enum": ["celsius", "fahrenheit"]
+                }
+            },
+            "required": ["location", "units"]
         });
 
         let param = Param::object()
-            .property("base_branch", vec![Param::string().end(), Param::null()])
-            .property("branch_name", Param::string().end())
-            .property("repo_path", Param::string().end())
+            .property(
+                "location",
+                Param::object()
+                    .description("Coordinates of the location")
+                    .property("latitude", Param::string())
+                    .property("longitude", Param::string())
+                    .required(["latitude", "longitude"]),
+            )
+            .property(
+                "units",
+                Param::string()
+                    .description("Units the temperature will be returned in.")
+                    .enums(["celsius", "fahrenheit"]),
+            )
+            .required(["location", "units"])
+            .end();
+
+        let value = serde_json::to_value(param).unwrap();
+
+        assert_eq!(target, value);
+    }
+
+    #[test]
+    fn deser_vec_tool_def() {
+        let target = json!({
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "base_branch": {
+                        "anyOf": [{"type": "string"}, {"type": "null"}]
+                    },
+                    "branch_name": {"type": "string"},
+                    "repo_path": {"type": "string"}
+                }
+            }
+        });
+
+        let param = Param::array()
+            .items(
+                Param::object()
+                    .property("base_branch", vec![Param::string().end(), Param::null()])
+                    .property("branch_name", Param::string())
+                    .property("repo_path", Param::string())
+                    .end(),
+            )
             .end();
         let param_value = serde_json::to_value(param).unwrap();
 

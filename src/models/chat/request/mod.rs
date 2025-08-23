@@ -278,13 +278,11 @@ mod test {
                 Param::object()
                     .property(
                         "location",
-                        Param::string()
-                            .description("The city and state, e.g. San Francisco, CA")
-                            .end(),
+                        Param::string().description("The city and state, e.g. San Francisco, CA"),
                     )
                     .property(
                         "unit",
-                        Param::string().r#enum(["celsius", "fahrenheit"]).end(),
+                        Param::string().enums(["celsius", "fahrenheit"]).end(),
                     )
                     .required(["location"])
                     .end(),
@@ -329,14 +327,9 @@ mod test {
                 params
                     .property(
                         "location",
-                        Param::string()
-                            .description("The city and state, e.g. San Francisco, CA")
-                            .end(),
+                        Param::string().description("The city and state, e.g. San Francisco, CA"),
                     )
-                    .property(
-                        "unit",
-                        Param::string().r#enum(["celsius", "fahrenheit"]).end(),
-                    )
+                    .property("unit", Param::string().enums(["celsius", "fahrenheit"]))
                     .required(["location"])
             })
             .build();

@@ -8,9 +8,8 @@
 //! reqwest = { version = "0.12.12", features = ["blocking", "json"] }
 //! ```
 use orpheus::prelude::*;
-use reqwest::blocking::get;
 use serde::Deserialize;
-use serde_json::{Value, from_str, to_string};
+use serde_json::Value;
 
 #[derive(Deserialize)]
 struct Coordinates {
@@ -36,17 +35,15 @@ fn main() -> anyhow::Result<()> {
                     "location",
                     Param::object()
                         .description("Coordinates of the location")
-                        .property("latitude", Param::string().end())
-                        .property("longitude", Param::string().end())
-                        .required(["latitude", "longitude"])
-                        .end(),
+                        .property("latitude", Param::string())
+                        .property("longitude", Param::string())
+                        .required(["latitude", "longitude"]),
                 )
                 .property(
                     "units",
                     Param::string()
                         .description("Units the temperature will be returned in.")
-                        .r#enum(["celsius", "fahrenheit"])
-                        .end(),
+                        .enums(["celsius", "fahrenheit"]),
                 )
                 .required(["location", "units"])
         })
@@ -77,15 +74,15 @@ fn main() -> anyhow::Result<()> {
         // The name field can be used to route to the correct logic
         if function.name == "get_weather" {
             // The arguments field holds a JSON string following the schema, so we can deserializize it with serde
-            let args: GetWeather = from_str(&function.arguments)?;
+            let args: GetWeather = serde_json::from_str(&function.arguments)?;
 
             // Inner tool logic that uses function arguments
             let request_url = format!(
                 "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&hourly=temperature_2m&temperature_unit={}",
                 args.location.latitude, args.location.longitude, args.units
             );
-            let weather_data: Value = get(request_url)?.json()?;
-            let content = to_string(&weather_data)?;
+            let weather_data: Value = reqwest::blocking::get(request_url)?.json()?;
+            let content = serde_json::to_string(&weather_data)?;
 
             // We can then turn the tool result data into a message so the model can see it
             messages.push(Message::tool(id, content));

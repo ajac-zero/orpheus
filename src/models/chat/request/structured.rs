@@ -92,17 +92,15 @@ mod test {
                 schema
                     .property(
                         "location",
-                        Param::string().description("City or location name").end(),
+                        Param::string().description("City or location name"),
                     )
                     .property(
                         "temperature",
-                        Param::number().description("Temperature in Celsius").end(),
+                        Param::number().description("Temperature in Celsius"),
                     )
                     .property(
                         "conditions",
-                        Param::string()
-                            .description("Weather conditions description")
-                            .end(),
+                        Param::string().description("Weather conditions description"),
                     )
                     .required(["location", "temperature", "conditions"])
             })
@@ -122,17 +120,15 @@ mod test {
                 schema
                     .property(
                         "location",
-                        Param::string().description("City or location name").end(),
+                        Param::string().description("City or location name"),
                     )
                     .property(
                         "temperature",
-                        Param::number().description("Temperature in Celsius").end(),
+                        Param::number().description("Temperature in Celsius"),
                     )
                     .property(
                         "conditions",
-                        Param::string()
-                            .description("Weather conditions description")
-                            .end(),
+                        Param::string().description("Weather conditions description"),
                     )
                     .required(["location", "temperature", "conditions"])
             })
