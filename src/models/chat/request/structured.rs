@@ -8,7 +8,7 @@ use crate::models::chat::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "json_schema", rename_all = "snake_case")]
-pub enum ResponseFormat {
+pub enum Format {
     JsonSchema {
         name: String,
         strict: bool,
@@ -17,9 +17,9 @@ pub enum ResponseFormat {
 }
 
 #[bon]
-impl ResponseFormat {
+impl Format {
     #[builder(finish_fn = build)]
-    pub fn json_schema(
+    pub fn json(
         #[builder(into, start_fn)] name: String,
         #[builder(default = true)] strict: bool,
         schema: Param,
@@ -32,13 +32,10 @@ impl ResponseFormat {
     }
 }
 
-impl<S: response_format_json_schema_builder::State> ResponseFormatJsonSchemaBuilder<S> {
-    pub fn with_schema<F, C>(
-        self,
-        build: F,
-    ) -> ResponseFormatJsonSchemaBuilder<response_format_json_schema_builder::SetSchema<S>>
+impl<S: format_json_builder::State> FormatJsonBuilder<S> {
+    pub fn with_schema<F, C>(self, build: F) -> FormatJsonBuilder<format_json_builder::SetSchema<S>>
     where
-        S::Schema: response_format_json_schema_builder::IsUnset,
+        S::Schema: format_json_builder::IsUnset,
         F: FnOnce(ParamObjectBuilder<param_object_builder::Empty>) -> ParamObjectBuilder<C>,
         C: param_object_builder::IsComplete,
         C::AdditionalProperties: param_object_builder::IsUnset,
@@ -53,10 +50,7 @@ impl<S: response_format_json_schema_builder::State> ResponseFormatJsonSchemaBuil
 mod test {
     use serde_json::json;
 
-    use crate::{
-        client::Orpheus,
-        models::chat::{Param, request::structured::ResponseFormat},
-    };
+    use crate::prelude::{Format, Orpheus, Param};
 
     #[test]
     fn serialize_response_format() {
@@ -87,7 +81,7 @@ mod test {
           }
         });
 
-        let response_format = ResponseFormat::json_schema("weather")
+        let response_format = Format::json("weather")
             .with_schema(|schema| {
                 schema
                     .property(
@@ -115,7 +109,7 @@ mod test {
     fn end_to_end_with_response_format() {
         let client = Orpheus::from_env().unwrap();
 
-        let response_format = ResponseFormat::json_schema("weather")
+        let response_format = Format::json("weather")
             .with_schema(|schema| {
                 schema
                     .property(

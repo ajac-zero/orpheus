@@ -16,7 +16,9 @@ pub mod prelude {
     pub use crate::{
         client::{AsyncOrpheus, Orpheus},
         models::{
-            chat::{Message, Param, Parameter, ParsingEngine, Plugin, Role, Tool, ToolCall},
+            chat::{
+                Format, Message, Param, Parameter, ParsingEngine, Plugin, Role, Tool, ToolCall,
+            },
             common::{
                 provider::{MaxPrice, Provider, Quantization, Sort},
                 reasoning::Effort,

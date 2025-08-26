@@ -51,7 +51,7 @@ pub struct ChatRequest<M: Mode> {
     pub model: Option<String>,
 
     #[builder(into)]
-    pub response_format: Option<ResponseFormat>,
+    pub response_format: Option<Format>,
 
     /// Alternate list of models for routing overrides.
     #[builder(name = "fallbacks", with = |models: impl IntoIterator<Item: Into<String>>| models.into_iter().map(Into::into).collect())]
