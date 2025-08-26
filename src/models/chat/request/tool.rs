@@ -158,12 +158,6 @@ impl From<Param> for ParamType {
     }
 }
 
-impl From<Vec<Param>> for ParamType {
-    fn from(params: Vec<Param>) -> Self {
-        ParamType::Any { any_of: params }
-    }
-}
-
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -198,6 +192,10 @@ pub enum Param {
 impl Param {
     pub fn null() -> Self {
         Self::Null
+    }
+
+    pub fn into_param(self) -> Self {
+        self
     }
 }
 
@@ -319,6 +317,16 @@ impl_parameter_for_builder!(ParamObjectBuilder, param_object_builder);
 impl_parameter_for_builder!(ParamArrayBuilder, param_array_builder);
 impl_parameter_for_builder!(ParamNumberBuilder, param_number_builder);
 
+#[macro_export]
+macro_rules! anyof {
+    ($($param:expr),* $(,)?) => {{
+        use crate::models::chat::ParamType;
+
+        let any_of: Vec<Param> = vec![$($param.into_param()),*];
+        ParamType::Any { any_of }
+    }};
+}
+
 #[cfg(test)]
 mod test {
     use serde_json::json;
@@ -390,14 +398,52 @@ mod test {
         let param = Param::array()
             .items(
                 Param::object()
-                    .property("base_branch", vec![Param::string().end(), Param::null()])
+                    .property("base_branch", anyof![Param::string(), Param::null()])
                     .property("branch_name", Param::string())
-                    .property("repo_path", Param::string())
-                    .end(),
+                    .property("repo_path", Param::string()),
             )
             .end();
         let param_value = serde_json::to_value(param).unwrap();
 
         assert_eq!(target, param_value);
+    }
+
+    #[test]
+    fn test_charades_tools() {
+        let target = json!({
+            "type": "function",
+            "function": {
+                "name": "player_win",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        });
+
+        let tool = Tool::function("player_win").empty();
+        let value = serde_json::to_value(tool).unwrap();
+
+        assert_eq!(target, value);
+
+        let target = json!({
+            "type": "function",
+            "function": {
+                "name": "game_over",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "answer": { "type": "string" }
+                    }
+                }
+            }
+        });
+
+        let tool = Tool::function("game_over")
+            .with_parameters(|p| p.property("answer", Param::string()))
+            .build();
+        let value = serde_json::to_value(tool).unwrap();
+
+        assert_eq!(target, value);
     }
 }
