@@ -7,20 +7,20 @@ icon: hand-wave
 
 Welcome, AI engineer! These docs cover guides, examples, references, and more to help you build applications using the [100+ models](https://openrouter.ai/models) available via [OpenRouter](https://openrouter.ai/) with the **Orpheus** library.
 
-{% code title="examples/hello.rs" %}
+{% code title="hello.rs" %}
 ```rust
 use orpheus::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let client = Orpheus::from_env()?;
-    
+
     let response = client
         .chat("Say hello to our friend!")
         .model("openai/gpt-4o")
         .send()?;
-        
+
     println!("Model says: {}", response.content()?);
-    
+
     Ok(())
 }
 ```
@@ -46,15 +46,15 @@ Orpheus is a library made to make it as ergonomic as possible to create AI apps 
 
 Orpheus also comes with out-of-the-box support for:
 
-* Async
-* Streaming
+* [Async](features/async-support.md)
+* [Streaming](basics/getting-started/streaming-responses.md)
 * Images and PDF
-* Model Fallbacks
-* Web Search
-* Tool Calling
+* [Model Fallbacks](basics/fallback-models.md)
+* [Web Search](features/plugins.md)
+* [Tool Calling](features/tool-calling/README.md)
 * MCP Client
-* Structured Outputs
-* Provider Selection
+* [Structured Outputs](features/structured-output.md)
+* [Provider Selection](basics/configuring-providers/README.md)
 * Prompt Caching
 * Message Transforms
 * API Key Provisioning

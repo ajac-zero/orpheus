@@ -37,8 +37,8 @@ Tool::function("get_weather")
     .description("Get current temperature for provided coordinates.")
     .with_parameters(|params| {
         params
-            .property("latitude", Param::number().end())
-            .property("longitude", Param::number().end())
+            .property("latitude", Param::number())
+            .property("longitude", Param::number())
             .required(["latitude", "longitude"])
     })
     .build()
@@ -78,14 +78,15 @@ Tool::function("get_weather")
     .description("Retrieve current weather for the given location.")
     .with_parameters(|params| {
         params
-            .property("location", Param::string()
-                .description("The city to get weather for.")
-                .end()
+            .property(
+                "location",
+                Param::string().description("The city to get weather for.")
             )
-            .property("units", Param::string()
-                .description("Units the temperature will be returned in.")
-                .r#enum(["celsius", "fahrenheit"])
-                .end()
+            .property(
+                "units",
+                Param::string()
+                    .description("Units the temperature will be returned in.")
+                    .enums(["celsius", "fahrenheit"])
             )
             .required(["location", "units"])
     })
@@ -137,19 +138,26 @@ Tool::function("get_weather")
     .description("Retrieve current weather for a set of given locations.")
     .with_parameters(|params| {
         params
-            .property("locations", Param::array().items(
-                Param::object()
-                    .property("city", Param::string().description("The city to get weather for."))
-                    .property("country", Param::string().description("The country the city is in."))
-                    .required(["city", "country"])
-                    .end(),
+            .property(
+                "locations",
+                Param::array().items(
+                    Param::object()
+                        .property(
+                            "city",
+                            Param::string().description("The city to get weather for.")
+                        )
+                        .property(
+                            "country",
+                            Param::string().description("The country the city is in.")
+                        )
+                        .required(["city", "country"])
                 )
-                .end()
             )
-            .property("units", Param::string()
-                .description("Units the temperature will be returned in.")
-                .r#enum(["celsius", "fahrenheit"])
-                .end()
+            .property(
+                "units",
+                Param::string()
+                    .description("Units the temperature will be returned in.")
+                    .enums(["celsius", "fahrenheit"])
             )
     })
     .build()

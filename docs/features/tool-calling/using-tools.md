@@ -39,17 +39,15 @@ fn main() -> anyhow::Result<()> {
                     "location",
                     Param::object()
                         .description("Coordinates of the location")
-                        .property("latitude", Param::string().end())
-                        .property("longitude", Param::string().end())
+                        .property("latitude", Param::string())
+                        .property("longitude", Param::string())
                         .required(["latitude", "longitude"])
-                        .end(),
                 )
                 .property(
                     "units",
                     Param::string()
                         .description("Units the temperature will be returned in.")
-                        .r#enum(["celsius", "fahrenheit"])
-                        .end(),
+                        .enums(["celsius", "fahrenheit"])
                 )
                 .required(["location", "units"])
         })

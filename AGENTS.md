@@ -50,14 +50,14 @@ use orpheus::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let client = Orpheus::from_env()?;
-    
+
     // Brief comment explaining what this does
     let response = client
         .chat("Example query")
         .model("openai/gpt-4o")
         .feature_method()  // The feature being demonstrated
         .send()?;
-    
+
     println!("{}", response.content()?);
     Ok(())
 }
@@ -119,90 +119,3 @@ When a feature integrates with others:
 - Show minimal working examples of the integration
 - Reference other features by their exact documentation section names
 - Use relative links: `[Tool Calling](tool-calling/)`
-
-### Async/Sync Patterns
-Always show both sync and async usage where applicable:
-```rust
-// Synchronous
-let response = client.method().send()?;
-
-// Asynchronous  
-let response = client.method().send().await?;
-```
-
-## File Organization
-
-### File Structure
-```markdown
----
-icon: icon-name
----
-
-# Feature Name
-
-Brief introduction sentence.
-
-## Main Section
-
-Content here...
-
-### Subsection
-
-More specific content...
-```
-
-### Section Ordering
-1. Introduction
-2. Basic usage example
-3. Configuration/options
-4. Advanced usage (if significantly different)
-5. Integration examples (if applicable)
-6. Technical details (types, validation, etc.)
-
-## Common Patterns to Follow
-
-### Error Handling Examples
-```rust
-match result {
-    Ok(value) => {
-        // Use value
-    },
-    Err(e) => {
-        // Handle error
-    }
-}
-```
-
-### Builder Pattern Documentation
-```rust
-// Show progression from simple to complex
-let simple = Builder::new().build();
-
-let configured = Builder::new()
-    .option_a(value)
-    .option_b(other_value)
-    .build();
-```
-
-### Feature Combinations
-```rust
-let response = client
-    .chat("Query")
-    .model("model-name")
-    .feature_one(config)
-    .feature_two(other_config)
-    .send()?;
-```
-
-## Quality Checklist
-
-Before submitting documentation:
-
-- [ ] All code examples compile and work
-- [ ] No recommendations or prescriptive language
-- [ ] Concise and focused content
-- [ ] Proper code formatting and imports
-- [ ] Accurate type information
-- [ ] Working cross-references
-- [ ] Consistent terminology with existing docs
-- [ ] Clear section organization

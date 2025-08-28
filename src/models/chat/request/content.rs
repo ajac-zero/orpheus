@@ -1,9 +1,30 @@
 use serde::{Deserialize, Serialize};
 
+/// Represents the content of a message, supporting both simple text and complex multimodal content.
+///
+/// Content can be either a simple string or a complex structure containing multiple parts
+/// including text, images, and files. The enum automatically handles conversions between
+/// simple and complex formats as multimodal elements are added.
+///
+/// # Examples
+///
+/// ```
+/// use orpheus::prelude::*;
+///
+/// // Simple text content
+/// let simple = Content::simple("Hello, world!");
+///
+/// // Complex multimodal content
+/// let complex = Content::simple("Analyze this data:")
+///     .add_part(Part::image_url("https://example.com/chart.png".to_string(), None))
+///     .add_part(Part::file("data.csv".to_string(), "name,value\nA,1\nB,2".to_string()));
+/// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Content {
+    /// Simple text content as a string
     Simple(String),
+    /// Complex content containing multiple parts (text, images, files)
     Complex(Vec<Part>),
 }
 
@@ -37,13 +58,55 @@ impl From<Vec<Part>> for Content {
 }
 
 impl Content {
+    /// Creates a new simple text content.
+    ///
+    /// This is the preferred way to create text-only content that may later
+    /// be extended with multimodal elements using [`Content::add_part`].
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The text content
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use orpheus::prelude::*;
+    ///
+    /// let content = Content::simple("Hello, world!");
+    /// let from_string = Content::simple(String::from("Hello"));
+    /// ```
     pub fn simple(content: impl Into<String>) -> Self {
         Content::Simple(content.into())
     }
 
-    /// Consumes the current content and creates a new content with the appended part.
-    /// 1. `Self::Simple` variant is transformed into a complex variant with the original text prepended as a "text" part.
-    /// 2. `Self::Complex` variant is modified by appending the new part to the existing parts vector.
+    /// Consumes the current content and creates new content with the appended part.
+    ///
+    /// This method automatically handles the conversion from simple to complex content:
+    /// - `Simple` content is converted to `Complex` with the original text as the first part
+    /// - `Complex` content has the new part appended to the existing parts vector
+    ///
+    /// # Arguments
+    ///
+    /// * `part` - The part to add (text, image, or file)
+    ///
+    /// # Returns
+    ///
+    /// A new `Content` instance with the part added
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use orpheus::prelude::*;
+    ///
+    /// // Adding image to simple content
+    /// let content = Content::simple("Look at this:")
+    ///     .add_part(Part::image_url("https://example.com/image.jpg".to_string(), None));
+    ///
+    /// // Chaining multiple parts
+    /// let multimodal = Content::simple("Analysis request:")
+    ///     .add_part(Part::file("data.csv".to_string(), "csv content".to_string()))
+    ///     .add_part(Part::image_url("https://example.com/chart.png".to_string(), Some("high".to_string())));
+    /// ```
     pub fn add_part(self, part: Part) -> Self {
         let new_parts = match self {
             Self::Simple(string) => vec![Part::text(string), part],
@@ -77,43 +140,203 @@ impl std::fmt::Display for Content {
     }
 }
 
+/// Represents an image URL with optional detail level for processing.
+///
+/// The detail level affects how the AI model processes the image:
+/// - `None`: Default resolution and processing
+/// - `Some("low")`: Lower resolution, faster processing
+/// - `Some("high")`: Higher resolution, more detailed analysis
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ImageUrl {
+    /// The URL of the image to process
     url: String,
+    /// Optional detail level for image processing ("low", "high", or None for default)
     detail: Option<String>,
 }
 
+/// Represents a file with its name and content data.
+///
+/// Files can contain various types of data including PDFs, text documents,
+/// CSV data, JSON, code files, and other structured or unstructured data.
+/// The content should be provided as a string representation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct File {
+    /// The name of the file (used for context and identification)
     filename: String,
+    /// The content of the file as a string
     file_data: String,
 }
 
+/// Represents audio input with base64-encoded data and format specification.
+///
+/// Audio input allows AI models to process and understand audio content
+/// such as speech, music, or other audio signals. The audio data must be
+/// base64-encoded and include the appropriate format specification.
+///
+/// # Examples
+///
+/// ```
+/// use orpheus::prelude::*;
+///
+/// // Create audio input from base64 data
+/// let audio = InputAudio {
+///     data: "base64_encoded_audio_data_here".to_string(),
+///     format: "wav".to_string(),
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct InputAudio {
+    /// Base64-encoded audio data
+    data: String, // must be base64 encoded
+    /// Audio format (e.g., "wav", "mp3", "m4a", "flac", "webm")
+    format: String,
+}
+
+/// Represents a single part of multimodal content.
+///
+/// Parts are the building blocks of complex content, allowing messages to contain
+/// a mix of text, images, and files. Each part is serialized with a type tag
+/// to distinguish between different content types.
+///
+/// # Examples
+///
+/// ```
+/// use orpheus::prelude::*;
+///
+/// // Text part
+/// let text_part = Part::text("Hello, world!".to_string());
+///
+/// // Image part with high detail
+/// let image_part = Part::image_url(
+///     "https://example.com/image.jpg".to_string(),
+///     Some("high".to_string())
+/// );
+///
+/// // File part
+/// let file_part = Part::file("data.csv".to_string(), "name,age\nAlice,25".to_string());
+///
+/// // Audio part
+/// let audio_part = Part::input_audio("base64_audio_data".to_string(), "wav".to_string());
+/// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Part {
+    /// Text content part
     Text { text: String },
+    /// Image URL part with optional detail level
     ImageUrl { image_url: ImageUrl },
+    /// File part with filename and content data
     File { file: File },
+
+    /// Audio input part with base64-encoded data and format
+    InputAudio { input_audio: InputAudio },
 }
 
 impl Part {
+    /// Creates a new text part.
+    ///
+    /// # Arguments
+    ///
+    /// * `string` - The text content
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use orpheus::prelude::*;
+    ///
+    /// let part = Part::text("Hello, world!".to_string());
+    /// ```
     pub fn text(string: String) -> Self {
         Self::Text { text: string }
     }
 
+    /// Creates a new image URL part with optional detail level.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL of the image
+    /// * `detail` - Optional detail level for processing:
+    ///   - `None` - Default resolution
+    ///   - `Some("low")` - Lower resolution, faster processing
+    ///   - `Some("high")` - Higher resolution, more detailed analysis
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use orpheus::prelude::*;
+    ///
+    /// // Default detail
+    /// let image = Part::image_url("https://example.com/photo.jpg".to_string(), None);
+    ///
+    /// // High detail for text reading
+    /// let detailed = Part::image_url(
+    ///     "https://example.com/document.png".to_string(),
+    ///     Some("high".to_string())
+    /// );
+    /// ```
     pub fn image_url(url: String, detail: Option<String>) -> Self {
         Self::ImageUrl {
             image_url: ImageUrl { url, detail },
         }
     }
 
+    /// Creates a new file part with filename and content data.
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The name of the file (used for context)
+    /// * `data` - The content of the file as a string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use orpheus::prelude::*;
+    ///
+    /// // CSV data
+    /// let csv = Part::file("data.csv".to_string(), "name,age\nAlice,25\nBob,30".to_string());
+    ///
+    /// // JSON data
+    /// let json = Part::file("config.json".to_string(), r#"{"key": "value"}"#.to_string());
+    ///
+    /// // PDF content (as extracted text)
+    /// let pdf = Part::file("report.pdf".to_string(), "PDF content here...".to_string());
+    /// ```
     pub fn file(filename: String, data: String) -> Self {
         Self::File {
             file: File {
                 filename,
                 file_data: data,
             },
+        }
+    }
+
+    /// Creates a new audio input part with base64-encoded data and format.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - Base64-encoded audio data
+    /// * `format` - Audio format (e.g., "wav", "mp3", "m4a", "flac", "webm")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use orpheus::prelude::*;
+    ///
+    /// // WAV audio input
+    /// let wav_audio = Part::input_audio(
+    ///     "UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwgBFyS0fHOeCkGLIHN89qMOQ==".to_string(),
+    ///     "wav".to_string()
+    /// );
+    ///
+    /// // MP3 audio input
+    /// let mp3_audio = Part::input_audio(
+    ///     "base64_encoded_mp3_data".to_string(),
+    ///     "mp3".to_string()
+    /// );
+    /// ```
+    pub fn input_audio(data: String, format: String) -> Self {
+        Self::InputAudio {
+            input_audio: InputAudio { data, format },
         }
     }
 }
@@ -124,6 +347,9 @@ impl std::fmt::Display for Part {
             Part::Text { text } => write!(f, "{}", text),
             Part::ImageUrl { image_url } => write!(f, "{}", format!("[Url: {}]", image_url.url)),
             Part::File { file } => write!(f, "{}", format!("[File: {}]", file.filename)),
+            Part::InputAudio { input_audio } => {
+                write!(f, "{}", format!("[Audio: {}]", input_audio.format))
+            }
         }
     }
 }
