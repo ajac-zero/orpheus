@@ -30,6 +30,9 @@ pub enum ConfigError {
 
     #[error("String {0} did not parse as valid URL")]
     InvalidUrl(#[from] url::ParseError),
+
+    #[error("Invalid parsing engine: {0}")]
+    InvalidParsingEngine(String),
 }
 
 impl OrpheusError {
@@ -39,6 +42,10 @@ impl OrpheusError {
 
     pub fn invalid_url(error: url::ParseError) -> Self {
         OrpheusError::Config(ConfigError::InvalidUrl(error))
+    }
+
+    pub fn invalid_parsing_engine(engine: String) -> Self {
+        OrpheusError::Config(ConfigError::InvalidParsingEngine(engine))
     }
 }
 

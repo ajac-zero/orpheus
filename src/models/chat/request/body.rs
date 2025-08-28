@@ -121,6 +121,7 @@ pub struct ChatRequest<M: Mode> {
     #[builder(into)]
     pub tools: Option<Tools>,
 
+    #[builder(into)]
     pub plugins: Option<Vec<Plugin>>,
 
     /// Whether to include usage information in the response
