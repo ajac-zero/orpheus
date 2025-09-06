@@ -6,10 +6,12 @@ description: Learn how to define your tools with Orpheus
 
 Most providers expect tools to be defined using JSON Schema. While this allows for flexibility, it is prone to errors and requires you to remember the specific schema that is expected for a tool definition.
 
-To combat this, Orpheus has full, type-safe support for tool calling in chat requests via the `Tool` and `Param` objects. These objects are then transformed into valid JSON Schema under the hood.
+To improve this, Orpheus has full, type-safe support for tool definitions via the `Tool` and `Param` objects. These objects are then transformed into a valid JSON Schema under the hood.
 
-Say you previously had a Tool definition like this, in JSON Schema.
+Check out this example of a basic tool definition in JSON and the equivalent with Orpheus:
 
+{% tabs %}
+{% tab title="JSON" %}
 ```json
 {
     "type": "function",
@@ -29,9 +31,9 @@ Say you previously had a Tool definition like this, in JSON Schema.
     }
 }
 ```
+{% endtab %}
 
-Lots of room to mistype a key or forget a comma, so let's use the Tool builder instead. The equivalent with Orpheus would be this.
-
+{% tab title="Rust" %}
 ```rust
 Tool::function("get_weather")
     .description("Get current temperature for provided coordinates.")
@@ -43,11 +45,15 @@ Tool::function("get_weather")
     })
     .build()
 ```
+{% endtab %}
+{% endtabs %}
 
-As you can see, each Param also implements the builder pattern, so you can specify any nested fields.
+Each Param also implements the builder pattern, so you can specify any nested fields.
 
 Let's look at more examples, like this one that uses the enum key to limit the response to a set of values.
 
+{% tabs %}
+{% tab title="JSON" %}
 ```json
 {
   "type": "function",
@@ -72,7 +78,9 @@ Let's look at more examples, like this one that uses the enum key to limit the r
   }
 }
 ```
+{% endtab %}
 
+{% tab title="Rust" %}
 ```rust
 Tool::function("get_weather")
     .description("Retrieve current weather for the given location.")
@@ -92,9 +100,13 @@ Tool::function("get_weather")
     })
     .build()
 ```
+{% endtab %}
+{% endtabs %}
 
 This is a more complex example that uses array and object parameters.
 
+{% tabs %}
+{% tab title="JSON" %}
 ```json
 {
   "type": "function",
@@ -132,7 +144,9 @@ This is a more complex example that uses array and object parameters.
   }
 }
 ```
+{% endtab %}
 
+{% tab title="Rust" %}
 ```rust
 Tool::function("get_weather")
     .description("Retrieve current weather for a set of given locations.")
@@ -162,6 +176,8 @@ Tool::function("get_weather")
     })
     .build()
 ```
+{% endtab %}
+{% endtabs %}
 
 If you have a Tool definition that is not supported by the current Tool builder, please submit an issue! The Tool builder aims to have complete support for all possible tool definitions (Though a word of warning, the more complex a tool is, the worse models will be at using it).
 

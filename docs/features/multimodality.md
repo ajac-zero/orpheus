@@ -8,196 +8,153 @@ Orpheus supports multimodal inputs, allowing you to include images, files, and a
 
 ## Basic Usage
 
-Add images and files to messages using the builder methods:
+### Image Input
 
-```orpheus/docs/features/multimodality.md#L10-20
+OpenRouter supports both **direct URLs** and **base64-encoded data** for images:
+
+* **URLs**: More efficient for publicly accessible images as they don’t require local encoding
+* **Base64**: Required for local files or private images that aren’t publicly accessible
+
+Supported image content types are: `png`, `jpeg`, `webp`, `gif`.
+
+{% code title="image_input.rs" %}
+```rust
 use orpheus::prelude::*;
 
 fn main() -> anyhow::Result<()> {
     let client = Orpheus::from_env()?;
 
+    let image_url = "https://misanimales.com/wp-content/uploads/2022/03/Shih-Poo-Shih-Tzu-1024x680-1-768x510.jpg";
+
+    let message = Message::user("Describe this image").with_image(image_url);
+
+    let response = client.chat(message).model("openai/gpt-4o").send()?;
+
+    println!("{}", response.content()?);
+    Ok(())
+}
+```
+{% endcode %}
+
+```
+The image features a small dog with a fluffy coat, primarily white with brown markings. The dog's fur is particularly fluffy around its face, and it has a cute, expressive face with dark eyes. The background appears to be an indoor setting, possibly a living room, with furniture visible but out of focus.
+```
+
+The None argument in `with_image` states the&#x20;
+
+### File Input
+
+Attach files with a filename and content data.
+
+OpenRouter supports both **direct URLs** and **base64-encoded data** for files:
+
+* **URLs**: More efficient for publicly accessible files as they don’t require local encoding
+* **Base64**: Required for local or private files that aren’t publicly accessible
+
+Supported image content types are: `pdf`.
+
+{% code title="file_input.rs" %}
+```rust
+use orpheus::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let client = Orpheus::from_env()?;
+
+    let pdf_url = "https://bitcoin.org/bitcoin.pdf";
+
+    let message = Message::user("What are the main points in this document?")
+        .with_file("bitcoin.pdf", pdf_url);
+
+    let response = client.chat(message).model("openai/gpt-4o").send()?;
+
+    println!("{}", response.content()?);
+    Ok(())
+}
+```
+{% endcode %}
+
+```
+The document outlines a peer-to-peer electronic cash system called Bitcoin. Here are the main points:
+
+1. **Introduction**:
+   - Proposes an electronic payment system that allows transactions directly between parties without a trusted third party.
+   - Digital signatures are used to prevent double-spending, relying on a peer-to-peer network.
+
+2. **Transactions**:
+   - Describes how electronic coins are transferred and verified using digital signatures.
+   - Eliminates the need for a central authority by making all transactions public, with the longest chain of transactions being the most trusted.
+
+3. **Timestamp Server**:
+   - Uses a distributed system to prevent double-spending through a timestamp server that hashes transactions into a chain.
+
+4. **Proof-of-Work**:
+   - Introduces proof-of-work to secure the network, ensuring that the longest chain is the valid one. Attacks are prevented as long as a majority of CPU power is honest.
+
+5. **Network**:
+   - Describes the steps to run the network, emphasizing broadcasting transactions and the creation of blocks.
+
+6. **Incentive**:
+   - Incentivizes nodes by rewarding them with new coins or transaction fees for supporting the network.
+
+7. **Reclaiming Disk Space**:
+   - Utilizes Merkle Trees to save disk space by allowing old transaction data to be discarded.
+
+8. **Simplified Payment Verification**:
+   - Allows users to verify transactions without running a full network node by maintaining a copy of the longest chain's block headers.
+
+9. **Combining and Splitting Value**:
+   - Explains how transactions can handle multiple inputs and outputs, facilitating the transfer of varied values.
+
+10. **Privacy**:
+    - Maintains privacy by keeping public keys anonymous and using a new key pair for each transaction.
+
+11. **Calculations**:
+    - Analyzes the probability of an attacker's success in altering the transaction chain, diminishing as more blocks are added.
+
+12. **Conclusion**:
+    - The system is proposed as a new method for electronic transactions without trust, relying on consensus and proof-of-work to maintain security and integrity.
+
+This system outlines the foundation of what would become Bitcoin, focusing on security, decentralization, and privacy.
+```
+
+### Audio Input
+
+Include audio content with base64-encoded data and format specification. You can search for models that support audio [here](https://openrouter.ai/models?fmt=cards\&input_modalities=audio).
+
+Supported image content types are: `wav`, `mp3`.
+
+> **Note**: Audio files must be **base64-encoded** - direct URLs are not supported for audio content.
+
+{% code title="audio_input.rs" %}
+```rust
+use base64::prelude::*;
+use orpheus::prelude::*;
+
+fn main() -> anyhow::Result<()> {
+    let client = Orpheus::from_env()?;
+
+    // Read audio file from disk
+    let audio_path = "audio_sample.wav"; // Change this to your audio file path
+    let audio_bytes = std::fs::read(audio_path)?;
+    let audio_data = BASE64_STANDARD.encode(&audio_bytes);
+
+    // Determine file extension from path
+    let extension = audio_path.split('.').last().unwrap_or("wav");
+
+    let message =
+        Message::user("What do you hear in this audio?").with_audio(audio_data, extension);
+
     let response = client
-        .chat("What do you see in this image?")
-        .model("openai/gpt-4o")
-        .message(
-            Message::user("Describe this image")
-                .with_image("https://example.com/image.jpg", None)
-        )
+        .chat(message)
+        .model("google/gemini-2.5-flash-lite")
         .send()?;
 
     println!("{}", response.content()?);
     Ok(())
 }
 ```
+{% endcode %}
 
-## Image Input
-
-Include images in messages by URL with optional detail level:
-
-```orpheus/docs/features/multimodality.md#L24-35
-use orpheus::prelude::*;
-
-fn main() -> anyhow::Result<()> {
-    let client = Orpheus::from_env()?;
-
-    // High detail image analysis
-    let message = Message::user("Analyze this chart")
-        .with_image("https://example.com/chart.png", Some("high".to_string()));
-
-    let response = client
-        .chat("Please analyze the data shown")
-        .model("anthropic/claude-3-5-sonnet-20241022")
-        .message(message)
-        .send()?;
-
-    Ok(())
-}
 ```
-
-## File Input
-
-Attach files with filename and content data:
-
-```orpheus/docs/features/multimodality.md#L41-52
-use orpheus::prelude::*;
-
-fn main() -> anyhow::Result<()> {
-    let client = Orpheus::from_env()?;
-
-    let csv_data = "name,age\nJohn,25\nJane,30";
-    let message = Message::user("Analyze this CSV data")
-        .with_file("data.csv", csv_data);
-
-    let response = client
-        .chat("What insights can you provide?")
-        .model("openai/gpt-4o")
-        .message(message)
-        .send()?;
-
-    Ok(())
-}
+The audio contains a repeating beep sound.
 ```
-
-## Audio Input
-
-Include audio content with base64-encoded data and format specification:
-
-```orpheus/docs/features/multimodality.md#L58-69
-use orpheus::prelude::*;
-
-fn main() -> anyhow::Result<()> {
-    let client = Orpheus::from_env()?;
-
-    let audio_data = "UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAA==";
-    let message = Message::user("What do you hear in this audio?")
-        .with_audio(audio_data, "wav");
-
-    let response = client
-        .chat("Please analyze the audio content")
-        .model("openai/gpt-4o-audio-preview")
-        .message(message)
-        .send()?;
-
-    Ok(())
-}
-```
-
-## Multiple Attachments
-
-Combine multiple images, files, and audio in a single message:
-
-```orpheus/docs/features/multimodality.md#L76-92
-use orpheus::prelude::*;
-
-fn main() -> anyhow::Result<()> {
-    let client = Orpheus::from_env()?;
-
-    let message = Message::user("Analyze this multimedia content")
-        .with_file("report.pdf", "PDF content here")
-        .with_image("https://example.com/chart1.png", Some("high".to_string()))
-        .with_audio("base64_audio_data", "mp3")
-        .with_image("https://example.com/chart2.png", Some("low".to_string()))
-        .with_file("summary.txt", "Executive summary text");
-
-    let response = client
-        .chat("Please provide a comprehensive analysis")
-        .model("anthropic/claude-3-5-sonnet-20241022")
-        .message(message)
-        .send()?;
-
-    Ok(())
-}
-```
-
-## Direct Content Construction
-
-Create multimodal content using the `Content` and `Part` types:
-
-```orpheus/docs/features/multimodality.md#L98-117
-use orpheus::prelude::*;
-
-fn main() -> anyhow::Result<()> {
-    let client = Orpheus::from_env()?;
-
-    let content = Content::simple("Please review these items:")
-        .add_part(Part::image_url("https://example.com/photo.jpg".to_string(), None))
-        .add_part(Part::file("document.pdf".to_string(), "PDF data".to_string()))
-        .add_part(Part::input_audio("base64_audio_data".to_string(), "wav".to_string()));
-
-    let message = Message::new(Role::User, content);
-
-    let response = client
-        .chat("Analysis request")
-        .model("openai/gpt-4o")
-        .message(message)
-        .send()?;
-
-    Ok(())
-}
-```
-
-## Configuration Options
-
-### Image Detail Levels
-
-| Detail Level | Description | Use Case |
-|-------------|-------------|----------|
-| `None` | Default resolution | General image understanding |
-| `Some("low")` | Lower resolution, faster | Quick image identification |
-| `Some("high")` | Higher resolution, detailed | Detailed analysis, text reading |
-
-### Audio Formats
-
-Supported audio formats for input (data must be base64-encoded):
-
-| Format | Extension | Use Case |
-|--------|-----------|----------|
-| `"wav"` | .wav | Uncompressed audio, high quality |
-| `"mp3"` | .mp3 | Compressed audio, speech recognition |
-| `"m4a"` | .m4a | Apple audio format |
-| `"flac"` | .flac | Lossless compression, music analysis |
-| `"webm"` | .webm | Web audio format |
-
-### File Types
-
-The file input accepts any filename and content as strings. Common use cases include:
-
-- **PDFs**: Pass PDF content as string data
-- **Text files**: CSV, JSON, XML, plain text
-- **Code files**: Source code for analysis
-- **Data files**: Structured data in various formats
-
-### Content Structure
-
-Messages can contain:
-- **Simple content**: Plain text string
-- **Complex content**: Mix of text, images, files, and audio as `Part` objects
-
-The content automatically converts between simple and complex forms as you add multimodal elements.
-
-### Audio Processing Requirements
-
-- **Encoding**: Audio data must be base64-encoded
-- **Format**: Specify the correct audio format string
-- **Model Support**: Use audio-capable models (e.g., "openai/gpt-4o-audio-preview")
-- **Size Limits**: Check provider-specific audio file size limitations

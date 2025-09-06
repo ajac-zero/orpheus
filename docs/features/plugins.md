@@ -12,6 +12,7 @@ Plugins extend language model capabilities by integrating external data sources 
 
 Enables models to search the internet for current information.
 
+{% code title="use_web_plugin.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -21,13 +22,14 @@ fn main() -> anyhow::Result<()> {
     let response = client
         .chat("What are the latest developments in renewable energy?")
         .model("google/gemini-2.0-flash-001")
-        .plugins(Plugin::web().build())
+        .plugins(Plugin::web())
         .send()?;
 
     println!("{}", response.content()?);
     Ok(())
 }
 ```
+{% endcode %}
 
 #### Configuration Options
 
@@ -38,15 +40,16 @@ let web_plugin = Plugin::web()
     .build();
 ```
 
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| `max_results` | `Option<i32>` | Maximum number of search results | Provider default |
-| `search_prompt` | `Option<String>` | Custom search query | Auto-generated from message |
+| Parameter       | Type             | Description                      | Default                     |
+| --------------- | ---------------- | -------------------------------- | --------------------------- |
+| `max_results`   | `Option<i32>`    | Maximum number of search results | Provider default            |
+| `search_prompt` | `Option<String>` | Custom search query              | Auto-generated from message |
 
 ### File Parser Plugin
 
 Processes PDF documents using different parsing engines.
 
+{% code title="use_file_parser_plugin.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -56,13 +59,14 @@ fn main() -> anyhow::Result<()> {
     let response = client
         .chat("Analyze the uploaded document.")
         .model("openai/gpt-4o")
-        .plugins(Plugin::file_parser().build())
+        .plugins(Plugin::file_parser())
         .send()?;
 
     println!("{}", response.content()?);
     Ok(())
 }
 ```
+{% endcode %}
 
 #### Parsing Engines
 
@@ -81,11 +85,11 @@ Plugin::file_parser()
     .build()
 ```
 
-| Engine | String Value | Description |
-|--------|--------------|-------------|
-| `PdfText` | `"pdf-text"` | Extract text directly from PDF |
+| Engine       | String Value    | Description                                    |
+| ------------ | --------------- | ---------------------------------------------- |
+| `PdfText`    | `"pdf-text"`    | Extract text directly from PDF                 |
 | `MistralOcr` | `"mistral-ocr"` | OCR processing for scanned documents (default) |
-| `Native` | `"native"` | Provider-specific parsing |
+| `Native`     | `"native"`      | Provider-specific parsing                      |
 
 ## Multiple Plugins
 

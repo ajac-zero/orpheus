@@ -21,7 +21,7 @@ Say you are using GPT-4o with Azure as your provider, you'll find that Azure ret
 
 To get around this limitation, you can set a fallback model with a more lenient filter, such as Grok 4, to take over the request and respond with a proper refusal in case of failure.
 
-<pre class="language-rust"><code class="lang-rust">use orpheus::prelude::*;
+<pre class="language-rust" data-title="fallback_model.rs"><code class="lang-rust">use orpheus::prelude::*;
 
 fn main() {
     let client = Orpheus::new("Your-API-Key");
@@ -40,8 +40,6 @@ fn main() {
 <strong>    println!("Response: {}", &#x26;res.content().unwrap());
 </strong>}
 </code></pre>
-
-Output:
 
 ```
 Model that responded: x-ai/grok-4

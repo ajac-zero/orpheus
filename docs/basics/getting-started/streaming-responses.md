@@ -2,8 +2,9 @@
 
 In AI apps, it is common to stream the response to reduce the perceived latency of the program. Let's see how we can use response streaming with Orpheus.
 
-#### Streaming Response Example
+> Note: You'll have to run it yourself to see the stream effect
 
+{% code title="stream_response.rs" %}
 ```rust
 use std::io::Write;
 
@@ -48,12 +49,11 @@ fn main() {
     }
 }
 ```
+{% endcode %}
 
+```bash
+User:
+hi
+Assistant:
+Hello! How can I assist you today?
 ```
->> User:
->> hi
->> Assistant:
->> Hello! How can I assist you today?
-```
-
-Note: You'll have to run it yourself to see the stream effect

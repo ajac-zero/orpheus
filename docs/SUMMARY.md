@@ -5,7 +5,6 @@
 ## Basics
 
 * [Getting Started](basics/getting-started/README.md)
-  * [Using message history](basics/getting-started/using-message-history.md)
   * [Streaming responses](basics/getting-started/streaming-responses.md)
 * [Switching Models](basics/switching-models/README.md)
   * [Model Routers](basics/switching-models/model-routers.md)

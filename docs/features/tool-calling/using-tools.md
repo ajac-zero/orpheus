@@ -1,13 +1,8 @@
 # Using Tools
 
+Once you have your tool(s), using them only requires that you pass them to your chat request builder via the `tools` method.
 
-
-> Note: To run this example you'll need to add these crates:
->
-> * `cargo add reqwest -F blocking`
-> * `cargo add serde`
-> * `cargo add serde_json`
-> * `cargo add orpheus -F anyhow`
+If any tools are passed, the model _might_ return one or more tool calls, if needed. You can check if the model made any tool calls with the `tool_calls` method on the response object, which returns an option of `Vec<ToolCall>` . The similar `tool_call` method is for convenience and grabs the first tool call in the vector, if any. This is because most use cases involve one tool call at a time.
 
 ```rust
 use orpheus::prelude::*;
@@ -102,10 +97,7 @@ fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
 ```
-
-Output:
 
 ```
 Prompt: How's the weather in New York?

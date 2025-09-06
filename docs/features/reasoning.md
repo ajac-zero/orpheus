@@ -12,6 +12,7 @@ Orpheus has built-in support for reasoning models by configuring the level of re
 
 You can use the `Effort` enum to set the reasoning according to this [guide](https://openrouter.ai/docs/use-cases/reasoning-tokens#reasoning-effort-level).
 
+{% code title="set_reasoning_effort.rs" %}
 ```rust
 let response = client
     .chat("Are zebras black with white stripes, or white with black stripes?")
@@ -19,11 +20,13 @@ let response = client
     .with_reasoning(|reasoning| reasoning.effort(Effort::Low))
     .send()?;
 ```
+{% endcode %}
 
 ### Setting a Reasoning Budget
 
 You can use the `max_tokens` method to set the reasoning according to this [guide](https://openrouter.ai/docs/use-cases/reasoning-tokens#max-tokens-for-reasoning).
 
+{% code title="set_reasoning_budget.rs" %}
 ```rust
 let response = client
     .chat("Are zebras black with white stripes, or white with black stripes?")
@@ -31,3 +34,4 @@ let response = client
     .with_reasoning(|reasoning| reasoning.max_tokens(100))
     .send()?;
 ```
+{% endcode %}

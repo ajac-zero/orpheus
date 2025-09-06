@@ -7,17 +7,19 @@ Regardless, quantization can be a very useful tool if your use case allows it.
 You can select allowed levels of quantization for models with the `quantization` parameter in the preferences object, which accepts an iterable of `Quantization` objects.
 
 The valid quantization variants are as follows:
-- int4: Integer (4 bit)
-- int8: Integer (8 bit)
-- fp4: Floating point (4 bit)
-- fp6: Floating point (6 bit)
-- fp8: Floating point (8 bit)
-- fp16: Floating point (16 bit)
-- bf16: Brain floating point (16 bit)
-- fp32: Floating point (32 bit)
+
+* int4: Integer (4 bit)
+* int8: Integer (8 bit)
+* fp4: Floating point (4 bit)
+* fp6: Floating point (6 bit)
+* fp8: Floating point (8 bit)
+* fp16: Floating point (16 bit)
+* bf16: Brain floating point (16 bit)
+* fp32: Floating point (32 bit)
 
 If no provider is offering the requested model at the select quantization level, an error will be returned.
 
+{% code title="set_quantization.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -34,3 +36,4 @@ fn main() {
     println!("Model says: {}", res.content().unwrap());
 }
 ```
+{% endcode %}

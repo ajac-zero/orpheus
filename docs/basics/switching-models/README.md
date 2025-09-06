@@ -10,38 +10,35 @@ You can head over to the [Models](https://openrouter.ai/models) page to check ou
 
 <figure><img src="../../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
 
-#### Multiple Models Example
-
-{% code overflow="wrap" fullWidth="false" %}
+{% code title="multiple_models.rs" fullWidth="false" %}
 ```rust
 use orpheus::prelude::*;
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let client = Orpheus::new("Your-API-Key");
 
-    let prompt = "Who are you";
+    let prompt = "Who are you?";
 
-    let claude = "anthropic/claude-3.5-haiku";
-    let res = client.chat(prompt).model(claude).send().unwrap();
-    println!("Claude: {}\n", res.content().unwrap());
+    let models = [
+        "anthropic/claude-3.5-haiku".to_string(),
+        "openai/chatgpt-4o-latest".into(),
+        "moonshotai/kimi-k2".into(),
+    ];
 
-    let chatgpt = "openai/chatgpt-4o-latest";
-    let res = client.chat(prompt).model(chatgpt).send().unwrap();
-    println!("ChatGPT: {}\n", res.content().unwrap());
+    for model in models.into_iter() {
+        let res = client.chat(prompt).model(&model).send()?;
+        println!("{}: {}\n", model, res.content()?);
+    }
 
-    let kimi = "moonshotai/kimi-k2";
-    let res = client.chat(prompt).model(kimi).send().unwrap();
-    println!("Kimi: {}\n", res.content().unwrap());
+    Ok(())
 }
 ```
 {% endcode %}
 
-Output:
-
 ```
-Claude: I'm Claude, an AI created by Anthropic. I aim to be helpful, honest, and harmless. I won't pretend to be human, and I'm always direct about being an AI. I'm happy to help you with tasks or conversation while being clear about my capabilities and limitations.
+anthropic/claude-3.5-haiku: I'm Claude, an AI created by Anthropic. I aim to be helpful, honest, and harmless while having substantive conversations. I won't pretend to be human or claim capabilities I don't have. I'm happy to chat, help with tasks, or provide information to the best of my knowledge and abilities.
 
-ChatGPT: I'm ChatGPT, a large language model developed by OpenAI. I'm here to help answer your questions, provide information, brainstorm ideas, and assist with a wide range of tasks—from writing and researching to problem-solving and having conversations. If you’re curious about something or need help, just ask! 😊
+openai/chatgpt-4o-latest: I'm ChatGPT, an AI language model created by OpenAI. I'm here to help answer your questions, provide information, explore ideas, and assist with a wide range of topics—from writing and learning to coding and conversation. How can I assist you today?
 
-Kimi: I'm Kimi, your AI assistant from Moonshot AI. How can I help you today?
+moonshotai/kimi-k2: I'm Kimi, your AI assistant from Moonshot AI. How can I help you today?
 ```

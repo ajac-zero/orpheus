@@ -32,17 +32,13 @@ Model says: Hello there! It's great to meet you. How can I assist you today?
 
 ## Objective
 
-Here are a few points that make the **Orpheus** library special:
+Orpheus aims to be three things:
 
-* **Ergonomic:** Ease of use is a top priority. Orpheus keeps the learning curve low and the amount of interfaces to remember to a minimum.
-* **OpenAI-Compatible:** By following the chat completion standard, Orpheus ensures compatibility with any service that offers an OpenAI-Compatible endpoint.
-* **Full Feature Support:** Orpheus aims to stay up to date with the latest capabilities offered by providers. Whether it be tool calling, reasoning, multimodality, or something new.
-* **Not a framework:** Avoids opaque abstractions by staying as close as possible to the underlying API while providing a clearer, more comfortable interface.
-* **Ecosystem Integrations:** Out-of-the-box support for emerging standards such as MCP, A2A, and Generative UI.
+* **Ergonomic:** Ease of use is a top priority. We keep the learning curve low and the amount of interfaces to remember to a minimum.
+* **Fully Featured:** Stay up to date with the latest capabilities offered by providers. This includes tool calling, reasoning, multimodality, or something entirely new.
+* **Not a framework:** Avoid opaque abstractions 4 staying as close as possible to the underlying API while providing a clearer, more comfortable interface.
 
 ## Key Features
-
-Orpheus is a library made to make it as ergonomic as possible to create AI apps with OpenRouter, allowing immediate access to hundreds of models and dozens of providers you can mix and match to best suit your use case.
 
 Orpheus also comes with out-of-the-box support for:
 
@@ -51,10 +47,10 @@ Orpheus also comes with out-of-the-box support for:
 * Images and PDF
 * [Model Fallbacks](basics/fallback-models.md)
 * [Web Search](features/plugins.md)
-* [Tool Calling](features/tool-calling/README.md)
+* [Tool Calling](features/tool-calling/)
 * MCP Client
 * [Structured Outputs](features/structured-output.md)
-* [Provider Selection](basics/configuring-providers/README.md)
+* [Provider Selection](basics/configuring-providers/)
 * Prompt Caching
 * Message Transforms
 * API Key Provisioning

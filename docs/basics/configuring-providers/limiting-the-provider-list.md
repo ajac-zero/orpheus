@@ -4,8 +4,9 @@ You can use the `only` and `ignore` parameters to define the providers that you 
 
 These parameters accept an iterable of `Provider` objects.
 
-This opens up some interesing posibilities. For example, let's use Kimi K2 only through Groq for lighting-fast inference.
+This opens up some interesting possibilities. For example, let's use Kimi K2 only through Groq for lighting-fast inference.
 
+{% code title="limit_providers.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -23,6 +24,7 @@ fn main() {
     println!("Response: {}", res.content().unwrap());
 }
 ```
+{% endcode %}
 
 ```
 Provider: Groq

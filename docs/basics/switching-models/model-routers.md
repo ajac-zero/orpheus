@@ -7,6 +7,7 @@ There is a set of special model IDs that, instead of calling a model directly, a
 
 These model routers will automatically call the best model for the request. You can check the model that was chosen by the model router in the `model` field of the response object.
 
+{% code title="model_router.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -22,8 +23,7 @@ fn main() {
     println!("Response: {}", res.content().unwrap());
 }
 ```
-
-Output:
+{% endcode %}
 
 ```
 Model picked: openai/chatgpt-4o-latest

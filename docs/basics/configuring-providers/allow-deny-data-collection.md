@@ -1,8 +1,8 @@
 # Allow/Deny data collection
 
-If data privacy is a concern, you can disable all providers that collect/train on your data.
-You just have to set the `data_collection` parameter in preferences to false.
+If data privacy is a concern, you can disable all providers that collect/train on your data. You just have to set the `data_collection` parameter in preferences to false.
 
+{% code title="disable_data_collection.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -20,8 +20,7 @@ fn main() {
     println!("Model says: {}", res.content().unwrap());
 }
 ```
-
-Output:
+{% endcode %}
 
 ```
 Provider used: BaseTen

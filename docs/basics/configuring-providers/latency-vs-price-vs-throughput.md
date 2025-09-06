@@ -6,8 +6,7 @@ You can explicitly prioritize a specific attribute to disable load-balancing and
 2. `Price` sorts providers by the lowest price
 3. `Throughput` sorts providers by the highest throughput
 
-#### Example
-
+{% code title="set_priority.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -32,8 +31,7 @@ fn main() {
     }
 }
 ```
-
-Output:
+{% endcode %}
 
 ```bash
 Provider picked with priority 'Latency': DeepInfra

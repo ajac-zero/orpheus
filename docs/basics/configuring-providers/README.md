@@ -58,5 +58,3 @@ let res = client
     .send()
     .unwrap();
 ```
-
-This is the preferred way of settings your preferences and what will be used for examples going forward.

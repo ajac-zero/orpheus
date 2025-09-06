@@ -11,6 +11,7 @@ Orpheus supports tool calling via the `Tool` object builder, which you can then 
 
 The response will then, if the model decides to use a tool, hold a vector of `ToolCall` objects that we can then use within our code.&#x20;
 
+{% code title="empty_tool.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -37,8 +38,7 @@ fn main() {
     }
 }
 ```
-
-Output:
+{% endcode %}
 
 ```
 Tool call: Function { id: "call_dTmBXTw3BXhIbCL5r2dVvnnU", function: Function { name: "my_tool", arguments: "{}" } }

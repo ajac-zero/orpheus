@@ -8,10 +8,9 @@ Calling LLMs takes a long time, and it is largely an IO-bound task, which means 
 
 Because of this, you will probably want to take advantage of `async` code so your app can work while waiting on the LLM.
 
-Of course, Orpheus has native async support with [tokio](https://tokio.rs/). The code remains largely the same as above, except you will want to use the alternative async client and await your requests.
+Orpheus has native async support with [tokio](https://tokio.rs/). The code remains exactly the same, except you will want to use the alternative async client and await your requests.
 
-> Note: This example needs the tokio runtime. Install it with`cargo add tokio -F full`.
-
+{% code title="async_client.rs" %}
 ```rust
 use orpheus::prelude::*;
 
@@ -29,8 +28,7 @@ async fn main() {
     println!("{}", res.content().unwrap());
 }
 ```
-
-Output:
+{% endcode %}
 
 ```
 Predicting the outcome of a hypothetical fist fight between Albert Einstein and J. Robert Oppenheimer is highly speculative and not particularly meaningful, as both individuals were renowned for their intellectual contributions rather than physical prowess. Einstein is famous for his theories of relativity, while Oppenheimer is best known for his role in the development of the atomic bomb during the Manhattan Project.
@@ -40,8 +38,7 @@ Predicting the outcome of a hypothetical fist fight between Albert Einstein and 
 
 This alternative client also supports streaming responses by implementing the `Stream` extension trait from `futures_lite` for the response object.
 
-> Note: This example needs the tokio runtime and futures\_lite. Install them with`cargo add tokio -F full` and `cargo add futures-lite`.
-
+{% code title="async_streaming.rs" %}
 ```rust
 use std::io::Write;
 
@@ -66,10 +63,8 @@ async fn main() {
         std::io::stdout().flush().unwrap();
     }
 }
-
 ```
-
-Output:
+{% endcode %}
 
 ```
 In a hypothetical scenario where Albert Einstein and J. Robert Oppenheimer were to engage in a fistfight, it's difficult to predict the outcome as neither were known for physical prowess but rather for their intellectual contributions to science. Both were theoretical physicists who made groundbreaking contributions in their fields—Einstein with his theory of relativity and Oppenheimer as a leading figure in the development of the atomic bomb.
