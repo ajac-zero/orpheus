@@ -73,7 +73,7 @@ mod tests {
             .chat(
             [
                 Message::system("You are a photography connoseur."),
-                Message::user("What do you think of this image?").with_image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg", None),
+                Message::user("What do you think of this image?").with_image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"),
             ])
             .model("openai/gpt-4o")
             .send();

@@ -226,8 +226,8 @@ impl Message {
     ///     .with_image("https://example.com/before.jpg", None)
     ///     .with_image("https://example.com/after.jpg", None);
     /// ```
-    pub fn with_image(mut self, url: impl Into<String>, detail: Option<String>) -> Self {
-        let image_part = Part::image_url(url.into(), detail);
+    pub fn with_image(mut self, url: impl Into<String>) -> Self {
+        let image_part = Part::image_url(url.into(), None);
         self.content = self.content.add_part(image_part);
         self
     }
