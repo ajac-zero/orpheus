@@ -25,20 +25,6 @@ Add Orpheus to your project with cargo:
 cargo add orpheus
 ```
 
-You can also include some optional features that might be useful to your use case:
-
-**anyhow**: For most applications, using the anyhow crate greatly simplifies error handling.
-
-```bash
-cargo add orpheus -F anyhow
-```
-
-**mcp**: If you require MCP integration in your program, enable this feature which uses the official rmcp package by Anthropic under the hood.
-
-```bash
-cargo add orpheus -F mcp
-```
-
 ## Basic Usage
 
 Let's learn how to use Orpheus with a practical example. Here, we will create a CLI program that allows us to send a chat request to an LLM.
