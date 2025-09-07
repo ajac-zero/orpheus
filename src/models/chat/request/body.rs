@@ -230,6 +230,7 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// use orpheus::prelude::*;
     ///
     /// let client = Orpheus::from_env()?;
@@ -255,6 +256,9 @@ where
     ///     .model("openai/gpt-4o")
     ///     .response_format(format)
     ///     .send()?;
+    ///
+    /// Ok(())
+    /// # }
     /// ```
     pub fn send(mut self) -> Result<ChatCompletion> {
         #[cfg(feature = "otel")]
@@ -295,6 +299,7 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// use orpheus::prelude::*;
     ///
     /// let client = Orpheus::from_env()?;
@@ -304,13 +309,15 @@ where
     ///     .model("openai/gpt-4o")
     ///     .stream()?;
     ///
-    /// let mut buffer = String::new();
     /// while let Some(Ok(chunk)) = stream.next() {
-    ///     if let Some(content) = chunk.content() {
-    ///         buffer.push_str(content);
-    ///         print!("{}", content); // Print as it arrives
+    ///     if let Ok(content) = chunk.content() {
+    ///         let text = content.to_string();
+    ///         print!("{}", text); // Print as it arrives
     ///     }
     /// }
+    ///
+    /// Ok(())
+    /// # }
     /// ```
     pub fn stream(mut self) -> Result<ChatStream> {
         #[cfg(feature = "otel")]
@@ -352,6 +359,7 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// use orpheus::prelude::*;
     ///
     /// let client = AsyncOrpheus::from_env()?;
@@ -372,6 +380,9 @@ where
     ///     .response_format(format)
     ///     .send()
     ///     .await?;
+    ///
+    /// Ok(())
+    /// # }
     /// ```
     pub async fn send(mut self) -> Result<ChatCompletion> {
         #[cfg(feature = "otel")]
@@ -415,24 +426,26 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// use orpheus::prelude::*;
-    /// use futures::StreamExt;
+    /// use futures_lite::StreamExt;
     ///
     /// let client = AsyncOrpheus::from_env()?;
-    ///
     /// let mut stream = client
     ///     .chat("Explain quantum computing")
     ///     .model("openai/gpt-4o")
     ///     .stream()
     ///     .await?;
     ///
-    /// let mut buffer = String::new();
     /// while let Some(Ok(chunk)) = stream.next().await {
-    ///     if let Some(content) = chunk.content() {
-    ///         buffer.push_str(content);
-    ///         print!("{}", content); // Print as it arrives
+    ///     if let Ok(content) = chunk.content() {
+    ///         let text = content.to_string();
+    ///         print!("{}", text); // Print as it arrives
     ///     }
     /// }
+    ///
+    /// Ok(())
+    /// # }
     /// ```
     pub async fn stream(mut self) -> Result<AsyncStream> {
         #[cfg(feature = "otel")]

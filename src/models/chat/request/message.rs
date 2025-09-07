@@ -14,7 +14,7 @@ use super::content::{Content, Part};
 /// ```
 /// use orpheus::prelude::*;
 ///
-/// let message = Message::user("Hello, world!");
+/// let message = Message::new(Role::User, "Hello!".into());
 /// ```
 ///
 /// Creating a multimodal message with image and file:
@@ -22,7 +22,7 @@ use super::content::{Content, Part};
 /// use orpheus::prelude::*;
 ///
 /// let message = Message::user("Analyze this data")
-///     .with_image("https://example.com/chart.png", Some("high".to_string()))
+///     .with_image("https://example.com/chart.png")
 ///     .with_file("data.csv", "name,value\nA,10\nB,20");
 /// ```
 #[serde_with::skip_serializing_none]
@@ -66,6 +66,7 @@ impl Message {
     ///
     /// ```
     /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::Content;
     ///
     /// let message = Message::new(Role::User, Content::simple("Hello"));
     /// let text_message = Message::new(Role::Assistant, "Response".into());
@@ -119,6 +120,7 @@ impl Message {
     ///
     /// ```
     /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::{Content, Part};
     ///
     /// let simple_message = Message::user("What is the weather like?");
     /// let complex_content = Content::simple("Analyze this").add_part(
@@ -152,7 +154,7 @@ impl Message {
     /// ```
     /// use orpheus::prelude::*;
     ///
-    /// let response = Message::assistant("The weather is sunny today.");
+    /// let message = Message::user("Hello, world!");
     /// ```
     pub fn assistant(content: impl Into<Content>) -> Self {
         Self {
@@ -202,29 +204,20 @@ impl Message {
     ///
     /// # Arguments
     ///
-    /// * `url` - The URL of the image to include
-    /// * `detail` - Optional detail level for image processing:
-    ///   - `None` - Default resolution
-    ///   - `Some("low")` - Lower resolution, faster processing
-    ///   - `Some("high")` - Higher resolution, more detailed analysis
+    /// * `url` - The URL of the image to include (HTTP or Base64)
     ///
     /// # Examples
     ///
     /// ```
     /// use orpheus::prelude::*;
     ///
-    /// // Default detail level
     /// let message = Message::user("What's in this image?")
-    ///     .with_image("https://example.com/photo.jpg", None);
-    ///
-    /// // High detail for text reading
-    /// let detailed_message = Message::user("Read the text in this document")
-    ///     .with_image("https://example.com/document.png", Some("high".to_string()));
+    ///     .with_image("https://example.com/photo.jpg");
     ///
     /// // Multiple images
     /// let comparison = Message::user("Compare these images")
-    ///     .with_image("https://example.com/before.jpg", None)
-    ///     .with_image("https://example.com/after.jpg", None);
+    ///     .with_image("https://example.com/before.jpg")
+    ///     .with_image("https://example.com/after.jpg");
     /// ```
     pub fn with_image(mut self, url: impl Into<String>) -> Self {
         let image_part = Part::image_url(url.into(), None);
@@ -285,10 +278,11 @@ impl Message {
     ///
     /// ```
     /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::Part;
     ///
     /// // WAV audio input
     /// let message = Message::user("What do you hear in this audio?")
-    ///     .with_audio("UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAA==".to_string(), "wav".to_string());
+    ///     .with_audio("base64_encoded_audio_data".to_string(), "wav".to_string());
     ///
     /// // MP3 audio for speech analysis
     /// let speech_message = Message::user("Transcribe this speech")
@@ -301,7 +295,7 @@ impl Message {
     ///
     /// // Combined multimodal content
     /// let multimodal_message = Message::user("Analyze both the image and audio")
-    ///     .with_image("https://example.com/spectrogram.png", None)
+    ///     .with_image("https://example.com/spectrogram.png")
     ///     .with_audio("audio_sample_base64".to_string(), "flac".to_string());
     /// ```
     pub fn with_audio(mut self, data: impl Into<String>, format: impl Into<String>) -> Self {
@@ -463,8 +457,9 @@ pub struct UrlCitation {
 ///
 /// ```
 /// use orpheus::prelude::*;
+/// use orpheus::models::chat::ChatMessages;
 ///
-/// // From a single string
+/// // From string
 /// let messages: ChatMessages = "Hello, world!".into();
 ///
 /// // From a vector of messages
@@ -488,6 +483,7 @@ impl ChatMessages {
     ///
     /// ```
     /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::ChatMessages;
     ///
     /// let messages = ChatMessages::from(vec![
     ///     Message::user("First message"),

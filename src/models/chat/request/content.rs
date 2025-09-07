@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```
-/// use orpheus::prelude::*;
+/// use orpheus::models::chat::{Content, Part};
 ///
 /// // Simple text content
 /// let simple = Content::simple("Hello, world!");
@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 /// // Complex multimodal content
 /// let complex = Content::simple("Analyze this data:")
 ///     .add_part(Part::image_url("https://example.com/chart.png".to_string(), None))
-///     .add_part(Part::file("data.csv".to_string(), "name,value\nA,1\nB,2".to_string()));
+///     .add_part(Part::file("manual.pdf".into(), "[pdf data]".to_string()));
 /// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -70,7 +70,7 @@ impl Content {
     /// # Examples
     ///
     /// ```
-    /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::Content;
     ///
     /// let content = Content::simple("Hello, world!");
     /// let from_string = Content::simple(String::from("Hello"));
@@ -96,13 +96,13 @@ impl Content {
     /// # Examples
     ///
     /// ```
-    /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::{Content, Part};
     ///
-    /// // Adding image to simple content
+    /// // Single part addition
     /// let content = Content::simple("Look at this:")
     ///     .add_part(Part::image_url("https://example.com/image.jpg".to_string(), None));
     ///
-    /// // Chaining multiple parts
+    /// // Multiple parts
     /// let multimodal = Content::simple("Analysis request:")
     ///     .add_part(Part::file("data.csv".to_string(), "csv content".to_string()))
     ///     .add_part(Part::image_url("https://example.com/chart.png".to_string(), Some("high".to_string())));
@@ -176,19 +176,19 @@ pub struct File {
 /// # Examples
 ///
 /// ```
-/// use orpheus::prelude::*;
+/// use orpheus::models::chat::Part;
 ///
-/// // Create audio input from base64 data
-/// let audio = InputAudio {
-///     data: "base64_encoded_audio_data_here".to_string(),
-///     format: "wav".to_string(),
-/// };
+/// // Create audio input through Part
+/// let audio_part = Part::input_audio(
+///     "base64_encoded_audio_data".to_string(),
+///     "wav".to_string()
+/// );
 /// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InputAudio {
     /// Base64-encoded audio data
     data: String, // must be base64 encoded
-    /// Audio format (e.g., "wav", "mp3", "m4a", "flac", "webm")
+    /// Audio format ("wav" | "mp3")
     format: String,
 }
 
@@ -201,12 +201,12 @@ pub struct InputAudio {
 /// # Examples
 ///
 /// ```
-/// use orpheus::prelude::*;
+/// use orpheus::models::chat::Part;
 ///
 /// // Text part
 /// let text_part = Part::text("Hello, world!".to_string());
 ///
-/// // Image part with high detail
+/// // Image part
 /// let image_part = Part::image_url(
 ///     "https://example.com/image.jpg".to_string(),
 ///     Some("high".to_string())
@@ -242,7 +242,7 @@ impl Part {
     /// # Examples
     ///
     /// ```
-    /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::Part;
     ///
     /// let part = Part::text("Hello, world!".to_string());
     /// ```
@@ -263,14 +263,14 @@ impl Part {
     /// # Examples
     ///
     /// ```
-    /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::Part;
     ///
-    /// // Default detail
+    /// // Basic image
     /// let image = Part::image_url("https://example.com/photo.jpg".to_string(), None);
     ///
-    /// // High detail for text reading
+    /// // High detail image
     /// let detailed = Part::image_url(
-    ///     "https://example.com/document.png".to_string(),
+    ///     "https://example.com/chart.png".to_string(),
     ///     Some("high".to_string())
     /// );
     /// ```
@@ -290,15 +290,9 @@ impl Part {
     /// # Examples
     ///
     /// ```
-    /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::Part;
     ///
-    /// // CSV data
-    /// let csv = Part::file("data.csv".to_string(), "name,age\nAlice,25\nBob,30".to_string());
-    ///
-    /// // JSON data
-    /// let json = Part::file("config.json".to_string(), r#"{"key": "value"}"#.to_string());
-    ///
-    /// // PDF content (as extracted text)
+    /// // PDF content
     /// let pdf = Part::file("report.pdf".to_string(), "PDF content here...".to_string());
     /// ```
     pub fn file(filename: String, data: String) -> Self {
@@ -320,15 +314,15 @@ impl Part {
     /// # Examples
     ///
     /// ```
-    /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::Part;
     ///
-    /// // WAV audio input
+    /// // WAV audio
     /// let wav_audio = Part::input_audio(
-    ///     "UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwgBFyS0fHOeCkGLIHN89qMOQ==".to_string(),
+    ///     "base64_encoded_wav_data".to_string(),
     ///     "wav".to_string()
     /// );
     ///
-    /// // MP3 audio input
+    /// // MP3 audio
     /// let mp3_audio = Part::input_audio(
     ///     "base64_encoded_mp3_data".to_string(),
     ///     "mp3".to_string()

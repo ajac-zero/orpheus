@@ -245,7 +245,7 @@ impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
 /// # Examples
 ///
 /// ```rust
-/// use orpheus::prelude::*;
+/// use orpheus::{anyof, models::chat::{Param, ParamType}};
 ///
 /// // Simple parameter type
 /// let simple_param: ParamType = Param::string().into();
@@ -358,7 +358,7 @@ impl Param {
     /// # Examples
     ///
     /// ```rust
-    /// use orpheus::prelude::*;
+    /// use orpheus::{anyof, models::chat::Param};
     ///
     /// // Simple null parameter
     /// let null_param = Param::null();
@@ -711,6 +711,7 @@ impl<S: param_object_builder::State> ParamObjectBuilder<S> {
 ///
 /// ```rust
 /// use orpheus::prelude::*;
+/// use orpheus::models::chat::Tools;
 ///
 /// let tools = Tools::new(vec![
 ///     Tool::function("get_weather")
@@ -744,7 +745,7 @@ impl Tools {
     /// # Examples
     ///
     /// ```rust
-    /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::{Tools, Tool};
     ///
     /// let tools = Tools::new(vec![
     ///     Tool::function("calculator").build(),
@@ -774,8 +775,9 @@ impl<const N: usize> From<[Tool; N]> for Tools {
     ///
     /// ```rust
     /// use orpheus::prelude::*;
+    /// use orpheus::models::chat::Tools;
     ///
-    /// let tools: Tools = [
+    /// let tools: Tools = vec![
     ///     Tool::function("tool1").build(),
     ///     Tool::function("tool2").build(),
     /// ].into();
@@ -840,6 +842,8 @@ impl_parameter_for_builder!(ParamStringBuilder, param_string_builder);
 impl_parameter_for_builder!(ParamObjectBuilder, param_object_builder);
 impl_parameter_for_builder!(ParamArrayBuilder, param_array_builder);
 impl_parameter_for_builder!(ParamNumberBuilder, param_number_builder);
+impl_parameter_for_builder!(ParamBooleanBuilder, param_boolean_builder);
+impl_parameter_for_builder!(ParamIntegerBuilder, param_integer_builder);
 
 /// Creates a union type (anyOf) parameter from multiple parameter types.
 ///
@@ -850,7 +854,7 @@ impl_parameter_for_builder!(ParamNumberBuilder, param_number_builder);
 /// # Examples
 ///
 /// ```rust
-/// use orpheus::prelude::*;
+/// use orpheus::{anyof, models::chat::Param};
 ///
 /// // Create a parameter that can be string, number, or null
 /// let flexible_value = anyof![
@@ -868,7 +872,7 @@ impl_parameter_for_builder!(ParamNumberBuilder, param_number_builder);
 #[macro_export]
 macro_rules! anyof {
     ($($param:expr),* $(,)?) => {{
-        use crate::models::chat::ParamType;
+        use $crate::models::chat::{ParamType, Parameter};
 
         let any_of: Vec<Param> = vec![$($param.into_param()),*];
         ParamType::Any { any_of }
