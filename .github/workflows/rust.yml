@@ -21,3 +21,5 @@ jobs:
       
     - name: Run tests
       run: cargo test --verbose
+      env:
+        ORPHEUS_API_KEY: ${{ secrets.ORPHEUS_API_KEY }}
