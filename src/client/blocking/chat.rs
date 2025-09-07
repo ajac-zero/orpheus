@@ -1,13 +1,15 @@
-use super::Orpheus;
-use crate::models::{ChatMessages, ChatRequest, ChatRequestBuilder, Sync};
+use crate::{
+    client::{Orpheus, core::Sync},
+    models::chat::{ChatRequest, ChatRequestBuilder, Messages},
+};
 
 impl Orpheus {
     /// Initialize a builder for a chat completion request
-    pub fn chat(&self, messages: impl Into<ChatMessages>) -> ChatRequestBuilder<Sync> {
+    pub fn chat(&self, messages: impl Into<Messages>) -> ChatRequestBuilder<Sync> {
         let handler = self.create_handler();
         ChatRequest::builder(
             #[cfg(feature = "otel")]
-            crate::models::otel::chat_span(),
+            crate::otel::chat_span(),
             Some(handler),
             messages,
         )

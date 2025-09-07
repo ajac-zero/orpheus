@@ -474,9 +474,9 @@ pub struct UrlCitation {
 /// let messages: ChatMessages = single_message.into();
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ChatMessages(Vec<Message>);
+pub struct Messages(Vec<Message>);
 
-impl ChatMessages {
+impl Messages {
     /// Returns an iterator over the messages.
     ///
     /// # Examples
@@ -499,39 +499,39 @@ impl ChatMessages {
     }
 }
 
-impl From<Vec<Message>> for ChatMessages {
+impl From<Vec<Message>> for Messages {
     fn from(value: Vec<Message>) -> Self {
-        ChatMessages(value)
+        Messages(value)
     }
 }
 
-impl From<&Vec<Message>> for ChatMessages {
+impl From<&Vec<Message>> for Messages {
     fn from(value: &Vec<Message>) -> Self {
-        ChatMessages(value.to_owned())
+        Messages(value.to_owned())
     }
 }
 
-impl<const N: usize> From<[Message; N]> for ChatMessages {
+impl<const N: usize> From<[Message; N]> for Messages {
     fn from(value: [Message; N]) -> Self {
-        ChatMessages(value.to_vec())
+        Messages(value.to_vec())
     }
 }
 
-impl From<String> for ChatMessages {
+impl From<String> for Messages {
     fn from(value: String) -> Self {
-        ChatMessages(vec![Message::from(value)])
+        Messages(vec![Message::from(value)])
     }
 }
 
-impl From<Message> for ChatMessages {
+impl From<Message> for Messages {
     fn from(value: Message) -> Self {
-        ChatMessages(vec![value])
+        Messages(vec![value])
     }
 }
 
-impl From<&str> for ChatMessages {
+impl From<&str> for Messages {
     fn from(value: &str) -> Self {
-        ChatMessages(vec![Message::from(value)])
+        Messages(vec![Message::from(value)])
     }
 }
 

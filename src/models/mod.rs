@@ -1,7 +1,9 @@
-mod chat;
-mod common;
-mod completion;
+pub mod chat;
+pub mod common;
+pub mod completion;
 
-pub use chat::*;
-pub use common::*;
-pub use completion::*;
+pub use chat::{Format, Message, Param, Parameter, ParsingEngine, Plugin, Tool, ToolCall};
+pub use common::{
+    DataCollection, Effort, MaxPrice, Provider, ProviderPreferences, Quantization, ReasoningConfig,
+    Sort, UsageConfig,
+};

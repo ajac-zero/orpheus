@@ -12,7 +12,7 @@ pub struct AsyncStream {
     stream: Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>,
     buffer: Vec<u8>,
     #[cfg(feature = "otel")]
-    pub(crate) aggregator: super::otel::StreamAggregator,
+    pub(crate) aggregator: crate::otel::StreamAggregator,
 }
 
 impl AsyncStream {
@@ -22,7 +22,7 @@ impl AsyncStream {
             stream,
             buffer: Vec::new(), // Initialize as Vec<u8>
             #[cfg(feature = "otel")]
-            aggregator: super::otel::StreamAggregator::default(),
+            aggregator: crate::otel::StreamAggregator::default(),
         }
     }
 }

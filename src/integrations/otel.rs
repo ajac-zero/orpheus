@@ -4,11 +4,15 @@ use std::collections::HashMap;
 
 use tracing::{Level, Span, field::Empty, info, span};
 
-use crate::models::{
-    ChatChoice, ChatCompletion, ChatRequest, ChatStreamChunk, Content, Message, Mode, Role,
+use crate::{
+    client::core::Mode,
+    models::{
+        Message,
+        chat::{ChatChoice, ChatCompletion, ChatRequest, ChatStreamChunk, Content, Role},
+    },
 };
 
-pub fn chat_span() -> Span {
+pub(crate) fn chat_span() -> Span {
     span!(
         Level::INFO,
         "chat orpheus",
@@ -35,7 +39,7 @@ pub fn chat_span() -> Span {
     )
 }
 
-pub fn record_input<M: Mode>(body: &ChatRequest<M>) {
+pub(crate) fn record_input<M: Mode>(body: &ChatRequest<M>) {
     let span = &body.span;
     let _guard = span.enter();
 

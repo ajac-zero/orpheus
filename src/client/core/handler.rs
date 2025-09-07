@@ -1,6 +1,6 @@
 use crate::{
     Result,
-    models::common::mode::{Async, Mode, Sync},
+    client::core::{Async, Mode, Sync},
 };
 
 pub trait Handler<M: Mode> {

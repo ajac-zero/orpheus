@@ -1,14 +1,15 @@
 mod chat;
 mod completion;
 
-use super::AsyncOrpheus;
+use crate::client::core::{Async, OrpheusCore};
+
+pub type AsyncOrpheus = OrpheusCore<Async>;
 
 #[cfg(test)]
 mod tests {
     use futures_lite::StreamExt;
 
-    use crate::models::Plugin;
-    use crate::prelude::*;
+    use crate::{models::Plugin, prelude::*};
 
     #[tokio::test]
     async fn test_chat_request() {

@@ -1,5 +1,8 @@
 mod blocking;
-mod core;
+pub(crate) mod core;
 mod nonblocking;
 
-pub use core::{AsyncOrpheus, Orpheus};
+pub use core::OrpheusCore;
+
+pub use blocking::Orpheus;
+pub use nonblocking::AsyncOrpheus;

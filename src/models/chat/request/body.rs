@@ -6,11 +6,14 @@ use tracing::debug;
 
 use crate::{
     Error, Result,
+    client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
     models::{
-        Async, AsyncExecutor, AsyncStream, ChatCompletion, ChatHandler, ChatMessages, ChatStream,
-        Executor, Format, Mode, Plugin, ProviderPreferences, ProviderPreferencesBuilder,
-        ReasoningConfig, ReasoningConfigBuilder, Sync, Tools, UsageConfig,
-        provider_preferences_builder, reasoning_config_builder,
+        Format, Plugin, ProviderPreferences, ReasoningConfig, UsageConfig,
+        chat::{AsyncStream, ChatCompletion, ChatHandler, ChatStream, Messages, Tools},
+        common::{
+            ProviderPreferencesBuilder, ReasoningConfigBuilder, provider_preferences_builder,
+            reasoning_config_builder,
+        },
     },
 };
 
@@ -29,8 +32,8 @@ use crate::{
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, serde::Serialize, bon::Builder)]
-#[builder(on(String, into), derive(Debug))]
-pub struct ChatRequest<M: Mode> {
+#[builder(on(String, into), derive(Debug), builder_type(vis = "pub"))]
+pub(crate) struct ChatRequest<M: Mode> {
     #[cfg(feature = "otel")]
     #[serde(skip)]
     #[builder(start_fn)]
@@ -42,7 +45,7 @@ pub struct ChatRequest<M: Mode> {
 
     /// List of messages in the conversation
     #[builder(into, start_fn)]
-    pub messages: ChatMessages,
+    pub messages: Messages,
 
     /// Enable streaming of results. Defaults to false
     #[builder(field)]
@@ -273,7 +276,7 @@ where
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
-        crate::models::otel::record_completion(span, &chat_completion);
+        crate::otel::record_completion(span, &chat_completion);
 
         Ok(chat_completion)
     }
@@ -400,7 +403,7 @@ where
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
-        crate::models::otel::record_completion(span, &chat_completion);
+        crate::otel::record_completion(span, &chat_completion);
 
         Ok(chat_completion)
     }

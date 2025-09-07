@@ -1,11 +1,12 @@
+mod handler;
+mod mode;
+
+pub use handler::{AsyncExecutor, Executor, Handler};
+pub use mode::{Async, Mode, Sync};
 use reqwest::header::CONTENT_TYPE;
 use url::Url;
 
-use crate::{
-    Error, Result,
-    constants::*,
-    models::{Async, AsyncExecutor, Executor, Mode, Sync},
-};
+use crate::{Error, Result, constants::*};
 
 /// Client to interface with LLMs;
 /// Follows the OpenAI API specification.
@@ -68,7 +69,7 @@ impl<M: Mode> OrpheusCore<M> {
 macro_rules! impl_create_handler {
     ($mode:ty, $trait_bound:path) => {
         impl OrpheusCore<$mode> {
-            pub fn create_handler<H: $trait_bound>(&self) -> H {
+            pub(crate) fn create_handler<H: $trait_bound>(&self) -> H {
                 let url = self.base_url.join(H::PATH).expect("Is valid url");
                 let mut builder = self
                     .client
@@ -89,12 +90,10 @@ macro_rules! impl_create_handler {
 impl_create_handler!(Sync, Executor);
 impl_create_handler!(Async, AsyncExecutor);
 
-pub type Orpheus = OrpheusCore<Sync>;
-pub type AsyncOrpheus = OrpheusCore<Async>;
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::client::{AsyncOrpheus, Orpheus};
 
     #[test]
     fn test_client_creation() {

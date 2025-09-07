@@ -11,7 +11,7 @@ use tokio::process::Command;
 
 use crate::{
     Error, Result,
-    models::{Message, Part, Tools},
+    models::chat::{Message, Part, Tools},
 };
 
 pub struct ModelContext {

@@ -100,7 +100,7 @@ fn main() {
 }
 ```
 
-```
+```md
 >> User:
 >> hi!
 >> Assistant:

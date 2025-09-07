@@ -760,7 +760,7 @@ impl Tools {
 impl From<Vec<Tool>> for Tools {
     /// Converts a vector of tools into a Tools collection.
     ///
-    /// This provides a convenient way to create Tools from a Vec<Tool>.
+    /// This provides a convenient way to create Tools from a `Vec<Tool>`.
     fn from(tools: Vec<Tool>) -> Self {
         Self(tools)
     }

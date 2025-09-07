@@ -6,9 +6,9 @@ mod plugins;
 mod structured;
 mod tool;
 
-pub use body::*;
+pub(crate) use body::*;
 pub use content::*;
-pub use handler::*;
+pub(crate) use handler::*;
 pub use message::*;
 pub use plugins::*;
 pub use structured::*;

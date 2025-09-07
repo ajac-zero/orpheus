@@ -1,7 +1,8 @@
 use crate::{
     Error, Result,
+    client::core::{Async, AsyncExecutor, Executor, Handler, Mode, Sync},
     constants::COMPLETION_PATH,
-    models::{Async, AsyncExecutor, CompletionRequest, Executor, Handler, Mode, Sync},
+    models::completion::CompletionRequest,
 };
 
 #[derive(Debug)]

@@ -1,7 +1,9 @@
 mod chat;
 mod completion;
 
-use super::Orpheus;
+use crate::client::core::{OrpheusCore, Sync};
+
+pub type Orpheus = OrpheusCore<Sync>;
 
 #[cfg(test)]
 mod tests {

@@ -6,9 +6,10 @@ use serde::Serialize;
 
 use crate::{
     Error, Result,
+    client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
     models::{
-        Async, AsyncExecutor, CompletionHandler, CompletionResponse, Executor, Mode,
-        ProviderPreferences, ReasoningConfig, Sync, UsageConfig,
+        ProviderPreferences, ReasoningConfig, UsageConfig,
+        completion::{CompletionHandler, CompletionResponse},
     },
 };
 

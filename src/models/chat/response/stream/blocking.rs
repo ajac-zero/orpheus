@@ -6,7 +6,7 @@ use crate::{Error, Result};
 pub struct ChatStream {
     reader: BufReader<reqwest::blocking::Response>,
     #[cfg(feature = "otel")]
-    pub(crate) aggregator: super::otel::StreamAggregator,
+    pub(crate) aggregator: crate::otel::StreamAggregator,
 }
 
 impl ChatStream {
@@ -15,7 +15,7 @@ impl ChatStream {
         Self {
             reader,
             #[cfg(feature = "otel")]
-            aggregator: super::otel::StreamAggregator::default(),
+            aggregator: crate::otel::StreamAggregator::default(),
         }
     }
 }
