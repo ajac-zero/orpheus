@@ -78,7 +78,7 @@ impl<S: plugin_file_parser_builder::State> PluginFileParserBuilder<S> {
 mod test {
     use crate::{
         client::Orpheus,
-        prelude::{ParsingEngine, Plugin},
+        models::{ParsingEngine, Plugin},
     };
 
     #[test]

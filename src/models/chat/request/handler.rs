@@ -3,10 +3,7 @@ use crate::models::chat::otel;
 use crate::{
     Error, Result,
     constants::CHAT_COMPLETION_PATH,
-    models::common::{
-        handler::{AsyncExecutor, Executor, Handler},
-        mode::{Async, Mode, Sync},
-    },
+    models::{Async, AsyncExecutor, Executor, Handler, Mode, Sync},
 };
 
 #[derive(Debug)]

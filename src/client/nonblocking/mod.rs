@@ -7,6 +7,7 @@ use super::AsyncOrpheus;
 mod tests {
     use futures_lite::StreamExt;
 
+    use crate::models::Plugin;
     use crate::prelude::*;
 
     #[tokio::test]

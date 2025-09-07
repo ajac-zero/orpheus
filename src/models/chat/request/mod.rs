@@ -19,7 +19,7 @@ mod test {
     use serde_json::{Value, from_value, json};
 
     use super::*;
-    use crate::models::common::reasoning::{Effort, ReasoningConfig};
+    use crate::models::{Effort, ReasoningConfig};
 
     #[test]
     fn test_chat_message_simple_content() {

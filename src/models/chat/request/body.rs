@@ -7,14 +7,10 @@ use tracing::debug;
 use crate::{
     Error, Result,
     models::{
-        chat::*,
-        common::{
-            handler::{AsyncExecutor, Executor},
-            mode::{Async, Mode, Sync},
-            provider::*,
-            reasoning::*,
-            usage::*,
-        },
+        Async, AsyncExecutor, AsyncStream, ChatCompletion, ChatHandler, ChatMessages, ChatStream,
+        Executor, Format, Mode, Plugin, ProviderPreferences, ProviderPreferencesBuilder,
+        ReasoningConfig, ReasoningConfigBuilder, Sync, Tools, UsageConfig,
+        provider_preferences_builder, reasoning_config_builder,
     },
 };
 
@@ -277,7 +273,7 @@ where
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
-        otel::record_completion(span, &chat_completion);
+        crate::models::otel::record_completion(span, &chat_completion);
 
         Ok(chat_completion)
     }
@@ -404,7 +400,7 @@ where
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
-        otel::record_completion(span, &chat_completion);
+        crate::models::otel::record_completion(span, &chat_completion);
 
         Ok(chat_completion)
     }

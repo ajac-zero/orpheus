@@ -1,5 +1,5 @@
 use super::Orpheus;
-use crate::models::{chat::*, common::mode::Sync};
+use crate::models::{ChatMessages, ChatRequest, ChatRequestBuilder, Sync};
 
 impl Orpheus {
     /// Initialize a builder for a chat completion request
@@ -7,7 +7,7 @@ impl Orpheus {
         let handler = self.create_handler();
         ChatRequest::builder(
             #[cfg(feature = "otel")]
-            otel::chat_span(),
+            crate::models::otel::chat_span(),
             Some(handler),
             messages,
         )

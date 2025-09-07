@@ -25,7 +25,7 @@ pub enum Effort {
 
 #[cfg(test)]
 mod test {
-    use crate::prelude::*;
+    use crate::{models::Effort, prelude::*};
 
     #[test]
     fn test_no_reasoning() {

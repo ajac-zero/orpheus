@@ -3,6 +3,7 @@ name = "orpheus"
 version = "0.1.2"
 edition = "2021"
 description = "A blazing fast OpenRouter SDK"
+readme = "README.md"
 license = "MIT"
 
 [lib]

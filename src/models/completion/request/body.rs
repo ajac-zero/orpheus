@@ -7,14 +7,8 @@ use serde::Serialize;
 use crate::{
     Error, Result,
     models::{
-        common::{
-            handler::{AsyncExecutor, Executor},
-            mode::{Async, Mode, Sync},
-            provider::ProviderPreferences,
-            reasoning::ReasoningConfig,
-            usage::UsageConfig,
-        },
-        completion::{CompletionHandler, CompletionResponse},
+        Async, AsyncExecutor, CompletionHandler, CompletionResponse, Executor, Mode,
+        ProviderPreferences, ReasoningConfig, Sync, UsageConfig,
     },
 };
 

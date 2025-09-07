@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     Error, Result,
-    models::chat::{ParamType, Tool, Tools},
+    models::{ParamType, Tool, Tools},
 };
 
 impl TryFrom<rmcp::model::Tool> for Tool {

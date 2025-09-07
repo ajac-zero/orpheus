@@ -217,7 +217,10 @@ pub struct MaxPrice {
 mod test {
     use serde_json::json;
 
-    use crate::{models::common::provider::ProviderPreferences, prelude::*};
+    use crate::{
+        client::Orpheus,
+        models::{MaxPrice, Provider, ProviderPreferences, Quantization, Sort},
+    };
 
     #[test]
     fn provider_preferences_serialization() {

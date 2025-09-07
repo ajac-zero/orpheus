@@ -1,8 +1,5 @@
 use super::AsyncOrpheus;
-use crate::models::{
-    common::mode::Async,
-    completion::{CompletionRequest, CompletionRequestBuilder},
-};
+use crate::models::{Async, CompletionRequest, CompletionRequestBuilder};
 
 impl AsyncOrpheus {
     /// Send a text completion request

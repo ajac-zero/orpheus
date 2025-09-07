@@ -1,6 +1,7 @@
 #![allow(dead_code, clippy::too_many_arguments)]
+#![doc = include_str!("../README.md")]
 
-mod client;
+pub mod client;
 mod constants;
 mod error;
 mod integrations;
@@ -15,14 +16,6 @@ pub use integrations::*;
 pub mod prelude {
     pub use crate::{
         client::{AsyncOrpheus, Orpheus},
-        models::{
-            chat::{
-                Format, Message, Param, Parameter, ParsingEngine, Plugin, Role, Tool, ToolCall,
-            },
-            common::{
-                provider::{MaxPrice, Provider, Quantization, Sort},
-                reasoning::Effort,
-            },
-        },
+        models::{Format, Message, Param, Parameter, Tool, ToolCall},
     };
 }

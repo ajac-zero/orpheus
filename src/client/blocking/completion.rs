@@ -1,8 +1,5 @@
 use super::Orpheus;
-use crate::models::{
-    common::mode::Sync,
-    completion::{CompletionRequest, CompletionRequestBuilder},
-};
+use crate::models::{CompletionRequest, CompletionRequestBuilder, Sync};
 
 impl Orpheus {
     /// Send a text completion request

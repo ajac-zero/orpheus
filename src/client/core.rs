@@ -4,10 +4,7 @@ use url::Url;
 use crate::{
     Error, Result,
     constants::*,
-    models::common::{
-        handler::{AsyncExecutor, Executor},
-        mode::{Async, Mode, Sync},
-    },
+    models::{Async, AsyncExecutor, Executor, Mode, Sync},
 };
 
 /// Client to interface with LLMs;
