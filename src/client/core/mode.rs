@@ -10,7 +10,6 @@ pub trait Mode {
     fn client() -> Self::Client;
 }
 
-// Macro to implement Mode trait for both Sync and Async
 macro_rules! impl_mode {
     ($name:ident, {
         Client: $client:ty,
@@ -40,7 +39,6 @@ macro_rules! impl_mode {
     };
 }
 
-// Apply the macro for both Sync and Async modes
 impl_mode!(Sync, {
     Client: reqwest::blocking::Client,
     RequestBuilder: reqwest::blocking::RequestBuilder,

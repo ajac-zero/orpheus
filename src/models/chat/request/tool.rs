@@ -706,56 +706,8 @@ impl<S: param_object_builder::State> ParamObjectBuilder<S> {
 /// This wrapper struct holds a vector of tools and provides conversion
 /// methods for easy integration with the chat API. Tools define functions
 /// that the model can call during conversation.
-///
-/// # Examples
-///
-/// ```rust
-/// use orpheus::prelude::*;
-/// use orpheus::models::chat::Tools;
-///
-/// let tools = Tools::new(vec![
-///     Tool::function("get_weather")
-///         .description("Get current weather")
-///         .with_parameters(|params| {
-///             params.property("location", Param::string())
-///                   .required(["location"])
-///         })
-///         .build(),
-///     Tool::function("send_email")
-///         .description("Send an email")
-///         .with_parameters(|params| {
-///             params.property("to", Param::string())
-///                   .property("subject", Param::string())
-///                   .property("body", Param::string())
-///                   .required(["to", "subject", "body"])
-///         })
-///         .build(),
-/// ]);
-/// ```
 #[derive(Debug, Clone, Serialize)]
-pub struct Tools(Vec<Tool>);
-
-impl Tools {
-    /// Creates a new Tools collection from a vector of tools.
-    ///
-    /// # Parameters
-    ///
-    /// * `tools` - Vector of Tool definitions
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use orpheus::models::chat::{Tools, Tool};
-    ///
-    /// let tools = Tools::new(vec![
-    ///     Tool::function("calculator").build(),
-    ///     Tool::function("database_search").build(),
-    /// ]);
-    /// ```
-    pub fn new(tools: Vec<Tool>) -> Self {
-        Self(tools)
-    }
-}
+pub struct Tools(pub Vec<Tool>);
 
 impl From<Vec<Tool>> for Tools {
     /// Converts a vector of tools into a Tools collection.
@@ -770,18 +722,6 @@ impl<const N: usize> From<[Tool; N]> for Tools {
     /// Converts an array of tools into a Tools collection.
     ///
     /// This provides a convenient way to create Tools from a fixed-size array.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use orpheus::prelude::*;
-    /// use orpheus::models::chat::Tools;
-    ///
-    /// let tools: Tools = vec![
-    ///     Tool::function("tool1").build(),
-    ///     Tool::function("tool2").build(),
-    /// ].into();
-    /// ```
     fn from(tools: [Tool; N]) -> Self {
         Self(tools.to_vec())
     }

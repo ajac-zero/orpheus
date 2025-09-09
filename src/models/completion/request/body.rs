@@ -15,7 +15,11 @@ use crate::{
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Serialize, Builder)]
-#[builder(on(String, into))]
+#[builder(on(String, into),
+    builder_type(vis = "pub", doc {
+        /// Builder to set the parameters of a completion request
+    })
+)]
 pub struct CompletionRequest<M: Mode> {
     #[serde(skip)]
     #[builder(start_fn)]

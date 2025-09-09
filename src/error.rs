@@ -14,6 +14,9 @@ pub enum OrpheusError {
     #[error("Runtime error: {0}")]
     Runtime(#[from] RuntimeError),
 
+    #[error("Parsing error: {0}")]
+    Parsing(String),
+
     #[cfg(feature = "mcp")]
     #[error("MCP error: {0}")]
     Mcp(#[from] McpError),
@@ -21,6 +24,12 @@ pub enum OrpheusError {
     #[cfg(feature = "anyhow")]
     #[error("Anyhow error: {0}")]
     Anyhow(#[from] anyhow::Error),
+}
+
+impl OrpheusError {
+    pub(crate) fn parse_error(error: impl Into<String>) -> Self {
+        OrpheusError::Parsing(error.into())
+    }
 }
 
 #[derive(Error, Debug)]

@@ -38,7 +38,7 @@ impl TryFrom<rmcp::model::ListToolsResult> for Tools {
     type Error = Error;
 
     fn try_from(value: rmcp::model::ListToolsResult) -> Result<Self, Self::Error> {
-        Ok(Tools::new(
+        Ok(Tools(
             value
                 .tools
                 .into_iter()

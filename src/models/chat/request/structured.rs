@@ -11,10 +11,11 @@ use crate::models::chat::{
 /// This enum defines how the model should format its response, particularly for
 /// generating structured JSON data that conforms to a specific schema.
 ///
-/// # Examples
-///
+/// # Example
 /// ```rust
 /// use orpheus::prelude::*;
+///
+/// let client = Client::from_env().unwrap();
 ///
 /// // Create a simple person schema
 /// let format = Format::json("person")
@@ -22,11 +23,20 @@ use crate::models::chat::{
 ///         schema
 ///             .property("name", Param::string())
 ///             .property("age", Param::number())
+///             .property("city", Param::string())
 ///             .required(["name", "age"])
 ///     })
 ///     .build();
+///
+/// // Use schema to generate a structured response
+/// let response = client
+///     .chat("Hello, how old are you?")
+///     .model("openai/gpt-4o")
+///     .response_format(format)
+///     .await
+///     .unwrap();
+///
 /// ```
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "json_schema", rename_all = "snake_case")]
 pub enum Format {
@@ -56,15 +66,25 @@ impl Format {
     ///
     /// * `name` - A unique identifier for this schema
     /// * `strict` - Whether to enforce strict schema validation (default: true)
-    /// * `schema` - The parameter definition describing the expected structure
+    /// * `with_schema/schema` - The parameter definition describing the expected structure; `with_schema` starts a builder; `schema` expects the complete `Param` object.
     ///
     /// # Examples
-    ///
     /// ```rust
     /// use orpheus::prelude::*;
     ///
-    /// // Basic usage with default strict mode
+    /// // Basic usage with default strict mode and `with_schema`
     /// let format = Format::json("user_data")
+    ///     .with_schema(|schema| {
+    ///         schema
+    ///             .property("name", Param::string())
+    ///             .property("age", Param::integer())
+    ///             .required(["name"])
+    ///     })
+    ///     .build();
+    ///
+    /// // With explicit strict mode disabled and `schema`
+    /// let format = Format::json("flexible_data")
+    ///     .strict(false)
     ///     .schema(
     ///         Param::object()
     ///             .property("name", Param::string())
@@ -72,12 +92,6 @@ impl Format {
     ///             .required(["name"])
     ///             .end()
     ///     )
-    ///     .build();
-    ///
-    /// // With explicit strict mode disabled
-    /// let format = Format::json("flexible_data")
-    ///     .strict(false)
-    ///     .schema(Param::object().end())
     ///     .build();
     /// ```
     #[builder(finish_fn = build)]
