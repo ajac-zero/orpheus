@@ -73,3 +73,49 @@ pub struct ChatChoice {
 
     pub finish_reason: String,
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::models::chat::{Content, Role};
+
+    #[test]
+    fn completion_deserialization() {
+        let response_json = r#"{
+               "id": "chatcmpl-abc123",
+               "choices": [
+                   {
+                       "index": 0,
+                       "message": {
+                           "role": "assistant",
+                           "content": "Hello! I'm doing well, thank you for asking. How can I assist you today?"
+                       },
+                       "finish_reason": "stop"
+                   }
+               ],
+               "provider": "OpenAI",
+               "model": "openai/gpt-4o",
+               "usage": {
+                   "prompt_tokens": 10,
+                   "completion_tokens": 20,
+                   "total_tokens": 30
+               }
+           }"#;
+
+        let response: ChatCompletion = serde_json::from_str(response_json).unwrap();
+        assert_eq!(response.id, "chatcmpl-abc123".to_string());
+
+        let choices = response.choices;
+        assert_eq!(choices.len(), 1);
+
+        let message = choices[0].message.to_owned();
+        assert_eq!(message.role, Role::Assistant);
+        assert_eq!(
+            message.content,
+            Content::Simple(
+                "Hello! I'm doing well, thank you for asking. How can I assist you today?"
+                    .to_string()
+            )
+        );
+    }
+}

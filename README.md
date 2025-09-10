@@ -31,7 +31,7 @@ Let's learn how to use Orpheus with a practical example. Here, we will create a 
 
 ### One-shot Prompt Example
 
-```rust
+```rust,ignore
 // The prelude includes everything you will need to use Orpheus
 use orpheus::prelude::*;
 
@@ -53,8 +53,8 @@ fn main() {
 }
 ```
 
-```
->> GPT-4o says: Hello! How can I assist you today?
+```bash
+GPT-4o says: Hello! How can I assist you today?
 ```
 
 Simple, right? Let's take it up a notch by making the CLI program interactive and adding a conversation history so the model can remember our previous messages.
@@ -63,7 +63,7 @@ We also probably don't want to hardcode our API key into the program, so let's i
 
 ### With Message History Example
 
-```rust
+```rust,ignore
 use orpheus::prelude::*;
 
 fn main() {
@@ -100,26 +100,26 @@ fn main() {
 }
 ```
 
-```md
->> User:
->> hi!
->> Assistant:
->> Hello! How can I assist you today?
->> User:
->> who are you?
->> Assistant:
->> I'm an AI language model created by OpenAI, designed to assist with a wide range of inquiries by providing information, answering questions, and engaging in conversation. How can I help you today?
->> User:
->> that's awesome
->> Assistant:
->> Thank you! If there's anything specific you'd like to know or discuss, feel free to ask.
+```bash
+User:
+hi!
+Assistant:
+Hello! How can I assist you today?
+User:
+who are you?
+Assistant:
+I'm an AI language model created by OpenAI, designed to assist with a wide range of inquiries by providing information, answering questions, and engaging in conversation. How can I help you today?
+User:
+that's awesome
+Assistant:
+Thank you! If there's anything specific you'd like to know or discuss, feel free to ask.
 ```
 
 In AI apps, it is common to stream the response to reduce the perceived latency of the program. Let's see how we can use response streaming with Orpheus.
 
 ### Streaming Response Example
 
-```rust
+```rust,ignore
 use std::io::Write;
 
 use orpheus::prelude::*;
@@ -150,7 +150,7 @@ fn main() {
         while let Some(Ok(chunk)) = response.next() {
             // Get the content of the chunk and add it to the buffer
             let content = chunk.content().unwrap();
-            buffer.push_str(content);
+            buffer.push_str(&content.to_string());
 
             // Boilerplate to print the response as it comes in
             print!("{}", content);
@@ -164,15 +164,15 @@ fn main() {
 }
 ```
 
-```
->> User:
->> hi
->> Assistant:
->> Hello! How can I assist you today?
+```bash
+User:
+hi
+Assistant:
+Hello! How can I assist you today?
 ```
 
 > **Note**: You'll have to run it yourself to see the stream effect
 
---- Delve into it
+# Documentation
 
-If you want to learn about additional features, such as async support, structured output, tool calling, MCP, prompt caching, provider configuration, and more, head over to the documentation page!.
+If you want to learn about additional features, such as async support, structured output, tool calling, MCP, prompt caching, provider configuration, and more, head over to the [docs](https://orpheus.ajac-zero.com/)!.

@@ -9,7 +9,7 @@ use crate::{
     client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
     models::{
         Format, Plugin, ProviderPreferences, ReasoningConfig, UsageConfig,
-        chat::{AsyncStream, ChatCompletion, ChatHandler, ChatStream, History, Tools},
+        chat::{AsyncStream, ChatCompletion, ChatHandler, ChatStream, History, Tool},
         common::{
             ProviderPreferencesBuilder, ReasoningConfigBuilder, provider_preferences_builder,
             reasoning_config_builder,
@@ -71,7 +71,7 @@ pub(crate) struct ChatRequest<M: Mode> {
 
     /// Optional collection of tools (functions) the model can call.
     #[builder(into)]
-    pub tools: Option<Tools>,
+    pub tools: Option<Vec<Tool>>,
 
     #[builder(into)]
     pub plugins: Option<Vec<Plugin>>,

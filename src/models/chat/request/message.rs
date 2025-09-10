@@ -275,3 +275,46 @@ pub struct Details {
     /// Optional signature for verification of the reasoning trace
     signature: Option<String>,
 }
+
+#[cfg(test)]
+mod test {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn simple_message_serialization() {
+        let target = json!({
+            "role": "user",
+            "content": "hello!"
+        });
+
+        let value = Message::user("hello!");
+        let result = serde_json::to_value(value).unwrap();
+        assert_eq!(result, target);
+    }
+
+    #[test]
+    fn message_with_image_serialization() {
+        let target = json!({
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "hii!"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "image.jpg",
+                        "detail": null
+                    }
+                }
+            ]
+        });
+
+        let value = Message::user("hii!").with_image("image.jpg");
+        let result = serde_json::to_value(value).unwrap();
+        assert_eq!(result, target);
+    }
+}

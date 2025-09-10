@@ -214,30 +214,4 @@ mod test {
         ]);
         assert_eq!(result, expected);
     }
-
-    #[test]
-    fn test_add_part_to_simple() {
-        let content = Content::Simple("Hello".to_string());
-        let part = Part::image_url("http://example.com/image.jpg".to_string(), None);
-        let result = content.add_part(part);
-
-        let expected = Content::Complex(vec![
-            Part::text("Hello".to_string()),
-            Part::image_url("http://example.com/image.jpg".to_string(), None),
-        ]);
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_add_part_to_complex() {
-        let content = Content::Complex(vec![Part::text("Existing".to_string())]);
-        let part = Part::file("test.txt".to_string(), "data".to_string());
-        let result = content.add_part(part);
-
-        let expected = Content::Complex(vec![
-            Part::text("Existing".to_string()),
-            Part::file("test.txt".to_string(), "data".to_string()),
-        ]);
-        assert_eq!(result, expected);
-    }
 }

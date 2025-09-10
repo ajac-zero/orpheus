@@ -27,8 +27,8 @@ pub struct CompletionChoice {
 mod test {
     use super::*;
 
-    #[tokio::test]
-    async fn test_completion_response_deserialization() {
+    #[test]
+    fn completion_deserialization() {
         let response_json = r#"{
             "id": "cmpl-123",
             "choices": [

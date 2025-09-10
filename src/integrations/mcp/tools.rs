@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     Error, Result,
-    models::chat::{ParamType, Tool, Tools},
+    models::chat::{ParamType, Tool},
 };
 
 impl TryFrom<rmcp::model::Tool> for Tool {
@@ -34,19 +34,17 @@ impl TryFrom<rmcp::model::Tool> for Tool {
     }
 }
 
-impl TryFrom<rmcp::model::ListToolsResult> for Tools {
-    type Error = Error;
+// impl TryFrom<rmcp::model::ListToolsResult> for Vec<Tool> {
+//     type Error = Error;
 
-    fn try_from(value: rmcp::model::ListToolsResult) -> Result<Self, Self::Error> {
-        Ok(Tools(
-            value
-                .tools
-                .into_iter()
-                .map(TryInto::try_into)
-                .collect::<Result<_>>()?,
-        ))
-    }
-}
+//     fn try_from(value: rmcp::model::ListToolsResult) -> Result<Self, Self::Error> {
+//         Ok(value
+//             .tools
+//             .into_iter()
+//             .map(TryInto::try_into)
+//             .collect::<Result<_>>()?)
+//     }
+// }
 
 #[cfg(test)]
 mod test {
@@ -410,7 +408,13 @@ mod test {
 
         let mcp_tool: rmcp::model::ListToolsResult = serde_json::from_value(target).unwrap();
 
-        let tool: Tools = mcp_tool.try_into().unwrap();
+        let tool: Vec<Tool> = mcp_tool
+            .tools
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<_>>()
+            .unwrap();
+
         println!("{:?}", &tool);
     }
 }

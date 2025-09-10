@@ -11,7 +11,7 @@ use tokio::process::Command;
 
 use crate::{
     Error, Result,
-    models::chat::{Message, Part, Tools},
+    models::chat::{Message, Part, Tool},
 };
 
 pub struct ModelContext {
@@ -99,13 +99,16 @@ where
 }
 
 impl ModelContext {
-    pub async fn get_tools(&self) -> Result<Tools> {
+    pub async fn get_tools(&self) -> Result<Vec<Tool>> {
         Ok(self
             .service
             .list_tools(Default::default())
             .await
             .map_err(Error::service)?
-            .try_into()?)
+            .tools
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<_>>()?)
     }
 
     pub async fn close(self) -> Result<QuitReason> {

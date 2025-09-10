@@ -54,41 +54,9 @@ pub enum Tool {
 impl Tool {
     /// Creates a builder for defining a function tool.
     ///
-    /// This is the primary entry point for creating tools that the language model
-    /// can call. The builder pattern allows you to incrementally specify the
-    /// function name, description, and parameter schema.
-    ///
-    /// # Parameters
-    ///
-    /// * `name` - The function name (must be a valid identifier)
-    /// * `description` - Optional human-readable description of what the function does
-    /// * `parameters` - Optional parameter schema defining the function's inputs
-    ///
-    /// # Examples
-    ///
-    /// ## Basic Function Tool
+    /// # Example
     /// ```rust
     /// use orpheus::prelude::*;
-    /// use serde_json::json;
-    ///
-    /// let target = json!({
-    ///     "type": "function",
-    ///     "function": {
-    ///         "name": "get_current_weather",
-    ///         "description": "Get the current weather in a given location",
-    ///         "parameters": {
-    ///             "type": "object",
-    ///             "properties": {
-    ///                 "location": {
-    ///                     "type": "string",
-    ///                     "description": "The city and state, e.g. San Francisco, CA",
-    ///                 },
-    ///                 "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
-    ///             },
-    ///             "required": ["location"],
-    ///         },
-    ///     }
-    /// });
     ///
     /// let tool = Tool::function("get_current_weather")
     ///     .description("Get the current weather in a given location")
@@ -100,53 +68,6 @@ impl Tool {
     ///             .required(["location"])
     ///     })
     ///     .build();
-    ///
-    /// let tool_json = serde_json::to_value(&tool).unwrap();
-    /// assert_eq!(target, tool_json);
-    /// ```
-    ///
-    /// ## Simple Name-Only Tool
-    ///
-    /// Some providers allow tools without parameters, useful for simple actions:
-    ///
-    /// ```rust
-    /// use orpheus::prelude::*;
-    /// use serde_json::json;
-    ///
-    /// let target = json!({
-    ///     "type": "function",
-    ///     "function": {
-    ///         "name": "end_conversation"
-    ///     }
-    /// });
-    ///
-    /// let tool = Tool::function("end_conversation").build();
-    /// let tool_json = serde_json::to_value(&tool).unwrap();
-    /// assert_eq!(target, tool_json);
-    /// ```
-    ///
-    /// ## Empty Parameters Tool
-    ///
-    /// Some providers require explicit empty parameter objects:
-    ///
-    /// ```rust
-    /// use orpheus::prelude::*;
-    /// use serde_json::json;
-    ///
-    /// let target = json!({
-    ///     "type": "function",
-    ///     "function": {
-    ///         "name": "get_current_time",
-    ///         "parameters": {
-    ///             "type": "object",
-    ///             "properties": {}
-    ///         }
-    ///     }
-    /// });
-    ///
-    /// let tool = Tool::function("get_current_time").empty();
-    /// let tool_json = serde_json::to_value(&tool).unwrap();
-    /// assert_eq!(target, tool_json);
     /// ```
     #[builder(on(String, into), finish_fn = build)]
     pub fn function(
@@ -172,8 +93,7 @@ where
     /// but require an explicit empty parameters object for compatibility
     /// with certain providers.
     ///
-    /// # Examples
-    ///
+    /// # Example
     /// ```rust
     /// use orpheus::prelude::*;
     ///
@@ -196,12 +116,6 @@ impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
     /// can be used to define properties, types, requirements, and other
     /// constraints for the function's input parameters.
     ///
-    /// # Parameters
-    ///
-    /// * `build` - A closure that configures the parameter schema using the builder API
-    ///
-    /// # Examples
-    ///
     /// ```rust
     /// use orpheus::prelude::*;
     ///
@@ -211,12 +125,12 @@ impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
     ///         params
     ///             .property("query", Param::string().description("Search query"))
     ///             .property("limit", Param::integer().description("Maximum results"))
-    ///             .property("filters", Param::object()
-    ///                 .property("category", Param::string())
-    ///                 .property("date_range", Param::array()
-    ///                     .items(Param::string().end())
-    ///                     .end())
-    ///                 .end())
+    ///             .property(
+    ///                 "filters",
+    ///                 Param::object()
+    ///                     .property("category", Param::string())
+    ///                     .property("date_range", Param::array().items(Param::string())),
+    ///             )
     ///             .required(["query"])
     ///     })
     ///     .build();
@@ -236,27 +150,11 @@ impl<S: tool_function_builder::State> ToolFunctionBuilder<S> {
     }
 }
 
-/// Represents a parameter type that can be either a single parameter or a union type.
+/// Wraper type representing either a single parameter or a union type.
 ///
 /// This enum allows for flexible parameter definitions that can accept multiple
 /// possible types. The `Simple` variant represents a single parameter type,
 /// while the `Any` variant represents a union type (anyOf in JSON Schema).
-///
-/// # Examples
-///
-/// ```rust
-/// use orpheus::{anyof, models::chat::{Param, ParamType}};
-///
-/// // Simple parameter type
-/// let simple_param: ParamType = Param::string().into();
-///
-/// // Union type using the anyof! macro
-/// let union_param = anyof![
-///     Param::string(),
-///     Param::number(),
-///     Param::null()
-/// ];
-/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ParamType {
@@ -285,7 +183,6 @@ impl From<Param> for ParamType {
 ///
 /// ```rust
 /// use orpheus::prelude::*;
-/// use std::collections::HashMap;
 ///
 /// // Simple string parameter
 /// let name_param = Param::string().description("User's full name").end();
@@ -352,23 +249,7 @@ pub enum Param {
 impl Param {
     /// Creates a null parameter.
     ///
-    /// Represents a JSON null value in the schema. Useful for optional
-    /// fields or union types that can be null.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use orpheus::{anyof, models::chat::Param};
-    ///
-    /// // Simple null parameter
-    /// let null_param = Param::null();
-    ///
-    /// // Union type that can be string or null
-    /// let optional_string = anyof![
-    ///     Param::string(),
-    ///     Param::null()
-    /// ];
-    /// ```
+    /// Represents a JSON null value in the schema.
     pub fn null() -> Self {
         Self::Null
     }
@@ -415,11 +296,13 @@ impl Param {
     /// let address = Param::object()
     ///     .property("street", Param::string())
     ///     .property("city", Param::string())
-    ///     .property("coordinates", Param::object()
-    ///         .property("lat", Param::number())
-    ///         .property("lng", Param::number())
-    ///         .required(["lat", "lng"])
-    ///         .end())
+    ///     .property(
+    ///         "coordinates",
+    ///         Param::object()
+    ///             .property("lat", Param::number())
+    ///             .property("lng", Param::number())
+    ///             .required(["lat", "lng"]),
+    ///     )
     ///     .required(["street", "city"])
     ///     .end();
     /// ```
@@ -535,25 +418,24 @@ impl Param {
     /// // Array of strings
     /// let tags = Param::array()
     ///     .description("List of tags")
-    ///     .items(Param::string().end())
+    ///     .items(Param::string())
     ///     .end();
     ///
     /// // Array of objects
     /// let users = Param::array()
     ///     .description("List of users")
-    ///     .items(Param::object()
-    ///         .property("name", Param::string())
-    ///         .property("email", Param::string())
-    ///         .required(["name", "email"])
-    ///         .end())
+    ///     .items(
+    ///         Param::object()
+    ///             .property("name", Param::string())
+    ///             .property("email", Param::string())
+    ///             .required(["name", "email"]),
+    ///     )
     ///     .end();
     ///
     /// // Nested array (array of arrays)
     /// let matrix = Param::array()
     ///     .description("2D matrix of numbers")
-    ///     .items(Param::array()
-    ///         .items(Param::number().end())
-    ///         .end())
+    ///     .items(Param::array().items(Param::number()))
     ///     .end();
     /// ```
     #[builder(finish_fn = end)]
@@ -658,10 +540,13 @@ impl<S: param_object_builder::State> ParamObjectBuilder<S> {
     ///     .property("id", Param::integer().description("User ID"))
     ///     .property("name", Param::string().description("Full name"))
     ///     .property("email", Param::string().description("Email address"))
-    ///     .property("settings", Param::object()
-    ///         .property("theme", Param::string().enums(["light", "dark"]))
-    ///         .property("notifications", Param::boolean())
-    ///         .end())
+    ///     .property(
+    ///         "settings",
+    ///         Param::object()
+    ///             .property("theme", Param::string().enums(["light", "dark"]))
+    ///             .property("notifications", Param::boolean())
+    ///             .end(),
+    ///     )
     ///     .required(["id", "name", "email"])
     ///     .end();
     /// ```
@@ -690,40 +575,11 @@ impl<S: param_object_builder::State> ParamObjectBuilder<S> {
     /// props.insert("name".to_string(), Param::string().end().into());
     /// props.insert("age".to_string(), Param::integer().end().into());
     ///
-    /// let schema = Param::object()
-    ///     .properties(props)
-    ///     .required(["name"])
-    ///     .end();
+    /// let schema = Param::object().properties(props).required(["name"]).end();
     /// ```
     pub fn properties(mut self, properties: HashMap<String, ParamType>) -> Self {
         self.properties = properties;
         self
-    }
-}
-
-/// A collection of tools that can be provided to a language model.
-///
-/// This wrapper struct holds a vector of tools and provides conversion
-/// methods for easy integration with the chat API. Tools define functions
-/// that the model can call during conversation.
-#[derive(Debug, Clone, Serialize)]
-pub struct Tools(pub Vec<Tool>);
-
-impl From<Vec<Tool>> for Tools {
-    /// Converts a vector of tools into a Tools collection.
-    ///
-    /// This provides a convenient way to create Tools from a `Vec<Tool>`.
-    fn from(tools: Vec<Tool>) -> Self {
-        Self(tools)
-    }
-}
-
-impl<const N: usize> From<[Tool; N]> for Tools {
-    /// Converts an array of tools into a Tools collection.
-    ///
-    /// This provides a convenient way to create Tools from a fixed-size array.
-    fn from(tools: [Tool; N]) -> Self {
-        Self(tools.to_vec())
     }
 }
 
@@ -732,18 +588,6 @@ impl<const N: usize> From<[Tool; N]> for Tools {
 /// This trait allows various parameter builders to be seamlessly converted
 /// into the final Param type. It's automatically implemented for all
 /// parameter builders when they're in a complete state.
-///
-/// # Examples
-///
-/// ```rust
-/// use orpheus::prelude::*;
-///
-/// fn create_string_param() -> impl Parameter {
-///     Param::string().description("A string parameter")
-/// }
-///
-/// let param: Param = create_string_param().into_param();
-/// ```
 pub trait Parameter {
     /// Converts this type into a Param.
     fn into_param(self) -> Param;
@@ -955,5 +799,154 @@ mod test {
         let value = serde_json::to_value(tool).unwrap();
 
         assert_eq!(target, value);
+    }
+
+    fn get_current_weather_json() -> serde_json::Value {
+        json!({
+          "type": "function",
+          "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The city and state, e.g. San Francisco, CA",
+                },
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+              },
+              "required": ["location"],
+            },
+          }
+        })
+    }
+
+    fn search_gutenberg_books_json() -> serde_json::Value {
+        json!({
+          "type": "function",
+          "function": {
+            "name": "search_gutenberg_books",
+            "description": "Search for books in the Project Gutenberg library based on specified search terms",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "search_terms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)"
+                }
+              },
+              "required": ["search_terms"]
+            }
+          }
+        })
+    }
+
+    #[test]
+    fn test_deserialize_tool_call() {
+        let get_current_weather = get_current_weather_json();
+
+        let function: Tool = serde_json::from_value(get_current_weather).unwrap();
+        println!("Function 1: {:?}\n", function);
+
+        let search_gutenberg_books = search_gutenberg_books_json();
+
+        let function: Tool = serde_json::from_value(search_gutenberg_books).unwrap();
+        println!("Function 2: {:?}\n", function);
+    }
+
+    #[test]
+    fn test_serialize_tool_call() {
+        let tool = Tool::function("get_current_weather")
+            .description("Get the current weather in a given location")
+            .parameters(
+                Param::object()
+                    .property(
+                        "location",
+                        Param::string().description("The city and state, e.g. San Francisco, CA"),
+                    )
+                    .property(
+                        "unit",
+                        Param::string().enums(["celsius", "fahrenheit"]).end(),
+                    )
+                    .required(["location"])
+                    .end(),
+            )
+            .build();
+
+        let function = serde_json::to_value(&tool).unwrap();
+
+        let payload = get_current_weather_json();
+
+        assert_eq!(function, payload);
+
+        let tool = Tool::function("search_gutenberg_books")
+            .description("Search for books in the Project Gutenberg library based on specified search terms")
+            .parameters(
+                Param::object()
+                    .property(
+                        "search_terms",
+                        Param::array()
+                            .description("List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)")
+                            .items(Param::string().end())
+                            .end()
+                    )
+                    .required(["search_terms"])
+                    .end()
+            )
+            .build();
+
+        let function = serde_json::to_value(&tool).unwrap();
+
+        let payload = search_gutenberg_books_json();
+
+        assert_eq!(function, payload);
+    }
+
+    #[test]
+    fn test_serialize_tool_call_with_closure() {
+        // Test the new simplified API using closure
+        let tool = Tool::function("get_current_weather")
+            .description("Get the current weather in a given location")
+            .with_parameters(|params| {
+                params
+                    .property(
+                        "location",
+                        Param::string().description("The city and state, e.g. San Francisco, CA"),
+                    )
+                    .property("unit", Param::string().enums(["celsius", "fahrenheit"]))
+                    .required(["location"])
+            })
+            .build();
+
+        let function = serde_json::to_value(&tool).unwrap();
+
+        let payload = get_current_weather_json();
+
+        assert_eq!(function, payload);
+
+        let tool = Tool::function("search_gutenberg_books")
+            .description("Search for books in the Project Gutenberg library based on specified search terms")
+            .with_parameters(|params| {
+                    params.property(
+                        "search_terms",
+                        Param::array()
+                            .description("List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)")
+                            .items(Param::string().end())
+                            .end()
+                    )
+                    .required(["search_terms"])
+                }
+            )
+            .build();
+
+        let function = serde_json::to_value(&tool).unwrap();
+
+        let payload = search_gutenberg_books_json();
+
+        assert_eq!(function, payload);
     }
 }

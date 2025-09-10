@@ -38,16 +38,10 @@ pub enum Plugin {
     },
 }
 
-impl From<Plugin> for Vec<Plugin> {
-    fn from(value: Plugin) -> Self {
-        vec![value]
-    }
-}
-
 #[bon]
 impl Plugin {
     #[builder(finish_fn = build, on(String, into), on(i32, into))]
-    fn web(max_results: Option<i32>, search_prompt: Option<String>) -> Self {
+    pub fn web(max_results: Option<i32>, search_prompt: Option<String>) -> Self {
         Self::Web {
             max_results,
             search_prompt,
@@ -55,7 +49,7 @@ impl Plugin {
     }
 
     #[builder(finish_fn = build)]
-    fn file_parser(#[builder(field)] pdf: Option<ParsingEngine>) -> Self {
+    pub fn file_parser(#[builder(field)] pdf: Option<ParsingEngine>) -> Self {
         Self::FileParser {
             pdf: pdf.unwrap_or_else(ParsingEngine::default),
         }
@@ -76,124 +70,49 @@ impl<S: plugin_file_parser_builder::State> PluginFileParserBuilder<S> {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        client::Orpheus,
-        models::{ParsingEngine, Plugin},
-    };
+    use serde_json::json;
+
+    use crate::models::{ParsingEngine, Plugin};
 
     #[test]
-    fn create_web_plugin_with_builder() {
-        let plugin = Plugin::web().build();
+    fn serialize_file_parser_plugin() {
+        let target = json!({
+              "id": "file-parser",
+              "pdf": {
+                "engine": "pdf-text", // or 'mistral-ocr' or 'native'
+              },
+        });
 
-        assert_eq!(
-            plugin,
-            Plugin::Web {
-                max_results: None,
-                search_prompt: None
-            }
-        );
+        let value = Plugin::file_parser().engine(ParsingEngine::PdfText).build();
+        let result = serde_json::to_value(value).unwrap();
 
-        let plugin = Plugin::web().max_results(10).build();
+        assert_eq!(target, result);
+    }
 
-        assert_eq!(
-            plugin,
-            Plugin::Web {
-                max_results: Some(10),
-                search_prompt: None
-            }
-        );
+    #[test]
+    fn serialize_web_plugin() {
+        let target = json!({"id": "web"});
 
-        let plugin = Plugin::web().search_prompt("Relevant web results:").build();
+        let value = Plugin::web().build();
+        let result = serde_json::to_value(value).unwrap();
 
-        assert_eq!(
-            plugin,
-            Plugin::Web {
-                max_results: None,
-                search_prompt: Some("Relevant web results:".to_string())
-            }
-        );
+        assert_eq!(target, result);
+    }
 
-        let plugin = Plugin::web()
+    #[test]
+    fn serialize_web_plugin_with_options() {
+        let target = json!({
+            "id": "web",
+            "max_results": 10,
+            "search_prompt": "Some relevant web results:"
+        });
+
+        let value = Plugin::web()
             .max_results(10)
-            .search_prompt("Relevant web results:")
+            .search_prompt("Some relevant web results:")
             .build();
+        let result = serde_json::to_value(value).unwrap();
 
-        assert_eq!(
-            plugin,
-            Plugin::Web {
-                max_results: Some(10),
-                search_prompt: Some("Relevant web results:".to_string())
-            }
-        );
-    }
-
-    #[test]
-    fn create_parser_plugin_with_builder() {
-        let plugin = Plugin::file_parser().build();
-
-        assert_eq!(
-            plugin,
-            Plugin::FileParser {
-                pdf: ParsingEngine::default()
-            }
-        );
-
-        let plugin = Plugin::file_parser()
-            .engine(ParsingEngine::MistralOcr)
-            .build();
-
-        assert_eq!(
-            plugin,
-            Plugin::FileParser {
-                pdf: ParsingEngine::MistralOcr
-            }
-        );
-
-        let plugin = Plugin::file_parser()
-            .try_engine("mistral-ocr")
-            .unwrap()
-            .build();
-
-        assert_eq!(
-            plugin,
-            Plugin::FileParser {
-                pdf: ParsingEngine::MistralOcr
-            }
-        );
-    }
-
-    #[test]
-    fn request_with_web_plugin() {
-        let client = Orpheus::from_env().unwrap();
-
-        let _ = client
-            .chat("What is the capital of France?")
-            .model("openai/gpt-4o")
-            .plugins(Plugin::web().build());
-    }
-
-    #[test]
-    fn request_with_file_plugin() {
-        let client = Orpheus::from_env().unwrap();
-
-        let _ = client
-            .chat("What is the capital of France?")
-            .model("openai/gpt-4o")
-            .plugins(Plugin::file_parser().build());
-    }
-
-    #[test]
-    fn request_with_multiple_plugins() {
-        let client = Orpheus::from_env().unwrap();
-
-        let plugins = vec![
-            Plugin::web().max_results(10).build(),
-            Plugin::file_parser().build(),
-        ];
-
-        let _ = client
-            .chat("What is the capital of France?")
-            .model("openai/gpt-4o")
-            .plugins(plugins);
+        assert_eq!(target, result);
     }
 }

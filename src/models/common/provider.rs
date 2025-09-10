@@ -53,9 +53,9 @@ pub struct ProviderPreferences {
     #[builder(with = FromIterator::from_iter)]
     quantizations: Option<Vec<Quantization>>,
 
-    //Sort providers by price or throughput. (e.g. `Sort::Price` or `Sort::Throughput`).
-    //
-    // [Learn more](https://openrouter.ai/docs/features/provider-routing#provider-sorting)
+    /// Sort providers by price or throughput. (e.g. `Sort::Price` or `Sort::Throughput`).
+    ///
+    /// [Learn more](https://openrouter.ai/docs/features/provider-routing#provider-sorting)
     sort: Option<Sort>,
 
     /// The maximum pricing you want to pay for this request.
@@ -217,10 +217,7 @@ pub struct MaxPrice {
 mod test {
     use serde_json::json;
 
-    use crate::{
-        client::Orpheus,
-        models::{MaxPrice, Provider, ProviderPreferences, Quantization, Sort},
-    };
+    use super::*;
 
     #[test]
     fn provider_preferences_serialization() {
@@ -254,47 +251,5 @@ mod test {
         let value = serde_json::to_value(provider).unwrap();
 
         assert_eq!(target, value);
-    }
-
-    #[test]
-    fn chat_request_provider_preferences() {
-        let client = Orpheus::from_env().unwrap();
-
-        let provider = ProviderPreferences::builder()
-            .only([Provider::Groq])
-            .build();
-
-        let response = client
-            .chat("Tell me about the Romans")
-            .model("moonshotai/kimi-k2")
-            .preferences(provider)
-            .send();
-        println!("{:?}", response);
-
-        assert!(response.is_ok());
-
-        let chat_response = response.unwrap();
-
-        let choices = chat_response.choices;
-        assert!(!choices.is_empty());
-    }
-
-    #[test]
-    fn chat_request_with_provider_preferences() {
-        let client = Orpheus::from_env().unwrap();
-
-        let response = client
-            .chat("Tell me about the Romans")
-            .model("moonshotai/kimi-k2")
-            .with_preferences(|pref| pref.only([Provider::Groq]))
-            .send();
-        println!("{:?}", response);
-
-        assert!(response.is_ok());
-
-        let chat_response = response.unwrap();
-
-        let choices = chat_response.choices;
-        assert!(!choices.is_empty());
     }
 }

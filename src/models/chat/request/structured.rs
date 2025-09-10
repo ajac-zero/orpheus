@@ -15,7 +15,7 @@ use crate::models::chat::{
 /// ```rust
 /// use orpheus::prelude::*;
 ///
-/// let client = Client::from_env().unwrap();
+/// let client = Orpheus::from_env().unwrap();
 ///
 /// // Create a simple person schema
 /// let format = Format::json("person")
@@ -23,7 +23,6 @@ use crate::models::chat::{
 ///         schema
 ///             .property("name", Param::string())
 ///             .property("age", Param::number())
-///             .property("city", Param::string())
 ///             .required(["name", "age"])
 ///     })
 ///     .build();
@@ -33,9 +32,8 @@ use crate::models::chat::{
 ///     .chat("Hello, how old are you?")
 ///     .model("openai/gpt-4o")
 ///     .response_format(format)
-///     .await
+///     .send()
 ///     .unwrap();
-///
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "json_schema", rename_all = "snake_case")]
