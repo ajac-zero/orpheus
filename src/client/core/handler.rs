@@ -1,6 +1,9 @@
 use crate::{
     Result,
-    client::core::{Async, Mode, Sync},
+    client::{
+        OrpheusCore,
+        core::{Async, Mode, Sync},
+    },
 };
 
 pub trait Handler<M: Mode> {
@@ -8,7 +11,7 @@ pub trait Handler<M: Mode> {
     type Input: serde::Serialize;
     type Response;
 
-    fn new(builder: M::Builder) -> Self;
+    fn from(core: &OrpheusCore<M>) -> Self;
 }
 
 pub trait Executor: Handler<Sync> {

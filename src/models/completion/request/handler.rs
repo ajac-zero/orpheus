@@ -6,21 +6,35 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct CompletionHandler<M: Mode>(M);
+pub struct CompletionHandler<M: Mode> {
+    url: url::Url,
+    client: M::Client,
+    auth: Option<String>,
+}
 
 impl<M: Mode> Handler<M> for CompletionHandler<M> {
     const PATH: &str = COMPLETION_PATH;
     type Input = CompletionRequest<M>;
     type Response = M::Response;
 
-    fn new(builder: M::Builder) -> Self {
-        Self(M::new(builder))
+    fn from(core: &crate::client::OrpheusCore<M>) -> Self {
+        let url = core.base_url.join(Self::PATH).expect("failed to join url");
+        let client = core.client.clone();
+        let auth = core.api_key.clone();
+
+        Self { url, client, auth }
     }
 }
 
 impl Executor for CompletionHandler<Sync> {
     fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response> {
-        let response = self.0.0.json(&body).send().map_err(Error::http)?;
+        let mut builder = self.client.post(self.url).json(&body);
+
+        if let Some(token) = self.auth {
+            builder = builder.bearer_auth(token);
+        }
+
+        let response = builder.send().map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)
@@ -33,7 +47,13 @@ impl Executor for CompletionHandler<Sync> {
 
 impl AsyncExecutor for CompletionHandler<Async> {
     async fn execute(self, body: Self::Input) -> Result<reqwest::Response> {
-        let response = self.0.0.json(&body).send().await.map_err(Error::http)?;
+        let mut builder = self.client.post(self.url).json(&body);
+
+        if let Some(token) = self.auth {
+            builder = builder.bearer_auth(token);
+        }
+
+        let response = builder.send().await.map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)

@@ -1,19 +1,32 @@
+use url::Url;
+
 use crate::{
     Error, Result,
-    client::core::{Async, AsyncExecutor, Executor, Handler, Mode, Sync},
+    client::{
+        OrpheusCore,
+        core::{Async, AsyncExecutor, Executor, Handler, Mode, Sync},
+    },
     constants::CHAT_COMPLETION_PATH,
 };
 
 #[derive(Debug)]
-pub(crate) struct ChatHandler<M: Mode>(M);
+pub(crate) struct ChatHandler<M: Mode> {
+    url: Url,
+    client: M::Client,
+    auth: Option<String>,
+}
 
 impl<M: Mode> Handler<M> for ChatHandler<M> {
     const PATH: &str = CHAT_COMPLETION_PATH;
     type Input = super::ChatRequest<M>;
     type Response = M::Response;
 
-    fn new(builder: M::Builder) -> Self {
-        Self(M::new(builder))
+    fn from(core: &OrpheusCore<M>) -> Self {
+        let url = core.base_url.join(Self::PATH).expect("failed to join url");
+        let client = core.client.clone();
+        let auth = core.api_key.clone();
+
+        Self { url, client, auth }
     }
 }
 
@@ -22,7 +35,13 @@ impl Executor for ChatHandler<Sync> {
         #[cfg(feature = "otel")]
         crate::otel::record_input(&body);
 
-        let response = self.0.0.json(&body).send().map_err(Error::http)?;
+        let mut builder = self.client.post(self.url).json(&body);
+
+        if let Some(token) = self.auth {
+            builder = builder.bearer_auth(token);
+        }
+
+        let response = builder.send().map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)
@@ -38,7 +57,13 @@ impl AsyncExecutor for ChatHandler<Async> {
         #[cfg(feature = "otel")]
         crate::otel::record_input(&body);
 
-        let response = self.0.0.json(&body).send().await.map_err(Error::http)?;
+        let mut builder = self.client.post(self.url).json(&body);
+
+        if let Some(token) = self.auth {
+            builder = builder.bearer_auth(token);
+        }
+
+        let response = builder.send().await.map_err(Error::http)?;
 
         if response.status().is_success() {
             Ok(response)

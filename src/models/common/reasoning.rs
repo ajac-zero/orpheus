@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Builder)]
 #[builder(state_mod(vis = "pub(crate)"))]
-pub struct ReasoningConfig {
+pub struct Reasoning {
     /// OpenAI-style reasoning effort setting
     pub effort: Option<Effort>,
 

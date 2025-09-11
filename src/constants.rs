@@ -2,6 +2,7 @@ pub const USER_AGENT_NAME: &str = "Orpheus 1.0";
 
 pub const CHAT_COMPLETION_PATH: &str = "chat/completions";
 pub const COMPLETION_PATH: &str = "completions";
+pub const KEY_PROVISION_PATH: &str = "keys";
 
 pub const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1/";
 

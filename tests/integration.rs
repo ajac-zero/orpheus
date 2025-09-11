@@ -1,5 +1,8 @@
 use futures_lite::StreamExt;
-use orpheus::{models::Plugin, prelude::*};
+use orpheus::{
+    models::{Plugin, Transform},
+    prelude::*,
+};
 
 const TEST_MODEL: &str = "google/gemini-2.5-flash-lite";
 
@@ -185,4 +188,55 @@ fn tool_request() {
 
     let choices = chat_response.choices;
     assert!(!choices.is_empty());
+}
+
+#[test]
+fn request_with_transform() {
+    let client = Orpheus::from_env().unwrap();
+
+    let response = client
+        .chat("Really long text")
+        .model(TEST_MODEL)
+        .transforms([Transform::MiddleOut])
+        .send();
+    println!("{:?}", response);
+
+    assert!(response.is_ok());
+
+    let chat_response = response.unwrap();
+
+    let choices = chat_response.choices;
+    assert!(!choices.is_empty());
+}
+
+#[test]
+fn create_then_delete_key() {
+    let provisioning_key = std::env::var("ORPHEUS_ADMIN_KEY").unwrap();
+
+    let client = Orpheus::from_env()
+        .unwrap()
+        .with_provisioning_key(provisioning_key);
+
+    let response = client
+        .keys()
+        .name("Test-key")
+        .limit(1000)
+        .include_byok_in_limit(true)
+        .create();
+
+    println!("{:?}", response);
+
+    assert!(response.is_ok());
+
+    let key_response = response.unwrap();
+    println!("{:?}", key_response);
+
+    let response = client.keys().hash(key_response.data.hash).delete();
+
+    println!("{:?}", response);
+
+    assert!(response.is_ok());
+
+    let key_response = response.unwrap();
+    println!("{:?}", key_response);
 }

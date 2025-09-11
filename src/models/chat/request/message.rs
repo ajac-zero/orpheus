@@ -280,6 +280,8 @@ pub struct Details {
 mod test {
     use serde_json::json;
 
+    use crate::models::chat::CacheControl;
+
     use super::*;
 
     #[test]
@@ -316,5 +318,39 @@ mod test {
         let value = Message::user("hii!").with_image("image.jpg");
         let result = serde_json::to_value(value).unwrap();
         assert_eq!(result, target);
+    }
+
+    #[test]
+    fn message_from_parts() {
+        let target = json!({
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": "Based on the book text below:"
+            },
+            {
+              "type": "text",
+              "text": "HUGE TEXT BODY HERE",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            },
+            {
+              "type": "text",
+              "text": "List all main characters mentioned in the text above."
+            }
+          ]
+        });
+
+        let value = Message::user([
+            Part::text("Based on the book text below:"),
+            Part::text("HUGE TEXT BODY HERE").with_caching(CacheControl::Ephemeral),
+            Part::text("List all main characters mentioned in the text above."),
+        ]);
+
+        let result = serde_json::to_value(value).unwrap();
+
+        assert_eq!(target, result);
     }
 }

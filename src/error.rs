@@ -17,6 +17,9 @@ pub enum OrpheusError {
     #[error("Parsing error: {0}")]
     Parsing(String),
 
+    #[error("Missing provisioning key")]
+    MissingProvisioningKey,
+
     #[cfg(feature = "mcp")]
     #[error("MCP error: {0}")]
     Mcp(#[from] McpError),

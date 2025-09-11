@@ -5,18 +5,18 @@
 **Orpheus** is a library made to make it as ergonomic as possible to create AI apps with [OpenRouter](https://openrouter.ai/), allowing immediate access to hundreds of models and dozens of providers you can mix and match to best suit your use case.
 
 Orpheus also comes with out-of-the-box support for:
-- ⚡ Async
-- 🌊 Streaming
-- 🖼️ Images and PDF
-- 🔄 Model Fallbacks
-- 🔍 Web Search
-- 🛠️ Tool Calling
-- 🔌 MCP Client
-- 📋 Structured Outputs
-- ⚙️ Provider Selection
-- 💾 Prompt Caching
-- 🔧 Message Transforms
-- 🔑 API Key Provisioning
+- ⚡ [Async](https://orpheus.ajac-zero.com/features/async-support)
+- 🌊 [Streaming](https://orpheus.ajac-zero.com/basics/getting-started/streaming-responses)
+- 🖼️ [Images, PDF, and Audio](https://orpheus.ajac-zero.com/features/multimodality)
+- 🔄 [Model Fallbacks](https://orpheus.ajac-zero.com/basics/fallback-models)
+- 🔍 [Web Search](https://orpheus.ajac-zero.com/features/plugins#web-search-plugin)
+- 🛠️ [Tool Calling](https://orpheus.ajac-zero.com/features/tool-calling)
+- 🔌 [MCP](https://orpheus.ajac-zero.com/integrations/mcp)
+- 📋 [Structured Outputs](https://orpheus.ajac-zero.com/features/structured-output)
+- ⚙️ [Provider Selection](https://orpheus.ajac-zero.com/basics/configuring-providers)
+- 💾 [Prompt Caching](https://orpheus.ajac-zero.com/features/caching)
+- 🔧 [Message Transforms](https://orpheus.ajac-zero.com/features/transforms)
+- 🔑 [API Key Provisioning]()
 
 ## Installation
 Add Orpheus to your project with cargo:
@@ -53,7 +53,7 @@ fn main() {
 }
 ```
 
-```bash
+```md
 GPT-4o says: Hello! How can I assist you today?
 ```
 
@@ -100,7 +100,7 @@ fn main() {
 }
 ```
 
-```bash
+```md
 User:
 hi!
 Assistant:
@@ -164,7 +164,7 @@ fn main() {
 }
 ```
 
-```bash
+```md
 User:
 hi
 Assistant:
@@ -175,4 +175,4 @@ Hello! How can I assist you today?
 
 # Documentation
 
-If you want to learn about additional features, such as async support, structured output, tool calling, MCP, prompt caching, provider configuration, and more, head over to the [docs](https://orpheus.ajac-zero.com/)!.
+If you want to learn about additional features, such as async support, structured output, tool calling, MCP, prompt caching, provider configuration, and more, head over to the [docs](https://orpheus.ajac-zero.com/)!

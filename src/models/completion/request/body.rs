@@ -8,7 +8,7 @@ use crate::{
     Error, Result,
     client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
     models::{
-        ProviderPreferences, ReasoningConfig, UsageConfig,
+        Preferences, Reasoning, Usage,
         completion::{CompletionHandler, CompletionResponse},
     },
 };
@@ -36,13 +36,13 @@ pub struct CompletionRequest<M: Mode> {
     pub models: Option<Vec<String>>,
 
     /// Preferences for provider routing.
-    pub provider: Option<ProviderPreferences>,
+    pub provider: Option<Preferences>,
 
     /// Configuration for model reasoning/thinking tokens
-    pub reasoning: Option<ReasoningConfig>,
+    pub reasoning: Option<Reasoning>,
 
     /// Whether to include usage information in the response
-    pub usage: Option<UsageConfig>,
+    pub usage: Option<Usage>,
 
     /// List of prompt transforms (OpenRouter-only).
     pub transforms: Option<Vec<String>>,

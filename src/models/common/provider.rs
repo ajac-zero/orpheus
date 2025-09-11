@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Builder)]
 #[builder(state_mod(vis = "pub(crate)"))]
-pub struct ProviderPreferences {
+pub struct Preferences {
     /// List of provider slugs to try in order (e.g. `vec![Provider::Anthropic, Provider::OpenAI]`).
     ///
     /// [Learn more](https://openrouter.ai/docs/features/provider-routing#ordering-specific-providers)
@@ -236,7 +236,7 @@ mod test {
             }
         });
 
-        let provider = ProviderPreferences::builder()
+        let provider = Preferences::builder()
             .order([Provider::Groq, Provider::Azure, Provider::GoogleAIStudio])
             .only([Provider::Groq])
             .ignore([Provider::Together])

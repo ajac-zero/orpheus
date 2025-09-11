@@ -1,11 +1,10 @@
 use crate::constants::USER_AGENT_NAME;
 
 pub trait Mode {
-    type Client;
-    type Builder;
+    type Client: Clone + std::fmt::Debug;
     type Response;
 
-    fn new(builder: Self::Builder) -> Self;
+    fn new(client: Self::Client) -> Self;
 
     fn client() -> Self::Client;
 }
@@ -13,19 +12,19 @@ pub trait Mode {
 macro_rules! impl_mode {
     ($name:ident, {
         Client: $client:ty,
-        RequestBuilder: $builder:ty,
         Response: $response:ty
     }) => {
         #[derive(Debug)]
-        pub struct $name(pub $builder);
+        pub struct $name {
+            pub client: $client,
+        }
 
         impl Mode for $name {
             type Client = $client;
-            type Builder = $builder;
             type Response = $response;
 
-            fn new(builder: Self::Builder) -> Self {
-                Self(builder)
+            fn new(client: Self::Client) -> Self {
+                Self { client }
             }
 
             fn client() -> Self::Client {
@@ -41,12 +40,10 @@ macro_rules! impl_mode {
 
 impl_mode!(Sync, {
     Client: reqwest::blocking::Client,
-    RequestBuilder: reqwest::blocking::RequestBuilder,
     Response: reqwest::blocking::Response
 });
 
 impl_mode!(Async, {
     Client: reqwest::Client,
-    RequestBuilder: reqwest::RequestBuilder,
     Response: reqwest::Response
 });

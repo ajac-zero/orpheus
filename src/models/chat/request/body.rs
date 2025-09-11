@@ -8,12 +8,9 @@ use crate::{
     Error, Result,
     client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
     models::{
-        Format, Plugin, ProviderPreferences, ReasoningConfig, UsageConfig,
-        chat::{AsyncStream, ChatCompletion, ChatHandler, ChatStream, History, Tool},
-        common::{
-            ProviderPreferencesBuilder, ReasoningConfigBuilder, provider_preferences_builder,
-            reasoning_config_builder,
-        },
+        Format, Plugin, Preferences, Reasoning, Tool, Transform, Usage,
+        chat::{AsyncStream, ChatCompletion, ChatHandler, ChatStream, History},
+        common::{PreferencesBuilder, ReasoningBuilder, preferences_builder, reasoning_builder},
     },
 };
 
@@ -52,11 +49,11 @@ pub(crate) struct ChatRequest<M: Mode> {
 
     /// Preferences for provider routing.
     #[builder(field)]
-    pub provider: Option<ProviderPreferences>,
+    pub provider: Option<Preferences>,
 
     /// Configuration for model reasoning/thinking tokens
     #[builder(field)]
-    pub reasoning: Option<ReasoningConfig>,
+    pub reasoning: Option<Reasoning>,
 
     /// The model ID to use. If unspecified, the user's default is used.
     pub model: Option<String>,
@@ -77,10 +74,11 @@ pub(crate) struct ChatRequest<M: Mode> {
     pub plugins: Option<Vec<Plugin>>,
 
     /// Whether to include usage information in the response
-    pub usage: Option<UsageConfig>,
+    pub usage: Option<Usage>,
 
     /// List of prompt transforms (OpenRouter-only).
-    pub transforms: Option<Vec<String>>,
+    #[builder(into)]
+    pub transforms: Option<Vec<Transform>>,
 
     /// Maximum number of tokens.
     pub max_tokens: Option<i32>,
@@ -124,33 +122,33 @@ pub(crate) struct ChatRequest<M: Mode> {
 
 impl<M: Mode, S: chat_request_builder::State> ChatRequestBuilder<M, S> {
     /// Sets provider routing preferences for model selection.
-    pub fn preferences(mut self, preferences: ProviderPreferences) -> Self {
+    pub fn preferences(mut self, preferences: Preferences) -> Self {
         self.provider = Some(preferences);
         self
     }
 
     pub fn with_preferences<F, C>(mut self, build_preferences: F) -> Self
     where
-        F: FnOnce(ProviderPreferencesBuilder) -> ProviderPreferencesBuilder<C>,
-        C: provider_preferences_builder::IsComplete,
+        F: FnOnce(PreferencesBuilder) -> PreferencesBuilder<C>,
+        C: preferences_builder::IsComplete,
     {
-        let builder = ProviderPreferences::builder();
+        let builder = Preferences::builder();
         let preferences = build_preferences(builder).build();
         self.provider = Some(preferences);
         self
     }
 
-    pub fn reasoning(mut self, config: ReasoningConfig) -> Self {
+    pub fn reasoning(mut self, config: Reasoning) -> Self {
         self.reasoning = Some(config);
         self
     }
 
     pub fn with_reasoning<F, C>(mut self, build_reasoning: F) -> Self
     where
-        F: FnOnce(ReasoningConfigBuilder) -> ReasoningConfigBuilder<C>,
-        C: reasoning_config_builder::IsComplete,
+        F: FnOnce(ReasoningBuilder) -> ReasoningBuilder<C>,
+        C: reasoning_builder::IsComplete,
     {
-        let builder = ReasoningConfig::builder();
+        let builder = Reasoning::builder();
         let config = build_reasoning(builder).build();
         self.reasoning = Some(config);
         self

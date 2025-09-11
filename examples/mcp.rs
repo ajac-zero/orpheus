@@ -1,14 +1,14 @@
 use std::io::{self, Write};
 
 use colored::Colorize;
-use orpheus::{mcp::ModelContext, prelude::*};
+use orpheus::{mcp::Mcp, prelude::*};
 
 #[tokio::main]
 async fn main() -> orpheus::Result<()> {
     let client = AsyncOrpheus::from_env()?;
 
     // Connect to a server running as a child process
-    let context = ModelContext::builder()
+    let context = Mcp::stdio()
         .command("npx")
         .args(["-y", "@modelcontextprotocol/server-filesystem", "."])
         .run()
@@ -39,7 +39,7 @@ async fn main() -> orpheus::Result<()> {
 
             let response = client
                 .chat(messages.clone())
-                .model("google/gemini-2.0-flash-001")
+                .model("google/gemini-2.5-flash")
                 .tools(tools.clone())
                 .send()
                 .await?;

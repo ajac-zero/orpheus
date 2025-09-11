@@ -1,5 +1,6 @@
 mod chat;
 mod completion;
+mod keys;
 
 use crate::client::core::{OrpheusCore, Sync};
 

@@ -36,6 +36,12 @@ impl From<Vec<Part>> for Content {
     }
 }
 
+impl<const N: usize> From<[Part; N]> for Content {
+    fn from(value: [Part; N]) -> Self {
+        Content::Complex(value.to_vec())
+    }
+}
+
 impl Content {
     pub fn simple(content: impl Into<String>) -> Self {
         Content::Simple(content.into())
@@ -92,18 +98,31 @@ pub struct InputAudio {
     format: String,
 }
 
+#[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Part {
-    Text { text: String },
-    ImageUrl { image_url: ImageUrl },
-    File { file: File },
-    InputAudio { input_audio: InputAudio },
+    Text {
+        text: String,
+        cache_control: Option<CacheControl>,
+    },
+    ImageUrl {
+        image_url: ImageUrl,
+    },
+    File {
+        file: File,
+    },
+    InputAudio {
+        input_audio: InputAudio,
+    },
 }
 
 impl Part {
-    pub fn text(string: String) -> Self {
-        Self::Text { text: string }
+    pub fn text(string: impl Into<String>) -> Self {
+        Self::Text {
+            text: string.into(),
+            cache_control: None,
+        }
     }
 
     pub fn image_url(url: String, detail: Option<String>) -> Self {
@@ -126,12 +145,26 @@ impl Part {
             input_audio: InputAudio { data, format },
         }
     }
+
+    /// Sets cache type for the part.
+    ///
+    /// Currently only works on text parts, calling it with other part
+    /// variants is a no-op.
+    pub fn with_caching(self, cache_control: CacheControl) -> Self {
+        match self {
+            Part::Text { text, .. } => Part::Text {
+                text,
+                cache_control: Some(cache_control),
+            },
+            _ => self,
+        }
+    }
 }
 
 impl std::fmt::Display for Part {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Part::Text { text } => write!(f, "{}", text),
+            Part::Text { text, .. } => write!(f, "{}", text),
             Part::ImageUrl { image_url } => write!(f, "{}", format!("[Url: {}]", image_url.url)),
             Part::File { file } => write!(f, "{}", format!("[File: {}]", file.filename)),
             Part::InputAudio { input_audio } => {
@@ -139,6 +172,12 @@ impl std::fmt::Display for Part {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum CacheControl {
+    Ephemeral,
 }
 
 #[cfg(test)]

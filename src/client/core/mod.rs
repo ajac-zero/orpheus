@@ -3,7 +3,6 @@ mod mode;
 
 pub use handler::{AsyncExecutor, Executor, Handler};
 pub use mode::{Async, Mode, Sync};
-use reqwest::header::CONTENT_TYPE;
 use url::Url;
 
 use crate::{Error, Result, constants::*};
@@ -23,9 +22,10 @@ use crate::{Error, Result, constants::*};
 /// ```
 #[derive(Debug, Clone)]
 pub struct OrpheusCore<M: Mode> {
-    client: M::Client,
-    api_key: Option<String>,
-    base_url: Url,
+    pub(crate) client: M::Client,
+    pub(crate) api_key: Option<String>,
+    pub(crate) base_url: Url,
+    pub(crate) provisioning_key: Option<String>,
 }
 
 impl<M: Mode> Default for OrpheusCore<M> {
@@ -34,6 +34,7 @@ impl<M: Mode> Default for OrpheusCore<M> {
             client: M::client(),
             api_key: None,
             base_url: Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url"),
+            provisioning_key: None,
         }
     }
 }
@@ -100,29 +101,15 @@ impl<M: Mode> OrpheusCore<M> {
         self.api_key = Some(api_key.into());
         self
     }
+
+    /// Set the provisioning key that will be used for authorization to the API;
+    /// It CANNOT be used to make completion request, only provisioning requests.
+    pub fn with_provisioning_key(mut self, provisioning_key: impl Into<String>) -> Self {
+        self.provisioning_key = Some(provisioning_key.into());
+        self
+    }
+
+    pub(crate) fn create_handler<H: Handler<M>>(&self) -> H {
+        Handler::from(self)
+    }
 }
-
-// Macro to implement create_handler for both Sync and Async modes
-macro_rules! impl_create_handler {
-    ($mode:ty, $trait_bound:path) => {
-        impl OrpheusCore<$mode> {
-            pub(crate) fn create_handler<H: $trait_bound>(&self) -> H {
-                let url = self.base_url.join(H::PATH).expect("Is valid url");
-                let mut builder = self
-                    .client
-                    .post(url)
-                    .header(CONTENT_TYPE, "application/json");
-
-                if let Some(token) = self.api_key.as_ref() {
-                    builder = builder.bearer_auth(token);
-                }
-
-                H::new(builder)
-            }
-        }
-    };
-}
-
-// Apply the macro for both Sync and Async modes
-impl_create_handler!(Sync, Executor);
-impl_create_handler!(Async, AsyncExecutor);

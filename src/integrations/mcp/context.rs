@@ -14,14 +14,14 @@ use crate::{
     models::chat::{Message, Part, Tool},
 };
 
-pub struct ModelContext {
+pub struct Mcp {
     pub service: RunningService<RoleClient, ()>,
 }
 
 #[bon]
-impl ModelContext {
+impl Mcp {
     #[builder(finish_fn = run)]
-    pub async fn new(
+    pub async fn stdio(
         #[builder(into)] command: String,
         #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
         args: Vec<String>,
@@ -83,22 +83,19 @@ impl ToolResult {
     }
 }
 
-use model_context_call_builder::{IsUnset, SetArguments, State};
+use mcp_call_builder::{IsUnset, SetArguments, State};
 
-impl<'a, S: State> ModelContextCallBuilder<'a, S>
+impl<'a, S: State> McpCallBuilder<'a, S>
 where
     S::Arguments: IsUnset,
 {
-    pub fn literal_arguments(
-        self,
-        value: &str,
-    ) -> Result<ModelContextCallBuilder<'a, SetArguments<S>>> {
+    pub fn literal_arguments(self, value: &str) -> Result<McpCallBuilder<'a, SetArguments<S>>> {
         let args: serde_json::Value = serde_json::from_str(value).map_err(Error::serde)?;
         self.arguments(args)
     }
 }
 
-impl ModelContext {
+impl Mcp {
     pub async fn get_tools(&self) -> Result<Vec<Tool>> {
         Ok(self
             .service

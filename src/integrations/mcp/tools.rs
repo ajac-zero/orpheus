@@ -34,18 +34,6 @@ impl TryFrom<rmcp::model::Tool> for Tool {
     }
 }
 
-// impl TryFrom<rmcp::model::ListToolsResult> for Vec<Tool> {
-//     type Error = Error;
-
-//     fn try_from(value: rmcp::model::ListToolsResult) -> Result<Self, Self::Error> {
-//         Ok(value
-//             .tools
-//             .into_iter()
-//             .map(TryInto::try_into)
-//             .collect::<Result<_>>()?)
-//     }
-// }
-
 #[cfg(test)]
 mod test {
     use serde_json::json;
