@@ -20,10 +20,6 @@ pub enum OrpheusError {
     #[cfg(feature = "mcp")]
     #[error("MCP error: {0}")]
     Mcp(#[from] McpError),
-
-    #[cfg(feature = "anyhow")]
-    #[error("Anyhow error: {0}")]
-    Anyhow(#[from] anyhow::Error),
 }
 
 impl OrpheusError {

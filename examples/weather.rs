@@ -1,12 +1,3 @@
-#!/usr/bin/env rust-script
-//! ```cargo
-//! [dependencies]
-//! anyhow = "1.0.98"
-//! serde = "1.0.217"
-//! serde_json = "1.0.134"
-//! orpheus = "0.1.1"
-//! reqwest = { version = "0.12.12", features = ["blocking", "json"] }
-//! ```
 use orpheus::prelude::*;
 use serde::Deserialize;
 use serde_json::Value;

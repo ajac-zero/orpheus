@@ -1,16 +1,8 @@
-#!/usr/bin/env rust-script
-//! ```cargo
-//! [dependencies]
-//! anyhow = "1.0.98"
-//! colored = "3.0.0"
-//! orpheus = "0.1.1"
-//! clap = { version = "4.5.45", features = ["derive"] }
-//! ```
 use std::io::Write;
 
 use clap::Parser;
 use colored::Colorize;
-use orpheus::prelude::*;
+use orpheus::{models::Effort, prelude::*};
 
 #[derive(Parser)]
 struct Cli {

@@ -1,23 +1,3 @@
-#!/usr/bin/env rust-script
-//! # Structured Output Data Extraction Example
-//!
-//! This example demonstrates how to use Orpheus's structured output feature
-//! to extract structured data from unstructured text. The model is constrained
-//! to return JSON that conforms to a predefined schema, making the response
-//! easy to parse and validate.
-//!
-//! ## Key Features Demonstrated:
-//! - JSON schema definition with `Format::json()`
-//! - Property type specification (`string`, `number`)
-//! - Required field constraints
-//! - Integration with system prompts for better extraction
-//!
-//! ```cargo
-//! [dependencies]
-//! anyhow = "1.0.98"
-//! colored = "3.0.0"
-//! orpheus = { path = "../.." }
-//! ```
 use colored::Colorize;
 use orpheus::prelude::*;
 
