@@ -1,23 +1,25 @@
+use url::Url;
+
 use crate::{
     Error, Result,
-    client::core::{Async, AsyncExecutor, Executor, Handler, Mode, Sync},
-    constants::COMPLETION_PATH,
-    models::completion::CompletionRequest,
+    client::{Async, AsyncExecutor, Executor, Handler, Mode, OrpheusCore, Sync},
+    constants::CHAT_COMPLETION_PATH,
+    models::chat::ChatRequest,
 };
 
 #[derive(Debug)]
-pub struct CompletionHandler<M: Mode> {
-    url: url::Url,
+pub(crate) struct ChatHandler<M: Mode> {
+    url: Url,
     client: M::Client,
     auth: Option<String>,
 }
 
-impl<M: Mode> Handler<M> for CompletionHandler<M> {
-    const PATH: &str = COMPLETION_PATH;
-    type Input = CompletionRequest<M>;
+impl<M: Mode> Handler<M> for ChatHandler<M> {
+    const PATH: &str = CHAT_COMPLETION_PATH;
+    type Input = ChatRequest<M>;
     type Response = M::Response;
 
-    fn from(core: &crate::client::OrpheusCore<M>) -> Self {
+    fn from(core: &OrpheusCore<M>) -> Self {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
         let auth = core.api_key.clone();
@@ -26,8 +28,11 @@ impl<M: Mode> Handler<M> for CompletionHandler<M> {
     }
 }
 
-impl Executor for CompletionHandler<Sync> {
-    fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response> {
+impl Executor for ChatHandler<Sync> {
+    fn execute(self, body: Self::Input) -> Result<Self::Response> {
+        #[cfg(feature = "otel")]
+        crate::otel::record_input(&body);
+
         let mut builder = self.client.post(self.url).json(&body);
 
         if let Some(token) = self.auth {
@@ -45,8 +50,11 @@ impl Executor for CompletionHandler<Sync> {
     }
 }
 
-impl AsyncExecutor for CompletionHandler<Async> {
-    async fn execute(self, body: Self::Input) -> Result<reqwest::Response> {
+impl AsyncExecutor for ChatHandler<Async> {
+    async fn execute(self, body: Self::Input) -> Result<Self::Response> {
+        #[cfg(feature = "otel")]
+        crate::otel::record_input(&body);
+
         let mut builder = self.client.post(self.url).json(&body);
 
         if let Some(token) = self.auth {

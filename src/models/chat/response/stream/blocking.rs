@@ -1,6 +1,6 @@
 use std::io::{BufRead, BufReader};
 
-use crate::{Error, Result};
+use crate::{Error, Result, models::chat::ChatStreamChunk};
 
 #[derive(Debug)]
 pub struct ChatStream {
@@ -21,7 +21,7 @@ impl ChatStream {
 }
 
 impl Iterator for ChatStream {
-    type Item = Result<super::ChatStreamChunk>;
+    type Item = Result<ChatStreamChunk>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut line = String::new();

@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use crate::{
     Error, Result,
-    client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
+    client::{Async, AsyncExecutor, Executor, Mode, Sync},
     models::{
         Preferences, Reasoning, Usage,
         completion::{CompletionHandler, CompletionResponse},
@@ -20,7 +20,7 @@ use crate::{
         /// Builder to set the parameters of a completion request
     })
 )]
-pub struct CompletionRequest<M: Mode> {
+pub(crate) struct CompletionRequest<M: Mode> {
     #[serde(skip)]
     #[builder(start_fn)]
     handler: Option<CompletionHandler<M>>,

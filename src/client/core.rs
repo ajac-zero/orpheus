@@ -1,11 +1,10 @@
-mod handler;
-mod mode;
-
-pub use handler::{AsyncExecutor, Executor, Handler};
-pub use mode::{Async, Mode, Sync};
 use url::Url;
 
-use crate::{Error, Result, constants::*};
+use crate::{
+    Error, Result,
+    client::{Handler, Mode},
+    constants::*,
+};
 
 /// Core client logic to interface with LLMs.
 /// Designed for the OpenRouter API, but

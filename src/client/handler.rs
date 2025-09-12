@@ -1,9 +1,6 @@
 use crate::{
     Result,
-    client::{
-        OrpheusCore,
-        core::{Async, Mode, Sync},
-    },
+    client::{Async, Mode, OrpheusCore, Sync},
 };
 
 pub trait Handler<M: Mode> {

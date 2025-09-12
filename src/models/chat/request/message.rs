@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Error;
-
-use super::content::{Content, Part};
+use crate::{
+    Error,
+    models::chat::{Content, Part},
+};
 
 /// Represents a message in a chat conversation with support for multimodal content.
 ///
@@ -280,9 +281,8 @@ pub struct Details {
 mod test {
     use serde_json::json;
 
-    use crate::models::chat::CacheControl;
-
     use super::*;
+    use crate::models::chat::CacheControl;
 
     #[test]
     fn simple_message_serialization() {

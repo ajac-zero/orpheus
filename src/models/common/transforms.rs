@@ -8,8 +8,9 @@ pub enum Transform {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_deserialize() {

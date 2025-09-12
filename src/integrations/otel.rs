@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use tracing::{Level, Span, field::Empty, info, span};
 
 use crate::{
-    client::core::Mode,
+    client::Mode,
     models::{
         Message,
         chat::{ChatChoice, ChatCompletion, ChatRequest, ChatStreamChunk, Content, Role},

@@ -1,10 +1,10 @@
 use reqwest::Method;
 
-use super::request::KeyProvisioningRequest;
 use crate::{
     Error, Result,
-    client::core::{Async, AsyncExecutor, Executor, Handler, Mode, Sync},
+    client::{Async, AsyncExecutor, Executor, Handler, Mode, Sync},
     constants::KEY_PROVISION_PATH,
+    models::keys::KeyProvisioningRequest,
 };
 
 #[derive(Debug)]

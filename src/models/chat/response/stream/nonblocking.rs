@@ -6,7 +6,7 @@ use std::{
 
 use futures_lite::Stream;
 
-use crate::{Error, Result};
+use crate::{Error, Result, models::chat::ChatStreamChunk};
 
 pub struct AsyncStream {
     stream: Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>,
@@ -28,7 +28,7 @@ impl AsyncStream {
 }
 
 impl Stream for AsyncStream {
-    type Item = Result<super::ChatStreamChunk>;
+    type Item = Result<ChatStreamChunk>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -84,7 +84,7 @@ impl Stream for AsyncStream {
                             return Poll::Ready(None);
                         }
 
-                        match serde_json::from_str::<super::ChatStreamChunk>(json_str) {
+                        match serde_json::from_str::<ChatStreamChunk>(json_str) {
                             Ok(chunk) => return Poll::Ready(Some(Ok(chunk))),
                             Err(e) => {
                                 return Poll::Ready(Some(Err(Error::serde(e))));

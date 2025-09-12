@@ -2,11 +2,10 @@ use bon::{Builder, builder};
 use key_provisioning_request_builder::{IsSet, IsUnset, State};
 use serde::Serialize;
 
-use super::{handler::ProvisionHandler, response::CreateKeyResult};
 use crate::{
     Error, Result,
-    client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
-    models::keys::{DeleteKeyResult, ListKeysResult},
+    client::{Async, AsyncExecutor, Executor, Mode, Sync},
+    models::keys::{CreateKeyResult, DeleteKeyResult, ListKeysResult, ProvisionHandler},
 };
 
 #[serde_with::skip_serializing_none]

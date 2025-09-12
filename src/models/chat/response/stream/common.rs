@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Error, Result};
+use crate::{
+    Error, Result,
+    models::{
+        Message,
+        chat::{ChatUsage, Content},
+    },
+};
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,11 +33,11 @@ pub struct ChatStreamChunk {
     pub system_fingerprint: Option<String>,
 
     /// Usage statistics (only present in the final chunk)
-    pub usage: Option<super::ChatUsage>,
+    pub usage: Option<ChatUsage>,
 }
 
 impl ChatStreamChunk {
-    pub fn delta(&self) -> Result<&super::Message> {
+    pub fn delta(&self) -> Result<&Message> {
         let message = &self
             .choices
             .iter()
@@ -44,7 +50,7 @@ impl ChatStreamChunk {
         Ok(message)
     }
 
-    pub fn into_delta(self) -> Result<super::Message> {
+    pub fn into_delta(self) -> Result<Message> {
         let message = self
             .choices
             .into_iter()
@@ -57,11 +63,11 @@ impl ChatStreamChunk {
         Ok(message)
     }
 
-    pub fn into_content(self) -> Result<super::Content> {
+    pub fn into_content(self) -> Result<Content> {
         Ok(self.into_delta()?.content)
     }
 
-    pub fn content(&self) -> Result<&super::Content> {
+    pub fn content(&self) -> Result<&Content> {
         Ok(&self.delta()?.content)
     }
 
@@ -77,7 +83,7 @@ pub struct ChatStreamChoice {
     pub index: u8,
 
     /// The delta containing incremental message content
-    pub delta: super::Message,
+    pub delta: Message,
 
     /// The reason the completion finished
     pub finish_reason: Option<String>,

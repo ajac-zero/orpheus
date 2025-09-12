@@ -1,5 +1,5 @@
 use crate::{
-    client::core::{Mode, OrpheusCore},
+    client::{Mode, OrpheusCore},
     models::completion::{CompletionRequest, CompletionRequestBuilder},
 };
 

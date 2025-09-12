@@ -6,7 +6,7 @@ use tracing::debug;
 
 use crate::{
     Error, Result,
-    client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
+    client::{Async, AsyncExecutor, Executor, Mode, Sync},
     models::{
         Format, Plugin, Preferences, Reasoning, Tool, Transform, Usage,
         chat::{AsyncStream, ChatCompletion, ChatHandler, ChatStream, History},
