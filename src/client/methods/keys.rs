@@ -1,11 +1,11 @@
 use crate::{
-    client::{Orpheus, core::Sync},
+    client::core::{Mode, OrpheusCore},
     models::keys::{KeyProvisioningRequest, KeyProvisioningRequestBuilder},
 };
 
-impl Orpheus {
+impl<M: Mode> OrpheusCore<M> {
     /// Initialize a builder for a key provisioning request
-    pub fn keys(&self) -> KeyProvisioningRequestBuilder<Sync> {
+    pub fn keys(&self) -> KeyProvisioningRequestBuilder<M> {
         let handler = self.create_handler();
         KeyProvisioningRequest::builder(Some(handler))
     }

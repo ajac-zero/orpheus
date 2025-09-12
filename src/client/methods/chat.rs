@@ -1,11 +1,11 @@
 use crate::{
-    client::{Orpheus, core::Sync},
+    client::core::{Mode, OrpheusCore},
     models::chat::{ChatRequest, ChatRequestBuilder, History},
 };
 
-impl Orpheus {
+impl<M: Mode> OrpheusCore<M> {
     /// Initialize a builder for a chat completion request
-    pub fn chat(&self, messages: impl Into<History>) -> ChatRequestBuilder<Sync> {
+    pub fn chat(&self, messages: impl Into<History>) -> ChatRequestBuilder<M> {
         let handler = self.create_handler();
         ChatRequest::builder(
             #[cfg(feature = "otel")]

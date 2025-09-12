@@ -1,8 +1,11 @@
-mod blocking;
 pub(crate) mod core;
-mod nonblocking;
+mod methods;
 
 pub use core::OrpheusCore;
+use core::{Async, Sync};
 
-pub use blocking::Orpheus;
-pub use nonblocking::AsyncOrpheus;
+/// Alias for the OrpheusCore client in `Blocking` mode.
+pub type Orpheus = OrpheusCore<Sync>;
+
+/// Alias for the OrpheusCore client in `Async` mode.
+pub type AsyncOrpheus = OrpheusCore<Async>;

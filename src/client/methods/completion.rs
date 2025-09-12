@@ -1,11 +1,11 @@
 use crate::{
-    client::{Orpheus, core::Sync},
+    client::core::{Mode, OrpheusCore},
     models::completion::{CompletionRequest, CompletionRequestBuilder},
 };
 
-impl Orpheus {
+impl<M: Mode> OrpheusCore<M> {
     /// Initialize a builder for a text completion request
-    pub fn completion(&self, prompt: impl Into<String>) -> CompletionRequestBuilder<Sync> {
+    pub fn completion(&self, prompt: impl Into<String>) -> CompletionRequestBuilder<M> {
         let handler = self.create_handler();
         CompletionRequest::builder(Some(handler), prompt)
     }
