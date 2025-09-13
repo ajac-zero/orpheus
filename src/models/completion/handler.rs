@@ -1,3 +1,5 @@
+use reqwest::header::CONTENT_TYPE;
+
 use crate::{
     Error, Result,
     client::{Async, AsyncExecutor, Executor, Handler, Mode, Sync},
@@ -10,7 +12,6 @@ pub(crate) struct CompletionHandler<M: Mode> {
     url: url::Url,
     client: M::Client,
     auth: Option<String>,
-    headers: reqwest::header::HeaderMap,
 }
 
 impl<M: Mode> Handler<M> for CompletionHandler<M> {
@@ -22,20 +23,18 @@ impl<M: Mode> Handler<M> for CompletionHandler<M> {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
         let auth = core.api_key.clone();
-        let headers = core.headers.clone();
 
-        Self {
-            url,
-            client,
-            auth,
-            headers,
-        }
+        Self { url, client, auth }
     }
 }
 
 impl Executor for CompletionHandler<Sync> {
     fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response> {
-        let mut builder = self.client.post(self.url).json(&body).headers(self.headers);
+        let mut builder = self
+            .client
+            .post(self.url)
+            .header(CONTENT_TYPE, "application/json")
+            .json(&body);
 
         if let Some(token) = self.auth {
             builder = builder.bearer_auth(token);
@@ -54,7 +53,11 @@ impl Executor for CompletionHandler<Sync> {
 
 impl AsyncExecutor for CompletionHandler<Async> {
     async fn execute(self, body: Self::Input) -> Result<reqwest::Response> {
-        let mut builder = self.client.post(self.url).json(&body).headers(self.headers);
+        let mut builder = self
+            .client
+            .post(self.url)
+            .header(CONTENT_TYPE, "application/json")
+            .json(&body);
 
         if let Some(token) = self.auth {
             builder = builder.bearer_auth(token);

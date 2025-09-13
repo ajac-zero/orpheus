@@ -1,4 +1,6 @@
-use reqwest::header::HeaderMap;
+use std::collections::HashMap;
+
+use bon::bon;
 use url::Url;
 
 use crate::{
@@ -26,26 +28,11 @@ pub struct OrpheusCore<M: Mode> {
     pub(crate) api_key: Option<String>,
     pub(crate) base_url: Url,
     pub(crate) provisioning_key: Option<String>,
-    pub(crate) headers: HeaderMap,
 }
 
 impl<M: Mode> Default for OrpheusCore<M> {
     fn default() -> Self {
-        let mut headermap = HeaderMap::new();
-        headermap.insert("X-Title", "Orpheus".parse().unwrap());
-        headermap.insert(
-            "HTTP-Referer",
-            "https://orpheus.ajac-zero.com".parse().unwrap(),
-        );
-        headermap.insert("Content-Type", "application/json".parse().unwrap());
-
-        Self {
-            client: M::client(),
-            api_key: None,
-            base_url: Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url"),
-            provisioning_key: None,
-            headers: headermap,
-        }
+        Self::builder().build()
     }
 }
 
@@ -60,7 +47,7 @@ impl<M: Mode> OrpheusCore<M> {
     /// let async_client = AsyncOrpheus::new("your_api_key");
     /// ```
     pub fn new(api_key: impl Into<String>) -> Self {
-        Self::default().with_api_key(api_key)
+        Self::builder().api_key(api_key).build()
     }
 
     /// Initialize an orpheus client with an API key
@@ -80,58 +67,53 @@ impl<M: Mode> OrpheusCore<M> {
         Ok(Self::new(api_key))
     }
 
-    /// Set the base URL for all client requests;
-    /// Will work with any OpenAI-compatible endpoint.
-    ///
-    /// # Example
-    /// ```
-    /// use orpheus::prelude::*;
-    ///
-    /// let client = Orpheus::new("your_api_key").with_base_url("https://api.example.com").expect("Is valid url");
-    /// ```
-    pub fn with_base_url(
-        mut self,
-        base_url: impl TryInto<Url, Error = url::ParseError>,
-    ) -> Result<Self> {
-        self.base_url = base_url.try_into().map_err(Error::invalid_url)?;
-        Ok(self)
-    }
-
-    /// Set the API key that will be used for authorization to the API;
-    /// The API key will be used in a Bearer Authorization header.
-    ///
-    /// # Example
-    /// ```
-    /// use orpheus::prelude::*;
-    ///
-    /// // `Default::default` for `OrpheusCore<_>` creates a client without authorization.
-    /// let client = Orpheus::default().with_api_key("your_api_key");
-    /// ```
-    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
-        self.api_key = Some(api_key.into());
-        self
-    }
-
-    /// Set the provisioning key that will be used for authorization to the API;
-    /// It CANNOT be used to make completion request, only provisioning requests.
-    pub fn with_provisioning_key(mut self, provisioning_key: impl Into<String>) -> Self {
-        self.provisioning_key = Some(provisioning_key.into());
-        self
-    }
-
     pub(crate) fn create_handler<H: Handler<M>>(&self) -> H {
         Handler::from(self)
     }
+}
 
-    pub fn with_x_title(mut self, title: impl Into<String>) -> Self {
-        self.headers
-            .insert("X-Title", title.into().parse().unwrap());
+#[bon]
+impl<M: Mode> OrpheusCore<M> {
+    #[builder(on(String, into))]
+    pub fn builder(
+        #[builder(field)] mut headers: HashMap<String, String>,
+        #[builder(default = Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url"))] base_url: Url,
+        api_key: Option<String>,
+        provisioning_key: Option<String>,
+    ) -> Self {
+        if headers.get("X-Title").is_none() {
+            headers.insert("X-Title".into(), "Orpheus".into());
+        }
+
+        if headers.get("HTTP-Referer").is_none() {
+            headers.insert(
+                "HTTP-Referer".into(),
+                "https://orpheus.ajac-zero.com".into(),
+            );
+        }
+
+        Self {
+            client: M::client(headers),
+            base_url,
+            api_key,
+            provisioning_key,
+        }
+    }
+}
+
+impl<M: Mode, S: orpheus_core_builder::State> OrpheusCoreBuilder<M, S> {
+    fn add_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.insert(key.into(), value.into());
         self
     }
 
-    pub fn with_http_referer(mut self, referer: impl Into<String>) -> Self {
-        self.headers
-            .insert("HTTP-Referer", referer.into().parse().unwrap());
+    pub fn x_title(mut self, title: impl Into<String>) -> Self {
+        self.headers.insert("X-Title".into(), title.into());
+        self
+    }
+
+    pub fn http_referer(mut self, referer: impl Into<String>) -> Self {
+        self.headers.insert("HTTP-Referer".into(), referer.into());
         self
     }
 }

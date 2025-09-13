@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use reqwest::header::HeaderMap;
+
 use crate::constants::USER_AGENT_NAME;
 
 pub trait Mode {
@@ -6,7 +10,7 @@ pub trait Mode {
 
     fn new(client: Self::Client) -> Self;
 
-    fn client() -> Self::Client;
+    fn client(headers: HashMap<String, String>) -> Self::Client;
 }
 
 macro_rules! impl_mode {
@@ -27,10 +31,17 @@ macro_rules! impl_mode {
                 Self { client }
             }
 
-            fn client() -> Self::Client {
+            fn client(headers: HashMap<String, String>) -> Self::Client {
                 Self::Client::builder()
                     .user_agent(USER_AGENT_NAME)
                     .use_rustls_tls()
+                    .default_headers({
+                        HeaderMap::from_iter(
+                            headers
+                                .into_iter()
+                                .map(|(k, v)| (k.parse().unwrap(), v.parse().unwrap())),
+                        )
+                    })
                     .build()
                     .expect("build request client")
             }

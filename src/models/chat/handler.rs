@@ -1,4 +1,4 @@
-use reqwest::header::HeaderMap;
+use reqwest::header::CONTENT_TYPE;
 use url::Url;
 
 use crate::{
@@ -13,7 +13,6 @@ pub(crate) struct ChatHandler<M: Mode> {
     url: Url,
     client: M::Client,
     auth: Option<String>,
-    headers: HeaderMap,
 }
 
 impl<M: Mode> Handler<M> for ChatHandler<M> {
@@ -25,14 +24,8 @@ impl<M: Mode> Handler<M> for ChatHandler<M> {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
         let auth = core.api_key.clone();
-        let headers = core.headers.clone();
 
-        Self {
-            url,
-            client,
-            auth,
-            headers,
-        }
+        Self { url, client, auth }
     }
 }
 
@@ -41,7 +34,11 @@ impl Executor for ChatHandler<Sync> {
         #[cfg(feature = "otel")]
         crate::otel::record_input(&body);
 
-        let mut builder = self.client.post(self.url).headers(self.headers).json(&body);
+        let mut builder = self
+            .client
+            .post(self.url)
+            .header(CONTENT_TYPE, "application/json")
+            .json(&body);
 
         if let Some(token) = self.auth {
             builder = builder.bearer_auth(token);
@@ -63,7 +60,11 @@ impl AsyncExecutor for ChatHandler<Async> {
         #[cfg(feature = "otel")]
         crate::otel::record_input(&body);
 
-        let mut builder = self.client.post(self.url).headers(self.headers).json(&body);
+        let mut builder = self
+            .client
+            .post(self.url)
+            .header(CONTENT_TYPE, "application/json")
+            .json(&body);
 
         if let Some(token) = self.auth {
             builder = builder.bearer_auth(token);

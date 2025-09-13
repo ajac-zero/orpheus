@@ -213,9 +213,9 @@ fn request_with_transform() {
 fn create_then_delete_key() {
     let provisioning_key = std::env::var("ORPHEUS_ADMIN_KEY").unwrap();
 
-    let client = Orpheus::from_env()
-        .unwrap()
-        .with_provisioning_key(provisioning_key);
+    let client = Orpheus::builder()
+        .provisioning_key(provisioning_key)
+        .build();
 
     let response = client
         .keys()

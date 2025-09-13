@@ -1,4 +1,4 @@
-use reqwest::{Method, header::HeaderMap};
+use reqwest::{Method, header::CONTENT_TYPE};
 
 use crate::{
     Error, Result,
@@ -12,7 +12,6 @@ pub(crate) struct ProvisionHandler<M: Mode> {
     url: url::Url,
     client: M::Client,
     provisioning_key: Option<String>,
-    headers: HeaderMap,
 }
 
 impl<M: Mode> Handler<M> for ProvisionHandler<M> {
@@ -24,13 +23,11 @@ impl<M: Mode> Handler<M> for ProvisionHandler<M> {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
         let provisioning_key = core.provisioning_key.clone();
-        let headers = core.headers.clone();
 
         Self {
             url,
             client,
             provisioning_key,
-            headers,
         }
     }
 }
@@ -48,6 +45,7 @@ impl Executor for ProvisionHandler<Sync> {
         let builder = self
             .client
             .request(body.method.clone(), url)
+            .header(CONTENT_TYPE, "application/json")
             .bearer_auth(token);
 
         let builder = match body.method {
@@ -82,11 +80,11 @@ impl AsyncExecutor for ProvisionHandler<Async> {
             let mut path_segments = url.path_segments_mut().unwrap();
             path_segments.push(&hash);
         }
-        println!("URL: {}", url);
 
         let builder = self
             .client
             .request(body.method.clone(), url)
+            .header(CONTENT_TYPE, "application/json")
             .bearer_auth(token);
 
         let builder = match body.method {
