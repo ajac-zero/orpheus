@@ -1,3 +1,4 @@
+use reqwest::header::HeaderMap;
 use url::Url;
 
 use crate::{
@@ -25,15 +26,25 @@ pub struct OrpheusCore<M: Mode> {
     pub(crate) api_key: Option<String>,
     pub(crate) base_url: Url,
     pub(crate) provisioning_key: Option<String>,
+    pub(crate) headers: HeaderMap,
 }
 
 impl<M: Mode> Default for OrpheusCore<M> {
     fn default() -> Self {
+        let mut headermap = HeaderMap::new();
+        headermap.insert("X-Title", "Orpheus".parse().unwrap());
+        headermap.insert(
+            "HTTP-Referer",
+            "https://orpheus.ajac-zero.com".parse().unwrap(),
+        );
+        headermap.insert("Content-Type", "application/json".parse().unwrap());
+
         Self {
             client: M::client(),
             api_key: None,
             base_url: Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url"),
             provisioning_key: None,
+            headers: headermap,
         }
     }
 }
@@ -110,5 +121,17 @@ impl<M: Mode> OrpheusCore<M> {
 
     pub(crate) fn create_handler<H: Handler<M>>(&self) -> H {
         Handler::from(self)
+    }
+
+    pub fn with_x_title(mut self, title: impl Into<String>) -> Self {
+        self.headers
+            .insert("X-Title", title.into().parse().unwrap());
+        self
+    }
+
+    pub fn with_http_referer(mut self, referer: impl Into<String>) -> Self {
+        self.headers
+            .insert("HTTP-Referer", referer.into().parse().unwrap());
+        self
     }
 }

@@ -1,4 +1,4 @@
-use reqwest::Method;
+use reqwest::{Method, header::HeaderMap};
 
 use crate::{
     Error, Result,
@@ -12,6 +12,7 @@ pub(crate) struct ProvisionHandler<M: Mode> {
     url: url::Url,
     client: M::Client,
     provisioning_key: Option<String>,
+    headers: HeaderMap,
 }
 
 impl<M: Mode> Handler<M> for ProvisionHandler<M> {
@@ -23,11 +24,13 @@ impl<M: Mode> Handler<M> for ProvisionHandler<M> {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
         let provisioning_key = core.provisioning_key.clone();
+        let headers = core.headers.clone();
 
         Self {
             url,
             client,
             provisioning_key,
+            headers,
         }
     }
 }

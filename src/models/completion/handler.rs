@@ -10,6 +10,7 @@ pub(crate) struct CompletionHandler<M: Mode> {
     url: url::Url,
     client: M::Client,
     auth: Option<String>,
+    headers: reqwest::header::HeaderMap,
 }
 
 impl<M: Mode> Handler<M> for CompletionHandler<M> {
@@ -21,14 +22,20 @@ impl<M: Mode> Handler<M> for CompletionHandler<M> {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
         let auth = core.api_key.clone();
+        let headers = core.headers.clone();
 
-        Self { url, client, auth }
+        Self {
+            url,
+            client,
+            auth,
+            headers,
+        }
     }
 }
 
 impl Executor for CompletionHandler<Sync> {
     fn execute(self, body: Self::Input) -> Result<reqwest::blocking::Response> {
-        let mut builder = self.client.post(self.url).json(&body);
+        let mut builder = self.client.post(self.url).json(&body).headers(self.headers);
 
         if let Some(token) = self.auth {
             builder = builder.bearer_auth(token);
@@ -47,7 +54,7 @@ impl Executor for CompletionHandler<Sync> {
 
 impl AsyncExecutor for CompletionHandler<Async> {
     async fn execute(self, body: Self::Input) -> Result<reqwest::Response> {
-        let mut builder = self.client.post(self.url).json(&body);
+        let mut builder = self.client.post(self.url).json(&body).headers(self.headers);
 
         if let Some(token) = self.auth {
             builder = builder.bearer_auth(token);
