@@ -74,6 +74,21 @@ impl<M: Mode> OrpheusCore<M> {
 
 #[bon]
 impl<M: Mode> OrpheusCore<M> {
+    /// Initialize an Orpheus builder to customize the client.
+    ///
+    /// # Example
+    /// ```rust
+    ///use orpheus::prelude::*;
+    ///
+    /// let client = Orpheus::builder()
+    ///     .add_header("X-Custom-Header", "Custom Value") // You can add as many headers as you want
+    ///     .x_title("My App")
+    ///     .http_referer("https://my-app.com")
+    ///     .api_key("your_api_key")
+    ///     .provisioning_key("your_provisioning_key")
+    ///     .base_url(url::Url::parse("https://your-base-url.com").expect("Valid Url"))
+    ///     .build();
+    /// ```
     #[builder(on(String, into))]
     pub fn builder(
         #[builder(field)] mut headers: HashMap<String, String>,
@@ -102,7 +117,7 @@ impl<M: Mode> OrpheusCore<M> {
 }
 
 impl<M: Mode, S: orpheus_core_builder::State> OrpheusCoreBuilder<M, S> {
-    fn add_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+    pub fn add_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.insert(key.into(), value.into());
         self
     }
