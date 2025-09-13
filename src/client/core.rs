@@ -1,11 +1,14 @@
+mod keystore;
+
 use std::collections::HashMap;
 
 use bon::bon;
+use secrecy::SecretString;
 use url::Url;
 
 use crate::{
     Error, Result,
-    client::{Handler, Mode},
+    client::{Handler, Mode, core::keystore::KeyStore},
     constants::*,
 };
 
@@ -25,9 +28,8 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct OrpheusCore<M: Mode> {
     pub(crate) client: M::Client,
-    pub(crate) api_key: Option<String>,
     pub(crate) base_url: Url,
-    pub(crate) provisioning_key: Option<String>,
+    pub(crate) keystore: KeyStore,
 }
 
 impl<M: Mode> Default for OrpheusCore<M> {
@@ -46,7 +48,7 @@ impl<M: Mode> OrpheusCore<M> {
     /// let client = Orpheus::new("your_api_key");
     /// let async_client = AsyncOrpheus::new("your_api_key");
     /// ```
-    pub fn new(api_key: impl Into<String>) -> Self {
+    pub fn new(api_key: impl Into<SecretString>) -> Self {
         Self::builder().api_key(api_key).build()
     }
 
@@ -89,12 +91,12 @@ impl<M: Mode> OrpheusCore<M> {
     ///     .base_url(url::Url::parse("https://your-base-url.com").expect("Valid Url"))
     ///     .build();
     /// ```
-    #[builder(on(String, into))]
+    #[builder(on(SecretString, into))]
     pub fn builder(
         #[builder(field)] mut headers: HashMap<String, String>,
         #[builder(default = Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url"))] base_url: Url,
-        api_key: Option<String>,
-        provisioning_key: Option<String>,
+        api_key: Option<SecretString>,
+        provisioning_key: Option<SecretString>,
     ) -> Self {
         if headers.get("X-Title").is_none() {
             headers.insert("X-Title".into(), "Orpheus".into());
@@ -107,11 +109,15 @@ impl<M: Mode> OrpheusCore<M> {
             );
         }
 
+        let keystore = KeyStore::builder()
+            .maybe_api_key(api_key)
+            .maybe_provisioning_key(provisioning_key)
+            .build();
+
         Self {
             client: M::client(headers),
             base_url,
-            api_key,
-            provisioning_key,
+            keystore,
         }
     }
 }

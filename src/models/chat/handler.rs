@@ -23,7 +23,7 @@ impl<M: Mode> Handler<M> for ChatHandler<M> {
     fn from(core: &OrpheusCore<M>) -> Self {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
-        let auth = core.api_key.clone();
+        let auth = core.keystore.get_api_key().ok().or(None);
 
         Self { url, client, auth }
     }

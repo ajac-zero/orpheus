@@ -22,7 +22,7 @@ impl<M: Mode> Handler<M> for CompletionHandler<M> {
     fn from(core: &crate::client::OrpheusCore<M>) -> Self {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
-        let auth = core.api_key.clone();
+        let auth = core.keystore.get_api_key().ok().or(None);
 
         Self { url, client, auth }
     }

@@ -22,7 +22,7 @@ impl<M: Mode> Handler<M> for ProvisionHandler<M> {
     fn from(core: &crate::client::OrpheusCore<M>) -> Self {
         let url = core.base_url.join(Self::PATH).expect("failed to join url");
         let client = core.client.clone();
-        let provisioning_key = core.provisioning_key.clone();
+        let provisioning_key = core.keystore.get_provisioning_key().ok().or(None);
 
         Self {
             url,
@@ -34,7 +34,9 @@ impl<M: Mode> Handler<M> for ProvisionHandler<M> {
 
 impl Executor for ProvisionHandler<Sync> {
     fn execute(self, body: Self::Input) -> Result<Self::Response> {
-        let token = self.provisioning_key.ok_or(Error::MissingProvisioningKey)?;
+        let token = self
+            .provisioning_key
+            .ok_or_else(Error::missing_provisioning_key)?;
         let mut url = self.url.clone();
 
         if let Some(hash) = body.hash.as_ref() {
@@ -73,7 +75,9 @@ impl Executor for ProvisionHandler<Sync> {
 
 impl AsyncExecutor for ProvisionHandler<Async> {
     async fn execute(self, body: Self::Input) -> Result<Self::Response> {
-        let token = self.provisioning_key.ok_or(Error::MissingProvisioningKey)?;
+        let token = self
+            .provisioning_key
+            .ok_or_else(Error::missing_provisioning_key)?;
         let mut url = self.url.clone();
 
         if let Some(hash) = body.hash.as_ref() {

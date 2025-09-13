@@ -17,8 +17,8 @@ pub enum OrpheusError {
     #[error("Parsing error: {0}")]
     Parsing(String),
 
-    #[error("Missing provisioning key")]
-    MissingProvisioningKey,
+    #[error("Missing {0} key")]
+    MissingKey(String),
 
     #[cfg(feature = "mcp")]
     #[error("MCP error: {0}")]
@@ -28,6 +28,14 @@ pub enum OrpheusError {
 impl OrpheusError {
     pub(crate) fn parse_error(error: impl Into<String>) -> Self {
         OrpheusError::Parsing(error.into())
+    }
+
+    pub(crate) fn missing_api_key() -> Self {
+        Self::MissingKey("api".into())
+    }
+
+    pub(crate) fn missing_provisioning_key() -> Self {
+        Self::MissingKey("provisioning".into())
     }
 }
 
