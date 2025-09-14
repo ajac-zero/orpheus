@@ -1,12 +1,17 @@
 use crate::{
-    client::{Mode, OrpheusCore},
+    Result,
+    client::{OrpheusCore, mode::Mode},
     models::keys::{KeyProvisioningRequest, KeyProvisioningRequestBuilder},
 };
 
-impl<M: Mode> OrpheusCore<M> {
+impl<'a, M: Mode> OrpheusCore<M> {
     /// Initialize a builder for a key provisioning request
-    pub fn keys(&self) -> KeyProvisioningRequestBuilder<M> {
-        let handler = self.create_handler();
-        KeyProvisioningRequest::builder(Some(handler))
+    pub fn keys(&'a self) -> Result<KeyProvisioningRequestBuilder<'a, M>> {
+        let provisioning_key = self.keystore.get_provisioning_key()?;
+
+        Ok(KeyProvisioningRequest::builder(
+            &self.pool,
+            provisioning_key,
+        ))
     }
 }

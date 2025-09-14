@@ -1,60 +1,26 @@
-use std::collections::HashMap;
+use std::sync::Arc;
 
-use reqwest::header::HeaderMap;
-
-use crate::constants::USER_AGENT_NAME;
-
-pub trait Mode {
-    type Client: Clone + std::fmt::Debug;
-    type Response;
-
-    fn new(client: Self::Client) -> Self;
-
-    fn client(headers: HashMap<String, String>) -> Self::Client;
+pub trait Mode: std::marker::Sync + Send + Clone {
+    fn new() -> Self;
 }
 
-macro_rules! impl_mode {
-    ($name:ident, {
-        Client: $client:ty,
-        Response: $response:ty
-    }) => {
-        #[derive(Debug)]
-        pub struct $name {
-            pub client: $client,
-        }
-
-        impl Mode for $name {
-            type Client = $client;
-            type Response = $response;
-
-            fn new(client: Self::Client) -> Self {
-                Self { client }
-            }
-
-            fn client(headers: HashMap<String, String>) -> Self::Client {
-                Self::Client::builder()
-                    .user_agent(USER_AGENT_NAME)
-                    .use_rustls_tls()
-                    .default_headers({
-                        HeaderMap::from_iter(
-                            headers
-                                .into_iter()
-                                .map(|(k, v)| (k.parse().unwrap(), v.parse().unwrap())),
-                        )
-                    })
-                    .build()
-                    .expect("build request client")
-            }
-        }
-    };
+#[derive(Debug, Clone)]
+pub struct Sync {
+    pub rt: Arc<tokio::runtime::Runtime>,
 }
 
-impl_mode!(Sync, {
-    Client: reqwest::blocking::Client,
-    Response: reqwest::blocking::Response
-});
+impl Mode for Sync {
+    fn new() -> Self {
+        let rt = Arc::new(tokio::runtime::Runtime::new().expect("create tokio runtime"));
+        Self { rt }
+    }
+}
 
-impl_mode!(Async, {
-    Client: reqwest::Client,
-    Response: reqwest::Response
-});
+#[derive(Debug, Clone, Copy)]
+pub struct Async;
+
+impl Mode for Async {
+    fn new() -> Self {
+        Self
+    }
+}

@@ -1,16 +1,15 @@
 mod keystore;
+mod pool;
 
 use std::collections::HashMap;
 
 use bon::bon;
+use keystore::KeyStore;
+pub(crate) use pool::Pool;
 use secrecy::SecretString;
 use url::Url;
 
-use crate::{
-    Error, Result,
-    client::{Handler, Mode, core::keystore::KeyStore},
-    constants::*,
-};
+use crate::{Error, Result, client::mode::Mode, constants::*};
 
 /// Core client logic to interface with LLMs.
 /// Designed for the OpenRouter API, but
@@ -25,10 +24,8 @@ use crate::{
 /// let client = Orpheus::new("your_api_key");
 /// let async_client = AsyncOrpheus::new("your_api_key");
 /// ```
-#[derive(Debug, Clone)]
 pub struct OrpheusCore<M: Mode> {
-    pub(crate) client: M::Client,
-    pub(crate) base_url: Url,
+    pub(crate) pool: Pool<M>,
     pub(crate) keystore: KeyStore,
 }
 
@@ -67,10 +64,6 @@ impl<M: Mode> OrpheusCore<M> {
     pub fn from_env() -> Result<Self> {
         let api_key = std::env::var(API_KEY_ENV_VAR).map_err(Error::env)?;
         Ok(Self::new(api_key))
-    }
-
-    pub(crate) fn create_handler<H: Handler<M>>(&self) -> H {
-        Handler::from(self)
     }
 }
 
@@ -114,11 +107,9 @@ impl<M: Mode> OrpheusCore<M> {
             .maybe_provisioning_key(provisioning_key)
             .build();
 
-        Self {
-            client: M::client(headers),
-            base_url,
-            keystore,
-        }
+        let pool = pool::Pool::<M>::new(base_url);
+
+        Self { pool, keystore }
     }
 }
 

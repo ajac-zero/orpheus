@@ -1,16 +1,16 @@
 use crate::{
-    client::{Mode, OrpheusCore},
+    client::{OrpheusCore, mode::Mode},
     models::chat::{ChatRequest, ChatRequestBuilder, History},
 };
 
-impl<M: Mode> OrpheusCore<M> {
+impl<'a, M: Mode> OrpheusCore<M> {
     /// Initialize a builder for a chat completion request
-    pub fn chat(&self, messages: impl Into<History>) -> ChatRequestBuilder<M> {
-        let handler = self.create_handler();
+    pub fn chat(&'a self, messages: impl Into<History>) -> ChatRequestBuilder<'a, M> {
         ChatRequest::builder(
             #[cfg(feature = "otel")]
             crate::otel::chat_span(),
-            Some(handler),
+            &self.pool,
+            self.keystore.get_api_key().ok(),
             messages,
         )
     }

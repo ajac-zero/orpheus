@@ -210,6 +210,60 @@ fn request_with_transform() {
 }
 
 #[test]
+fn structured_request() {
+    // Initialize client from environment variables (ORPHEUS_API_KEY)
+    let client = Orpheus::from_env().unwrap();
+
+    // Define the expected response format for weather data
+    let response_format = Format::json("weather")
+        .with_schema(|schema| {
+            schema
+                .property(
+                    "location",
+                    Param::string().description("City or location name"),
+                )
+                .property(
+                    "temperature",
+                    Param::number().description("Temperature in Celsius"),
+                )
+                .property(
+                    "conditions",
+                    Param::string().description("Weather conditions description"),
+                )
+                .required(["location", "temperature", "conditions"])
+        })
+        .build();
+
+    // Make a chat request with structured output format
+    let response = client
+        .chat("What is the weather like in New York City?")
+        .model("openai/gpt-4o")
+        .response_format(response_format)
+        .send()
+        .unwrap();
+
+    /// Struct that matches our defined schema for easy deserialization
+    #[derive(Debug, serde::Deserialize)]
+    struct WeatherResponse {
+        #[serde(rename = "location")]
+        _location: String,
+        #[serde(rename = "temperature")]
+        _temperature: f64,
+        #[serde(rename = "conditions")]
+        _conditions: String,
+    }
+
+    // Extract the JSON content from the response
+    let content = response.content().unwrap().to_string();
+
+    // Deserialize the structured JSON response into our struct
+    let weather_response: WeatherResponse = serde_json::from_str(&content).unwrap();
+
+    // Print the parsed response for debugging
+    dbg!(weather_response);
+}
+
+#[test]
 fn create_then_delete_key() {
     let provisioning_key = std::env::var("ORPHEUS_ADMIN_KEY").unwrap();
 
@@ -219,6 +273,7 @@ fn create_then_delete_key() {
 
     let response = client
         .keys()
+        .expect("Has provisioning key")
         .name("Test-key")
         .limit(1000)
         .include_byok_in_limit(true)
@@ -231,7 +286,11 @@ fn create_then_delete_key() {
     let key_response = response.unwrap();
     println!("{:?}", key_response);
 
-    let response = client.keys().hash(key_response.data.hash).delete();
+    let response = client
+        .keys()
+        .expect("Has provisioning key")
+        .hash(key_response.data.hash)
+        .delete();
 
     println!("{:?}", response);
 

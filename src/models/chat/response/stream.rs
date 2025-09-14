@@ -1,33 +1,44 @@
+mod chunk;
+
 use std::{
-    fmt::Debug,
     pin::Pin,
     task::{Context, Poll},
 };
 
-use futures_lite::Stream;
+pub use chunk::ChatStreamChunk;
+use futures_lite::{Stream, StreamExt};
+use http_body_util::{BodyDataStream, BodyExt};
 
-use crate::{Error, Result, models::chat::ChatStreamChunk};
+use crate::{
+    Error, Result,
+    client::{
+        handler::Response,
+        mode::{Async, Sync},
+    },
+};
 
-pub struct AsyncStream {
-    stream: Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>,
+pub struct ChatStream<M> {
+    stream: BodyDataStream<hyper::Response<hyper::body::Incoming>>,
     buffer: Vec<u8>,
     #[cfg(feature = "otel")]
     pub(crate) aggregator: crate::otel::StreamAggregator,
+    mode: M,
 }
 
-impl AsyncStream {
-    pub fn new(response: reqwest::Response) -> Self {
-        let stream = Box::pin(response.bytes_stream());
+impl<M> ChatStream<M> {
+    pub fn new(response: Response<M>, mode: M) -> Self {
+        let stream = response.inner.into_data_stream();
         Self {
             stream,
             buffer: Vec::new(), // Initialize as Vec<u8>
             #[cfg(feature = "otel")]
             aggregator: crate::otel::StreamAggregator::default(),
+            mode,
         }
     }
 }
 
-impl Stream for AsyncStream {
+impl Stream for ChatStream<Async> {
     type Item = Result<ChatStreamChunk>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -54,11 +65,11 @@ impl Stream for AsyncStream {
                     break None;
                 }
 
-                break Some(serde_json::from_str(json_str).map_err(Error::serde));
+                break Some(serde_json::from_str(json_str).map_err(Error::Serde));
             }
 
             // No complete line found, need more data from stream
-            match this.stream.as_mut().poll_next(cx) {
+            match this.stream.poll_next(cx) {
                 Poll::Pending => return Poll::Pending,
                 Poll::Ready(None) => {
                     // Stream ended - check if we have remaining data
@@ -87,14 +98,14 @@ impl Stream for AsyncStream {
                         match serde_json::from_str::<ChatStreamChunk>(json_str) {
                             Ok(chunk) => return Poll::Ready(Some(Ok(chunk))),
                             Err(e) => {
-                                return Poll::Ready(Some(Err(Error::serde(e))));
+                                return Poll::Ready(Some(Err(Error::Serde(e))));
                             }
                         }
                     }
                 }
                 Poll::Ready(Some(item)) => match item {
                     Ok(bytes) => this.buffer.extend_from_slice(&bytes),
-                    Err(e) => break Some(Err(Error::http(e))),
+                    Err(e) => break Some(Err(Error::Hyper(e))),
                 },
             }
         };
@@ -129,8 +140,85 @@ fn extract_line(buffer: &mut Vec<u8>) -> Option<Vec<u8>> {
     }
 }
 
-impl Debug for AsyncStream {
+impl Iterator for ChatStream<Sync> {
+    type Item = Result<ChatStreamChunk>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let rt = self.mode.rt.clone();
+
+        let result = loop {
+            // First, try to extract a complete line from existing buffer
+            if let Some(line_bytes) = extract_line(&mut self.buffer) {
+                let line = String::from_utf8_lossy(&line_bytes);
+                let line = line.trim();
+
+                // Skip empty lines and comments
+                if line.is_empty() || line.starts_with(":") {
+                    continue;
+                }
+
+                // Validate SSE format
+                if !line.starts_with("data: ") {
+                    break Some(Err(Error::invalid_sse(line)));
+                }
+
+                let json_str = &line[6..]; // Remove "data: " prefix
+                if json_str == "[DONE]" {
+                    break None;
+                }
+
+                break Some(serde_json::from_str(json_str).map_err(Error::Serde));
+            }
+
+            // No complete line found, need more data from stream
+            match rt.block_on(self.stream.next()) {
+                None => {
+                    // Stream ended - check if we have remaining data
+                    if self.buffer.is_empty() {
+                        return None;
+                    } else {
+                        // Process final incomplete line
+                        let line_clone = self.buffer.clone();
+                        let line = String::from_utf8_lossy(&line_clone);
+                        self.buffer.clear();
+                        let line = line.trim();
+
+                        if line.is_empty() || line.starts_with(":") {
+                            return None;
+                        }
+
+                        if !line.starts_with("data: ") {
+                            return Some(Err(Error::invalid_sse(line)));
+                        }
+
+                        let json_str = &line[6..];
+                        if json_str == "[DONE]" {
+                            return None;
+                        }
+
+                        return Some(
+                            serde_json::from_str::<ChatStreamChunk>(json_str).map_err(Error::Serde),
+                        );
+                    }
+                }
+                Some(item) => match item {
+                    Ok(bytes) => self.buffer.extend_from_slice(&bytes),
+                    Err(e) => break Some(Err(Error::Hyper(e))),
+                },
+            }
+        };
+
+        #[cfg(feature = "otel")]
+        if let Some(Ok(ref chunk)) = result {
+            self.aggregator.aggregate_chunk(chunk);
+        }
+
+        result
+    }
+}
+
+impl<M> std::fmt::Debug for ChatStream<M> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AsyncStream").finish()
+        f.debug_struct("ChatStream").finish()
     }
 }

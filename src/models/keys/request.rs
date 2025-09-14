@@ -3,22 +3,26 @@ use key_provisioning_request_builder::{IsSet, IsUnset, State};
 use serde::Serialize;
 
 use crate::{
-    Error, Result,
-    client::{Async, AsyncExecutor, Executor, Mode, Sync},
-    models::keys::{CreateKeyResult, DeleteKeyResult, ListKeysResult, ProvisionHandler},
+    Result,
+    client::{
+        core::Pool,
+        mode::{Async, Mode, Sync},
+    },
+    constants::KEY_PROVISION_PATH,
+    models::keys::{CreateKeyResult, DeleteKeyResult, ListKeysResult},
 };
 
 #[serde_with::skip_serializing_none]
 #[derive(Debug, Serialize, Builder)]
 #[builder(on(String, into))]
-pub struct KeyProvisioningRequest<M: Mode> {
+pub struct KeyProvisioningRequest<'a, M: Mode> {
     #[serde(skip)]
     #[builder(start_fn)]
-    handler: Option<ProvisionHandler<M>>,
+    pool: &'a Pool<M>,
 
     #[serde(skip)]
-    #[builder(field)]
-    pub(crate) method: reqwest::Method,
+    #[builder(start_fn)]
+    provisioning_key: String,
 
     pub name: Option<String>,
 
@@ -39,59 +43,81 @@ pub struct KeyProvisioningRequest<M: Mode> {
     pub offset: Option<usize>,
 }
 
-impl<S: State> KeyProvisioningRequestBuilder<Sync, S>
+impl<'a, S: State> KeyProvisioningRequestBuilder<'a, Sync, S>
 where
     S::Name: IsSet,
     S::Disabled: IsUnset,
     S::Offset: IsUnset,
 {
-    pub fn create(mut self) -> Result<CreateKeyResult> {
-        let handler = self.handler.take().expect("Has handler");
+    pub fn create(self) -> Result<CreateKeyResult> {
+        let mut handler = self.pool.get().expect("Has handler");
 
-        self.method = reqwest::Method::POST;
-
+        let token = self.provisioning_key.clone();
         let body = self.build();
 
-        let response = handler.execute(body)?;
+        let response = handler
+            .execute()
+            .segments(&[KEY_PROVISION_PATH])
+            .method("POST")
+            .payload(body)
+            .token(token)
+            .call()?;
 
-        Ok(response.json().map_err(Error::http)?)
+        let result = response.json()?;
+
+        Ok(result)
     }
 }
 
-impl<S: State> KeyProvisioningRequestBuilder<Async, S>
+impl<'a, S: State> KeyProvisioningRequestBuilder<'a, Async, S>
 where
     S::Name: IsSet,
     S::Disabled: IsUnset,
     S::Offset: IsUnset,
 {
-    pub async fn create(mut self) -> Result<CreateKeyResult> {
-        let handler = self.handler.take().expect("Has handler");
+    pub async fn create(self) -> Result<CreateKeyResult> {
+        let mut handler = self.pool.get().await.expect("Has handler");
 
-        self.method = reqwest::Method::POST;
-
+        let token = self.provisioning_key.clone();
         let body = self.build();
 
-        let response = handler.execute(body).await?;
+        let response = handler
+            .execute()
+            .segments(&[KEY_PROVISION_PATH])
+            .method("POST")
+            .payload(body)
+            .token(token)
+            .call()
+            .await?;
 
-        Ok(response.json().await.map_err(Error::http)?)
+        let result = response.json().await?;
+
+        Ok(result)
     }
 }
 
-impl<S: State> KeyProvisioningRequestBuilder<Sync, S> {
-    pub fn list(mut self) -> Result<ListKeysResult> {
-        let handler = self.handler.take().expect("Has handler");
+impl<'a, S: State> KeyProvisioningRequestBuilder<'a, Sync, S> {
+    pub fn list(self) -> Result<ListKeysResult> {
+        let mut handler = self.pool.get().expect("Has handler");
 
-        self.method = reqwest::Method::GET;
-
+        let token = self.provisioning_key.clone();
         let body = self.build();
 
-        let response = handler.execute(body)?;
+        let response = handler
+            .execute()
+            .segments(&[KEY_PROVISION_PATH])
+            .method("GET")
+            .payload(body)
+            .token(token)
+            .call()?;
 
-        Ok(response.json().map_err(Error::http)?)
+        let result = response.json()?;
+
+        Ok(result)
     }
 }
 
-impl<S: State> KeyProvisioningRequestBuilder<Sync, S>
+impl<'a, S: State> KeyProvisioningRequestBuilder<'a, Sync, S>
 where
     S::Hash: IsSet,
     S::Name: IsUnset,
@@ -99,15 +125,22 @@ where
     S::Offset: IsUnset,
     S::IncludeByokInLimit: IsUnset,
 {
-    pub fn delete(mut self) -> Result<DeleteKeyResult> {
-        let handler = self.handler.take().expect("Has handler");
+    pub fn delete(self) -> Result<DeleteKeyResult> {
+        let mut handler = self.pool.get().expect("Has handler");
+        let token = self.provisioning_key.clone();
+        let mut body = self.build();
+        let hash = body.hash.take().unwrap();
 
-        self.method = reqwest::Method::DELETE;
+        let response = handler
+            .execute()
+            .segments(&[KEY_PROVISION_PATH, &hash])
+            .method("DELETE")
+            .payload(body)
+            .token(token)
+            .call()?;
 
-        let body = self.build();
+        let result = response.json()?;
 
-        let response = handler.execute(body)?;
-
-        Ok(response.json().map_err(Error::http)?)
+        Ok(result)
     }
 }

@@ -37,7 +37,7 @@ impl Mcp {
                 cmd.envs(env);
             }
         });
-        let process = TokioChildProcess::new(cmd).map_err(Error::io)?;
+        let process = TokioChildProcess::new(cmd)?;
         let service = ().serve(process).await.map_err(|e| Error::init(e.to_string()))?;
         Ok(Self { service })
     }
@@ -47,7 +47,7 @@ impl Mcp {
         &self,
         #[builder(start_fn)] name: String,
         #[builder(with = |value: impl serde::Serialize| -> Result<_> {
-            serde_json::to_value(value).map_err(Error::serde)
+            serde_json::to_value(value).map_err(Error::Serde)
         })]
         arguments: Option<serde_json::Value>,
     ) -> Result<ToolResult> {
@@ -90,7 +90,7 @@ where
     S::Arguments: IsUnset,
 {
     pub fn literal_arguments(self, value: &str) -> Result<McpCallBuilder<'a, SetArguments<S>>> {
-        let args: serde_json::Value = serde_json::from_str(value).map_err(Error::serde)?;
+        let args: serde_json::Value = serde_json::from_str(value)?;
         self.arguments(args)
     }
 }

@@ -5,11 +5,15 @@ use tracing::Span;
 use tracing::debug;
 
 use crate::{
-    Error, Result,
-    client::{Async, AsyncExecutor, Executor, Mode, Sync},
+    Result,
+    client::{
+        core::Pool,
+        mode::{Async, Mode, Sync},
+    },
+    constants::CHAT_COMPLETION_PATH,
     models::{
         Format, Plugin, Preferences, Reasoning, Tool, Transform, Usage,
-        chat::{AsyncStream, ChatCompletion, ChatHandler, ChatStream, History},
+        chat::{ChatCompletion, ChatStream, History},
         common::{PreferencesBuilder, ReasoningBuilder, preferences_builder, reasoning_builder},
     },
 };
@@ -29,7 +33,7 @@ use crate::{
         /// Builder to set the parameters of a chat request
     })
 )]
-pub(crate) struct ChatRequest<M: Mode> {
+pub(crate) struct ChatRequest<'a, M: Mode> {
     #[cfg(feature = "otel")]
     #[serde(skip)]
     #[builder(start_fn)]
@@ -37,7 +41,11 @@ pub(crate) struct ChatRequest<M: Mode> {
 
     #[serde(skip)]
     #[builder(start_fn)]
-    handler: Option<ChatHandler<M>>,
+    pool: &'a Pool<M>,
+
+    #[serde(skip)]
+    #[builder(start_fn)]
+    auth: Option<String>,
 
     /// List of messages in the conversation
     #[builder(into, start_fn)]
@@ -120,7 +128,7 @@ pub(crate) struct ChatRequest<M: Mode> {
     pub user: Option<String>,
 }
 
-impl<M: Mode, S: chat_request_builder::State> ChatRequestBuilder<M, S> {
+impl<'a, M: Mode, S: chat_request_builder::State> ChatRequestBuilder<'a, M, S> {
     /// Sets provider routing preferences for model selection.
     pub fn preferences(mut self, preferences: Preferences) -> Self {
         self.provider = Some(preferences);
@@ -155,7 +163,7 @@ impl<M: Mode, S: chat_request_builder::State> ChatRequestBuilder<M, S> {
     }
 }
 
-impl<S: chat_request_builder::State> ChatRequestBuilder<Sync, S>
+impl<'a, S: chat_request_builder::State> ChatRequestBuilder<'a, Sync, S>
 where
     S: chat_request_builder::IsComplete,
 {
@@ -164,16 +172,22 @@ where
         #[cfg(feature = "otel")]
         let span = self.span.clone();
 
-        let handler = self.handler.take().expect("Has handler");
+        let mut handler = self.pool.get().expect("Has handler");
 
         // Disable streaming for complete response
         self.stream = Some(false);
+        let token = self.auth.take();
         let body = self.build();
         debug!(chat_request_body = ?body);
 
-        let response = handler.execute(body)?;
+        let response = handler
+            .execute()
+            .segments(&CHAT_COMPLETION_PATH)
+            .payload(body)
+            .maybe_token(token)
+            .call()?;
 
-        let chat_completion = response.json::<ChatCompletion>().map_err(Error::http)?;
+        let chat_completion = response.json::<ChatCompletion>()?;
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
@@ -183,19 +197,25 @@ where
     }
 
     /// Sends the chat request and returns a streaming response.
-    pub fn stream(mut self) -> Result<ChatStream> {
+    pub fn stream(mut self) -> Result<ChatStream<Sync>> {
         #[cfg(feature = "otel")]
         let span = self.span.clone();
 
-        let handler = self.handler.take().expect("Has handler");
+        let mut handler = self.pool.get().expect("Has handler");
 
         // Enable streaming for real-time response
         self.stream = Some(true);
+        let token = self.auth.take();
         let body = self.build();
-        let response = handler.execute(body)?;
+        let response = handler
+            .execute()
+            .segments(&CHAT_COMPLETION_PATH)
+            .payload(body)
+            .maybe_token(token)
+            .call()?;
 
         #[allow(unused_mut)]
-        let mut stream = ChatStream::new(response);
+        let mut stream = ChatStream::new(response, handler.mode.clone());
 
         #[cfg(feature = "otel")]
         stream.aggregator.set_span(span);
@@ -204,7 +224,7 @@ where
     }
 }
 
-impl<S: chat_request_builder::State> ChatRequestBuilder<Async, S>
+impl<'a, S: chat_request_builder::State> ChatRequestBuilder<'a, Async, S>
 where
     S: chat_request_builder::IsComplete,
 {
@@ -213,19 +233,23 @@ where
         #[cfg(feature = "otel")]
         let span = self.span.clone();
 
-        let handler = self.handler.take().expect("Has handler");
+        let mut handler = self.pool.get().await.expect("Has handler");
 
         // Disable streaming for complete response
         self.stream = Some(false);
+        let token = self.auth.take();
         let body = self.build();
         debug!(chat_request_body = ?body);
 
-        let response = handler.execute(body).await?;
+        let response = handler
+            .execute()
+            .segments(&CHAT_COMPLETION_PATH)
+            .payload(body)
+            .maybe_token(token)
+            .call()
+            .await?;
 
-        let chat_completion = response
-            .json::<ChatCompletion>()
-            .await
-            .map_err(Error::http)?;
+        let chat_completion = response.json::<ChatCompletion>().await?;
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
@@ -235,20 +259,27 @@ where
     }
 
     /// Asynchronously sends the chat request and returns a streaming response.
-    pub async fn stream(mut self) -> Result<AsyncStream> {
+    pub async fn stream(mut self) -> Result<ChatStream<Async>> {
         #[cfg(feature = "otel")]
         let span = self.span.clone();
 
-        let handler = self.handler.take().expect("Has handler");
+        let mut handler = self.pool.get().await.expect("Has handler");
 
         // Enable streaming for real-time response
         self.stream = Some(true);
+        let token = self.auth.take();
         let body = self.build();
 
-        let response = handler.execute(body).await?;
+        let response = handler
+            .execute()
+            .segments(&CHAT_COMPLETION_PATH)
+            .payload(body)
+            .maybe_token(token)
+            .call()
+            .await?;
 
         #[allow(unused_mut)]
-        let mut stream = AsyncStream::new(response);
+        let mut stream = ChatStream::new(response, handler.mode.clone());
 
         #[cfg(feature = "otel")]
         stream.aggregator.set_span(span);
