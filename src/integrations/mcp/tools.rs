@@ -14,16 +14,16 @@ impl TryFrom<rmcp::model::Tool> for Tool {
         let properties = schema
             .get("properties")
             .map(serde_json::to_string)
-            .ok_or(Error::tool_schema("Missing properties key"))?
+            .ok_or(Error::missing_tool_schema_key("properties"))?
             .and_then(|s| serde_json::from_str::<HashMap<String, ParamType>>(&s))
-            .map_err(Error::serde)?;
+            .map_err(Error::Serde)?;
 
         let required = schema
             .get("required")
             .map(serde_json::to_string)
-            .ok_or(Error::tool_schema("Missing required key"))?
+            .ok_or(Error::missing_tool_schema_key("required"))?
             .and_then(|s| serde_json::from_str::<Vec<String>>(&s))
-            .map_err(Error::serde)?;
+            .map_err(Error::Serde)?;
 
         let tool = Tool::function(value.name)
             .maybe_description(value.description)
@@ -33,18 +33,6 @@ impl TryFrom<rmcp::model::Tool> for Tool {
         Ok(tool)
     }
 }
-
-// impl TryFrom<rmcp::model::ListToolsResult> for Vec<Tool> {
-//     type Error = Error;
-
-//     fn try_from(value: rmcp::model::ListToolsResult) -> Result<Self, Self::Error> {
-//         Ok(value
-//             .tools
-//             .into_iter()
-//             .map(TryInto::try_into)
-//             .collect::<Result<_>>()?)
-//     }
-// }
 
 #[cfg(test)]
 mod test {

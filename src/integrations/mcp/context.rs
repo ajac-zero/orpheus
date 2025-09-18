@@ -14,14 +14,14 @@ use crate::{
     models::chat::{Message, Part, Tool},
 };
 
-pub struct ModelContext {
+pub struct Mcp {
     pub service: RunningService<RoleClient, ()>,
 }
 
 #[bon]
-impl ModelContext {
+impl Mcp {
     #[builder(finish_fn = run)]
-    pub async fn new(
+    pub async fn stdio(
         #[builder(into)] command: String,
         #[builder(with = |keys: impl IntoIterator<Item: Into<String>>| keys.into_iter().map(Into::into).collect())]
         args: Vec<String>,
@@ -37,8 +37,8 @@ impl ModelContext {
                 cmd.envs(env);
             }
         });
-        let process = TokioChildProcess::new(cmd).map_err(Error::io)?;
-        let service = ().serve(process).await.map_err(|e| Error::init(e.to_string()))?;
+        let process = TokioChildProcess::new(cmd)?;
+        let service = ().serve(process).await?;
         Ok(Self { service })
     }
 
@@ -47,7 +47,7 @@ impl ModelContext {
         &self,
         #[builder(start_fn)] name: String,
         #[builder(with = |value: impl serde::Serialize| -> Result<_> {
-            serde_json::to_value(value).map_err(Error::serde)
+            serde_json::to_value(value).map_err(Error::Serde)
         })]
         arguments: Option<serde_json::Value>,
     ) -> Result<ToolResult> {
@@ -60,15 +60,11 @@ impl ModelContext {
             if let serde_json::Value::Object(map) = args {
                 request.arguments = Some(map);
             } else {
-                return Err(Error::tool_schema("Expected a JSON object"));
+                return Err(Error::Parsing("Expected a JSON object".into()));
             }
         }
 
-        let result = self
-            .service
-            .call_tool(request)
-            .await
-            .map_err(Error::service)?;
+        let result = self.service.call_tool(request).await?;
 
         Ok(ToolResult(result))
     }
@@ -83,28 +79,24 @@ impl ToolResult {
     }
 }
 
-use model_context_call_builder::{IsUnset, SetArguments, State};
+use mcp_call_builder::{IsUnset, SetArguments, State};
 
-impl<'a, S: State> ModelContextCallBuilder<'a, S>
+impl<'a, S: State> McpCallBuilder<'a, S>
 where
     S::Arguments: IsUnset,
 {
-    pub fn literal_arguments(
-        self,
-        value: &str,
-    ) -> Result<ModelContextCallBuilder<'a, SetArguments<S>>> {
-        let args: serde_json::Value = serde_json::from_str(value).map_err(Error::serde)?;
+    pub fn literal_arguments(self, value: &str) -> Result<McpCallBuilder<'a, SetArguments<S>>> {
+        let args: serde_json::Value = serde_json::from_str(value)?;
         self.arguments(args)
     }
 }
 
-impl ModelContext {
+impl Mcp {
     pub async fn get_tools(&self) -> Result<Vec<Tool>> {
         Ok(self
             .service
             .list_tools(Default::default())
-            .await
-            .map_err(Error::service)?
+            .await?
             .tools
             .into_iter()
             .map(TryInto::try_into)
@@ -112,7 +104,7 @@ impl ModelContext {
     }
 
     pub async fn close(self) -> Result<QuitReason> {
-        Ok(self.service.cancel().await.map_err(Error::close)?)
+        Ok(self.service.cancel().await?)
     }
 }
 

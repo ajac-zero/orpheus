@@ -1,147 +1,109 @@
+use serde::Deserialize;
 use thiserror::Error;
+
+#[derive(Debug, Deserialize)]
+pub struct OpenRouterErrorResponse {
+    pub error: OpenRouterError,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OpenRouterError {
+    pub message: String,
+    pub code: u16,
+}
 
 #[derive(Error, Debug)]
 pub enum OrpheusError {
-    #[error("Config error: {0}")]
-    Config(#[from] ConfigError),
-
-    #[error("OpenRouter error: {0}")]
-    OpenRouter(#[from] OpenRouterError),
-
-    #[error("Request error: {0}")]
-    Request(#[from] RequestError),
-
-    #[error("Runtime error: {0}")]
-    Runtime(#[from] RuntimeError),
-
-    #[error("Parsing error: {0}")]
-    Parsing(String),
-
-    #[cfg(feature = "mcp")]
-    #[error("MCP error: {0}")]
-    Mcp(#[from] McpError),
-}
-
-impl OrpheusError {
-    pub(crate) fn parse_error(error: impl Into<String>) -> Self {
-        OrpheusError::Parsing(error.into())
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum ConfigError {
     #[error("Missing env var: {0}")]
     Env(#[from] std::env::VarError),
 
     #[error("String {0} did not parse as valid URL")]
     InvalidUrl(#[from] url::ParseError),
 
-    #[error("Invalid parsing engine: {0}")]
-    InvalidParsingEngine(String),
-}
+    #[error("Hyper error: {0}")]
+    Hyper(#[from] hyper::Error),
 
-impl OrpheusError {
-    pub fn env(error: std::env::VarError) -> Self {
-        OrpheusError::Config(ConfigError::Env(error))
-    }
+    #[error("Parsing error: {0}")]
+    Parsing(String),
 
-    pub fn invalid_url(error: url::ParseError) -> Self {
-        OrpheusError::Config(ConfigError::InvalidUrl(error))
-    }
-
-    pub fn invalid_parsing_engine(engine: String) -> Self {
-        OrpheusError::Config(ConfigError::InvalidParsingEngine(engine))
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum RuntimeError {
-    #[error("de/serialization error: {0}")]
-    Serde(#[from] serde_json::Error),
+    #[error("Missing {0} key")]
+    MissingKey(String),
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("de/serialization error: {0}")]
+    Serde(#[from] serde_json::Error),
+
+    #[error("http error: {0}")]
+    Http(#[from] hyper::http::Error),
+
+    #[error("OpenRouter Error {code}: {message}")]
+    OpenRouter { code: u16, message: String },
+
+    #[error("HTTP {status}: {body}")]
+    Unexpected { status: u16, body: String },
+
+    #[error("Tokio task error: {0}")]
+    Tokio(#[from] tokio::task::JoinError),
+
+    #[cfg(feature = "mcp")]
+    #[error("MCP error: {0}")]
+    Mcp(#[from] rmcp::ServiceError),
+
+    #[cfg(feature = "mcp")]
+    #[error("MCP init error: {0}")]
+    McpInit(#[from] rmcp::service::ClientInitializeError<std::io::Error>),
 }
 
 impl OrpheusError {
-    pub fn serde(error: serde_json::Error) -> Self {
-        Self::Runtime(RuntimeError::Serde(error))
+    pub(crate) fn invalid_parsing_engine(engine: String) -> Self {
+        OrpheusError::Parsing(format!("Invalid parsing engine: {}", engine))
     }
 
-    pub fn io(error: std::io::Error) -> Self {
-        Self::Runtime(RuntimeError::Io(error))
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum OpenRouterError {
-    #[error("Unexpected error: {0}")]
-    Unexpected(String),
-}
-
-impl OrpheusError {
-    pub fn openrouter(error: impl Into<String>) -> Self {
-        Self::OpenRouter(OpenRouterError::Unexpected(error.into()))
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum RequestError {
-    #[error("Invalid SSE line: {0}")]
-    InvalidSSE(String),
-
-    #[error("Malformed response: {0}")]
-    MalformedResponse(String),
-
-    #[error("Error making the request: {0}")]
-    Http(#[from] reqwest::Error),
-}
-
-impl OrpheusError {
-    pub fn invalid_sse(error: impl Into<String>) -> Self {
-        Self::Request(RequestError::InvalidSSE(error.into()))
+    pub(crate) fn invalid_sse(line: &str) -> Self {
+        OrpheusError::Parsing(format!("Invalid sse line: {}", line))
     }
 
-    pub fn malformed_response(error: impl Into<String>) -> Self {
-        Self::Request(RequestError::MalformedResponse(error.into()))
+    pub(crate) fn invalid_role(role: &str) -> Self {
+        OrpheusError::Parsing(format!("Invalid role: {}", role))
     }
 
-    pub fn http(error: reqwest::Error) -> Self {
-        Self::Request(RequestError::Http(error))
-    }
-}
-
-#[cfg(feature = "mcp")]
-#[derive(Error, Debug)]
-pub enum McpError {
-    #[error("MCP service error: {0}")]
-    Service(#[from] rmcp::ServiceError),
-
-    #[error("MCP initialization error: {0}")]
-    Init(String),
-
-    #[error("error closing the service: {0}")]
-    Close(#[from] tokio::task::JoinError),
-
-    #[error("{0}")]
-    ToolSchema(String),
-}
-
-#[cfg(feature = "mcp")]
-impl OrpheusError {
-    pub fn service(error: rmcp::ServiceError) -> Self {
-        Self::Mcp(McpError::Service(error))
+    pub(crate) fn missing_choices_array() -> Self {
+        OrpheusError::Parsing("Choices array in response is empty".into())
     }
 
-    pub fn init(error: impl Into<String>) -> Self {
-        Self::Mcp(McpError::Init(error.into()))
+    pub(crate) fn missing_api_key() -> Self {
+        Self::MissingKey("api".into())
     }
 
-    pub fn close(error: tokio::task::JoinError) -> Self {
-        Self::Mcp(McpError::Close(error))
+    pub(crate) fn missing_provisioning_key() -> Self {
+        Self::MissingKey("provisioning".into())
     }
 
-    pub fn tool_schema(error: impl Into<String>) -> Self {
-        Self::Mcp(McpError::ToolSchema(error.into()))
+    pub(crate) fn openrouter_error(code: u16, message: String) -> Self {
+        Self::OpenRouter { code, message }
+    }
+
+    pub(crate) fn unexpected_http_status(status: u16, body: String) -> Self {
+        Self::Unexpected { status, body }
+    }
+
+    pub(crate) fn parse_openrouter_error(status: u16, body: &str) -> Self {
+        match serde_json::from_str::<OpenRouterErrorResponse>(body) {
+            Ok(api_error_response) => Self::openrouter_error(
+                api_error_response.error.code,
+                api_error_response.error.message,
+            ),
+            Err(_) => {
+                // If we can't parse as structured error, fall back to raw HTTP error
+                Self::unexpected_http_status(status, body.to_string())
+            }
+        }
+    }
+
+    #[cfg(feature = "mcp")]
+    pub(crate) fn missing_tool_schema_key(missing_key: &str) -> Self {
+        OrpheusError::Parsing(format!("Invalid tool schema; Missing key: {}", missing_key))
     }
 }

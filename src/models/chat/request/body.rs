@@ -5,15 +5,16 @@ use tracing::Span;
 use tracing::debug;
 
 use crate::{
-    Error, Result,
-    client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
+    Result,
+    client::{
+        core::Pool,
+        mode::{Async, Mode, Sync},
+    },
+    constants::CHAT_COMPLETION_PATH,
     models::{
-        Format, Plugin, ProviderPreferences, ReasoningConfig, UsageConfig,
-        chat::{AsyncStream, ChatCompletion, ChatHandler, ChatStream, History, Tool},
-        common::{
-            ProviderPreferencesBuilder, ReasoningConfigBuilder, provider_preferences_builder,
-            reasoning_config_builder,
-        },
+        Format, Plugin, Preferences, Reasoning, Tool, Transform, Usage,
+        chat::{ChatCompletion, ChatStream, History},
+        common::{PreferencesBuilder, ReasoningBuilder, preferences_builder, reasoning_builder},
     },
 };
 
@@ -32,7 +33,7 @@ use crate::{
         /// Builder to set the parameters of a chat request
     })
 )]
-pub(crate) struct ChatRequest<M: Mode> {
+pub(crate) struct ChatRequest<'a, M: Mode> {
     #[cfg(feature = "otel")]
     #[serde(skip)]
     #[builder(start_fn)]
@@ -40,7 +41,11 @@ pub(crate) struct ChatRequest<M: Mode> {
 
     #[serde(skip)]
     #[builder(start_fn)]
-    handler: Option<ChatHandler<M>>,
+    pool: &'a Pool<M>,
+
+    #[serde(skip)]
+    #[builder(start_fn)]
+    api_key: Option<&'a str>,
 
     /// List of messages in the conversation
     #[builder(into, start_fn)]
@@ -52,11 +57,11 @@ pub(crate) struct ChatRequest<M: Mode> {
 
     /// Preferences for provider routing.
     #[builder(field)]
-    pub provider: Option<ProviderPreferences>,
+    pub provider: Option<Preferences>,
 
     /// Configuration for model reasoning/thinking tokens
     #[builder(field)]
-    pub reasoning: Option<ReasoningConfig>,
+    pub reasoning: Option<Reasoning>,
 
     /// The model ID to use. If unspecified, the user's default is used.
     pub model: Option<String>,
@@ -77,10 +82,11 @@ pub(crate) struct ChatRequest<M: Mode> {
     pub plugins: Option<Vec<Plugin>>,
 
     /// Whether to include usage information in the response
-    pub usage: Option<UsageConfig>,
+    pub usage: Option<Usage>,
 
     /// List of prompt transforms (OpenRouter-only).
-    pub transforms: Option<Vec<String>>,
+    #[builder(into)]
+    pub transforms: Option<Vec<Transform>>,
 
     /// Maximum number of tokens.
     pub max_tokens: Option<i32>,
@@ -122,42 +128,42 @@ pub(crate) struct ChatRequest<M: Mode> {
     pub user: Option<String>,
 }
 
-impl<M: Mode, S: chat_request_builder::State> ChatRequestBuilder<M, S> {
+impl<'a, M: Mode, S: chat_request_builder::State> ChatRequestBuilder<'a, M, S> {
     /// Sets provider routing preferences for model selection.
-    pub fn preferences(mut self, preferences: ProviderPreferences) -> Self {
+    pub fn preferences(mut self, preferences: Preferences) -> Self {
         self.provider = Some(preferences);
         self
     }
 
     pub fn with_preferences<F, C>(mut self, build_preferences: F) -> Self
     where
-        F: FnOnce(ProviderPreferencesBuilder) -> ProviderPreferencesBuilder<C>,
-        C: provider_preferences_builder::IsComplete,
+        F: FnOnce(PreferencesBuilder) -> PreferencesBuilder<C>,
+        C: preferences_builder::IsComplete,
     {
-        let builder = ProviderPreferences::builder();
+        let builder = Preferences::builder();
         let preferences = build_preferences(builder).build();
         self.provider = Some(preferences);
         self
     }
 
-    pub fn reasoning(mut self, config: ReasoningConfig) -> Self {
+    pub fn reasoning(mut self, config: Reasoning) -> Self {
         self.reasoning = Some(config);
         self
     }
 
     pub fn with_reasoning<F, C>(mut self, build_reasoning: F) -> Self
     where
-        F: FnOnce(ReasoningConfigBuilder) -> ReasoningConfigBuilder<C>,
-        C: reasoning_config_builder::IsComplete,
+        F: FnOnce(ReasoningBuilder) -> ReasoningBuilder<C>,
+        C: reasoning_builder::IsComplete,
     {
-        let builder = ReasoningConfig::builder();
+        let builder = Reasoning::builder();
         let config = build_reasoning(builder).build();
         self.reasoning = Some(config);
         self
     }
 }
 
-impl<S: chat_request_builder::State> ChatRequestBuilder<Sync, S>
+impl<'a, S: chat_request_builder::State> ChatRequestBuilder<'a, Sync, S>
 where
     S: chat_request_builder::IsComplete,
 {
@@ -166,16 +172,22 @@ where
         #[cfg(feature = "otel")]
         let span = self.span.clone();
 
-        let handler = self.handler.take().expect("Has handler");
+        let mut handler = self.pool.get().expect("Has handler");
 
         // Disable streaming for complete response
         self.stream = Some(false);
+        let token = self.api_key;
         let body = self.build();
         debug!(chat_request_body = ?body);
 
-        let response = handler.execute(body)?;
+        let response = handler
+            .execute()
+            .segments(&CHAT_COMPLETION_PATH)
+            .payload(body)
+            .maybe_token(token)
+            .call()?;
 
-        let chat_completion = response.json::<ChatCompletion>().map_err(Error::http)?;
+        let chat_completion = response.json::<ChatCompletion>()?;
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
@@ -185,19 +197,25 @@ where
     }
 
     /// Sends the chat request and returns a streaming response.
-    pub fn stream(mut self) -> Result<ChatStream> {
+    pub fn stream(mut self) -> Result<ChatStream<Sync>> {
         #[cfg(feature = "otel")]
         let span = self.span.clone();
 
-        let handler = self.handler.take().expect("Has handler");
+        let mut handler = self.pool.get().expect("Has handler");
 
         // Enable streaming for real-time response
         self.stream = Some(true);
+        let token = self.api_key;
         let body = self.build();
-        let response = handler.execute(body)?;
+        let response = handler
+            .execute()
+            .segments(&CHAT_COMPLETION_PATH)
+            .payload(body)
+            .maybe_token(token)
+            .call()?;
 
         #[allow(unused_mut)]
-        let mut stream = ChatStream::new(response);
+        let mut stream = ChatStream::new(response, handler.mode.clone());
 
         #[cfg(feature = "otel")]
         stream.aggregator.set_span(span);
@@ -206,7 +224,7 @@ where
     }
 }
 
-impl<S: chat_request_builder::State> ChatRequestBuilder<Async, S>
+impl<'a, S: chat_request_builder::State> ChatRequestBuilder<'a, Async, S>
 where
     S: chat_request_builder::IsComplete,
 {
@@ -215,19 +233,23 @@ where
         #[cfg(feature = "otel")]
         let span = self.span.clone();
 
-        let handler = self.handler.take().expect("Has handler");
+        let mut handler = self.pool.get().await.expect("Has handler");
 
         // Disable streaming for complete response
         self.stream = Some(false);
+        let token = self.api_key;
         let body = self.build();
         debug!(chat_request_body = ?body);
 
-        let response = handler.execute(body).await?;
+        let response = handler
+            .execute()
+            .segments(&CHAT_COMPLETION_PATH)
+            .payload(body)
+            .maybe_token(token)
+            .call()
+            .await?;
 
-        let chat_completion = response
-            .json::<ChatCompletion>()
-            .await
-            .map_err(Error::http)?;
+        let chat_completion = response.json::<ChatCompletion>().await?;
         debug!(chat_completion_response = ?chat_completion);
 
         #[cfg(feature = "otel")]
@@ -237,20 +259,27 @@ where
     }
 
     /// Asynchronously sends the chat request and returns a streaming response.
-    pub async fn stream(mut self) -> Result<AsyncStream> {
+    pub async fn stream(mut self) -> Result<ChatStream<Async>> {
         #[cfg(feature = "otel")]
         let span = self.span.clone();
 
-        let handler = self.handler.take().expect("Has handler");
+        let mut handler = self.pool.get().await.expect("Has handler");
 
         // Enable streaming for real-time response
         self.stream = Some(true);
+        let token = self.api_key;
         let body = self.build();
 
-        let response = handler.execute(body).await?;
+        let response = handler
+            .execute()
+            .segments(&CHAT_COMPLETION_PATH)
+            .payload(body)
+            .maybe_token(token)
+            .call()
+            .await?;
 
         #[allow(unused_mut)]
-        let mut stream = AsyncStream::new(response);
+        let mut stream = ChatStream::new(response, handler.mode.clone());
 
         #[cfg(feature = "otel")]
         stream.aggregator.set_span(span);

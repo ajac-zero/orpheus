@@ -5,12 +5,13 @@ use completion_request_builder::{IsComplete, State};
 use serde::Serialize;
 
 use crate::{
-    Error, Result,
-    client::core::{Async, AsyncExecutor, Executor, Mode, Sync},
-    models::{
-        ProviderPreferences, ReasoningConfig, UsageConfig,
-        completion::{CompletionHandler, CompletionResponse},
+    Result,
+    client::{
+        core::Pool,
+        mode::{Async, Mode, Sync},
     },
+    constants::COMPLETION_PATH,
+    models::{Preferences, Reasoning, Usage, completion::CompletionResponse},
 };
 
 #[serde_with::skip_serializing_none]
@@ -20,10 +21,14 @@ use crate::{
         /// Builder to set the parameters of a completion request
     })
 )]
-pub struct CompletionRequest<M: Mode> {
+pub(crate) struct CompletionRequest<'a, M: Mode> {
     #[serde(skip)]
     #[builder(start_fn)]
-    handler: Option<CompletionHandler<M>>,
+    pool: &'a Pool<M>,
+
+    #[serde(skip)]
+    #[builder(start_fn)]
+    api_key: Option<&'a str>,
 
     /// The text prompt to complete
     #[builder(start_fn)]
@@ -36,13 +41,13 @@ pub struct CompletionRequest<M: Mode> {
     pub models: Option<Vec<String>>,
 
     /// Preferences for provider routing.
-    pub provider: Option<ProviderPreferences>,
+    pub provider: Option<Preferences>,
 
     /// Configuration for model reasoning/thinking tokens
-    pub reasoning: Option<ReasoningConfig>,
+    pub reasoning: Option<Reasoning>,
 
     /// Whether to include usage information in the response
-    pub usage: Option<UsageConfig>,
+    pub usage: Option<Usage>,
 
     /// List of prompt transforms (OpenRouter-only).
     pub transforms: Option<Vec<String>>,
@@ -90,35 +95,46 @@ pub struct CompletionRequest<M: Mode> {
     pub user: Option<String>,
 }
 
-impl<S: State> CompletionRequestBuilder<Sync, S>
+impl<'a, S: State> CompletionRequestBuilder<'a, Sync, S>
 where
     S: IsComplete,
 {
-    pub fn send(mut self) -> Result<CompletionResponse> {
-        let handler = self.handler.take().expect("Has handler");
-
+    pub fn send(self) -> Result<CompletionResponse> {
+        let mut handler = self.pool.get().expect("Has handler");
+        let token = self.api_key;
         let body = self.build();
 
-        let response = handler.execute(body)?;
+        let response = handler
+            .execute()
+            .segments(&[COMPLETION_PATH])
+            .payload(body)
+            .maybe_token(token)
+            .call()?;
 
-        let completion_response = response.json().map_err(Error::http)?;
+        let completion_response = response.json()?;
 
         Ok(completion_response)
     }
 }
 
-impl<S: State> CompletionRequestBuilder<Async, S>
+impl<'a, S: State> CompletionRequestBuilder<'a, Async, S>
 where
     S: IsComplete,
 {
-    pub async fn send(mut self) -> Result<CompletionResponse> {
-        let handler = self.handler.take().expect("Has handler");
-
+    pub async fn send(self) -> Result<CompletionResponse> {
+        let mut handler = self.pool.get().await.expect("Has handler");
+        let token = self.api_key;
         let body = self.build();
 
-        let response = handler.execute(body).await?;
+        let response = handler
+            .execute()
+            .segments(&[COMPLETION_PATH])
+            .payload(body)
+            .maybe_token(token)
+            .call()
+            .await?;
 
-        let completion_response = response.json().await.map_err(Error::http)?;
+        let completion_response = response.json().await?;
 
         Ok(completion_response)
     }

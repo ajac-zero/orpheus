@@ -5,18 +5,18 @@
 **Orpheus** is a library made to make it as ergonomic as possible to create AI apps with [OpenRouter](https://openrouter.ai/), allowing immediate access to hundreds of models and dozens of providers you can mix and match to best suit your use case.
 
 Orpheus also comes with out-of-the-box support for:
-- ⚡ Async
-- 🌊 Streaming
-- 🖼️ Images and PDF
-- 🔄 Model Fallbacks
-- 🔍 Web Search
-- 🛠️ Tool Calling
-- 🔌 MCP Client
-- 📋 Structured Outputs
-- ⚙️ Provider Selection
-- 💾 Prompt Caching
-- 🔧 Message Transforms
-- 🔑 API Key Provisioning
+- ⚡ [Async](https://orpheus.ajac-zero.com/features/async-support)
+- 🌊 [Streaming](https://orpheus.ajac-zero.com/basics/getting-started/streaming-responses)
+- 🖼️ [Images, PDF, and Audio](https://orpheus.ajac-zero.com/features/multimodality)
+- 🔄 [Model Fallbacks](https://orpheus.ajac-zero.com/basics/fallback-models)
+- 🔍 [Web Search](https://orpheus.ajac-zero.com/features/plugins#web-search-plugin)
+- 🛠️ [Tool Calling](https://orpheus.ajac-zero.com/features/tool-calling)
+- 🔌 [MCP](https://orpheus.ajac-zero.com/integrations/mcp)
+- 📋 [Structured Outputs](https://orpheus.ajac-zero.com/features/structured-output)
+- ⚙️ [Provider Selection](https://orpheus.ajac-zero.com/basics/configuring-providers)
+- 💾 [Prompt Caching](https://orpheus.ajac-zero.com/features/caching)
+- 🔧 [Message Transforms](https://orpheus.ajac-zero.com/features/transforms)
+- 🔑 [API Key Provisioning]()
 
 ## Installation
 Add Orpheus to your project with cargo:
@@ -25,19 +25,17 @@ Add Orpheus to your project with cargo:
 cargo add orpheus
 ```
 
-## Basic Usage
+## Quickstart
 
-Let's learn how to use Orpheus with a practical example. Here, we will create a CLI program that allows us to send a chat request to an LLM.
+Let's learn how to use Orpheus with a practical example. Here, we will create a program that allows us to send a chat request to an LLM.
 
-### One-shot Prompt Example
-
-```rust,ignore
+```rust
 // The prelude includes everything you will need to use Orpheus
 use orpheus::prelude::*;
 
 fn main() {
-    // First, we have to start our central client
-    let client = Orpheus::new("Your-API-Key");
+    // Start the client by reading the ORPHEUS_API_KEY environment variable
+    let client = Orpheus::from_env().expect("ORPHEUS_API_KEY is set");
 
     // With our client, we can call the `chat` method to begin a chat completion request
     // The request follows a builder pattern, iteratively adding arguments before finally sending it with `send`
@@ -53,17 +51,69 @@ fn main() {
 }
 ```
 
-```bash
+```txt
 GPT-4o says: Hello! How can I assist you today?
 ```
 
-Simple, right? Let's take it up a notch by making the CLI program interactive and adding a conversation history so the model can remember our previous messages.
+Simple, right? Let's take it up a notch by adding a conversation history so the model can remember our previous messages.
 
-We also probably don't want to hardcode our API key into the program, so let's initialize our client from environment variables instead.
+```rust
+use orpheus::prelude::*;
 
-### With Message History Example
+fn main() {
+    let client = Orpheus::from_env().expect("ORPHEUS_API_KEY is set");
 
-```rust,ignore
+    // Create a vector that we will continually update with our message history.
+    let mut messages = Vec::new();
+
+    let canned_messages = vec!["Hello!", "My name is Anibal", "What's my name again?"];
+
+    for message in canned_messages {
+        // Let's turn our user input into a proper message and add it to our message history
+        println!("User: {}", message);
+        messages.push(Message::user(message));
+
+        let response = client
+            .chat(&messages) // The chat method accepts our list of messages directly
+            .model("mistralai/magistral-small-2506")
+            .send()
+            .unwrap();
+
+        // The response from the model can be turned into a message in the same format as the user message.
+        let ai_message = response.into_message().unwrap();
+
+        println!("Assistant: {}", ai_message.content);
+
+        // Add the response message to our list
+        messages.push(ai_message);
+    }
+}
+```
+
+```txt
+User: Hello!
+Assistant: Hello! 😊 How can I assist you today?
+User: My name is Anibal
+Assistant: Nice to meet you, Anibal! 😊 It's a great name with interesting roots—it comes from Latin, meaning "related to Brains."
+
+How can I help you today? Whether you have questions, need advice, or just want to chat, I'm here for it all.
+User: What's my name again?
+Assistant: Oh, good catch! I like this game. 😄
+
+**Your name is Anibal**—or at least, that’s what you told me in your last message. (Unless you’re testing my memory, in which case I’m pretending not to notice!)
+
+What’s up next? Need a name origin deep dive, or just a random fun fact? Either way, hit me!
+
+*(P.S. If you’d rather swap to a different name right now, I’m cool with it. Just say the word.)*
+```
+
+In AI apps, it is common to stream the response to reduce the perceived latency of the program. Let's see how we can use response streaming with Orpheus.
+
+### Streaming Response Example
+
+```rust
+use std::io::Write;
+
 use orpheus::prelude::*;
 
 fn main() {
@@ -73,79 +123,23 @@ fn main() {
     // Create a vector that we will continually update with our message history.
     let mut messages = Vec::new();
 
-    loop {
-        // Boilerplate to read user input from the terminal into a variable
-        let mut user_input = String::new();
-        println!("User:");
-        std::io::stdin().read_line(&mut user_input).unwrap();
+    let canned_messages = vec!["Hello!", "My name is Anibal", "What's my name again?"];
 
+    for message in canned_messages {
         // Let's turn our user input into a proper message and add it to our message history
-        messages.push(Message::user(user_input));
-
-        let response = client
-            .chat(&messages) // The chat method accepts our list of messages directly
-            .model("openai/gpt-4o")
-            .send()
-            .unwrap();
-
-        // The response from the model can be turned into a message in the same format as the user message.
-        let ai_message = response.into_message().unwrap();
-
-        println!("Assistant:");
-        println!("{}", ai_message.content);
-
-        // Add the response message to our list
-        messages.push(ai_message);
-    }
-}
-```
-
-```bash
-User:
-hi!
-Assistant:
-Hello! How can I assist you today?
-User:
-who are you?
-Assistant:
-I'm an AI language model created by OpenAI, designed to assist with a wide range of inquiries by providing information, answering questions, and engaging in conversation. How can I help you today?
-User:
-that's awesome
-Assistant:
-Thank you! If there's anything specific you'd like to know or discuss, feel free to ask.
-```
-
-In AI apps, it is common to stream the response to reduce the perceived latency of the program. Let's see how we can use response streaming with Orpheus.
-
-### Streaming Response Example
-
-```rust,ignore
-use std::io::Write;
-
-use orpheus::prelude::*;
-
-fn main() {
-    let client = Orpheus::from_env().expect("ORPHEUS_API_KEY is set");
-
-    let mut messages = Vec::new();
-
-    loop {
-        let mut user_input = String::new();
-        println!("User:");
-        std::io::stdin().read_line(&mut user_input).unwrap();
-
-        messages.push(Message::user(user_input));
+        println!("User: {}", message);
+        messages.push(Message::user(message));
 
         let mut response = client
             .chat(&messages)
-            .model("openai/gpt-4o")
+            .model("x-ai/grok-3-mini")
             .stream() // By calling `stream` instead of `send`, we get an iterable over the response chunks
             .unwrap();
 
         // Create a buffer that we will continuously update with the content of each chunk
         let mut buffer = String::new();
 
-        println!("Assistant:");
+        print!("Assistant: ");
         // Loop until the iterator runs out of chunks
         while let Some(Ok(chunk)) = response.next() {
             // Get the content of the chunk and add it to the buffer
@@ -164,15 +158,17 @@ fn main() {
 }
 ```
 
-```bash
-User:
-hi
-Assistant:
-Hello! How can I assist you today?
+```txt
+User: Hello!
+Assistant: Hello! I'm Grok, your AI assistant from xAI. How can I help you today? 😊
+User: My name is Anibal
+Assistant: Nice to meet you, Anibal! I'm Grok, your AI assistant from xAI. How can I assist you today? 😊
+User: What's my name again?
+Assistant: Oh, right! You told me your name is Anibal. How can I assist you further today? 😊
 ```
 
 > **Note**: You'll have to run it yourself to see the stream effect
 
-# Documentation
+# Doc Site
 
-If you want to learn about additional features, such as async support, structured output, tool calling, MCP, prompt caching, provider configuration, and more, head over to the [docs](https://orpheus.ajac-zero.com/)!.
+If you want to learn about additional features, such as async support, structured output, tool calling, MCP, prompt caching, provider configuration, and more, head over to the [docs](https://orpheus.ajac-zero.com/)!

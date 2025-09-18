@@ -156,7 +156,7 @@ impl<S: format_json_builder::State> FormatJsonBuilder<S> {
 mod test {
     use serde_json::json;
 
-    use crate::prelude::{Format, Orpheus, Param};
+    use crate::prelude::{Format, Param};
 
     /// Tests that a Format with a complex schema serializes to the expected JSON structure.
     ///
@@ -216,62 +216,5 @@ mod test {
         let response_format_value = serde_json::to_value(response_format).unwrap();
 
         assert_eq!(target, response_format_value)
-    }
-
-    /// Integration test that demonstrates structured output in a real API call.
-    ///
-    /// This test shows how to use structured output end-to-end, from defining
-    /// the schema to making the API call and deserializing the response.
-    ///
-    /// Note: This test requires valid API credentials and may make actual API calls.
-    #[test]
-    fn end_to_end_with_response_format() {
-        // Initialize client from environment variables (ORPHEUS_API_KEY)
-        let client = Orpheus::from_env().unwrap();
-
-        // Define the expected response format for weather data
-        let response_format = Format::json("weather")
-            .with_schema(|schema| {
-                schema
-                    .property(
-                        "location",
-                        Param::string().description("City or location name"),
-                    )
-                    .property(
-                        "temperature",
-                        Param::number().description("Temperature in Celsius"),
-                    )
-                    .property(
-                        "conditions",
-                        Param::string().description("Weather conditions description"),
-                    )
-                    .required(["location", "temperature", "conditions"])
-            })
-            .build();
-
-        // Make a chat request with structured output format
-        let response = client
-            .chat("What is the weather like in New York City?")
-            .model("openai/gpt-4o")
-            .response_format(response_format)
-            .send()
-            .unwrap();
-
-        /// Struct that matches our defined schema for easy deserialization
-        #[derive(Debug, serde::Deserialize)]
-        struct WeatherResponse {
-            location: String,
-            temperature: f64,
-            conditions: String,
-        }
-
-        // Extract the JSON content from the response
-        let content = response.content().unwrap().to_string();
-
-        // Deserialize the structured JSON response into our struct
-        let weather_response: WeatherResponse = serde_json::from_str(&content).unwrap();
-
-        // Print the parsed response for debugging
-        dbg!(weather_response);
     }
 }
