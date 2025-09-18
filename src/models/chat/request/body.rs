@@ -45,7 +45,7 @@ pub(crate) struct ChatRequest<'a, M: Mode> {
 
     #[serde(skip)]
     #[builder(start_fn)]
-    auth: Option<String>,
+    api_key: Option<&'a str>,
 
     /// List of messages in the conversation
     #[builder(into, start_fn)]
@@ -176,7 +176,7 @@ where
 
         // Disable streaming for complete response
         self.stream = Some(false);
-        let token = self.auth.take();
+        let token = self.api_key;
         let body = self.build();
         debug!(chat_request_body = ?body);
 
@@ -205,7 +205,7 @@ where
 
         // Enable streaming for real-time response
         self.stream = Some(true);
-        let token = self.auth.take();
+        let token = self.api_key;
         let body = self.build();
         let response = handler
             .execute()
@@ -237,7 +237,7 @@ where
 
         // Disable streaming for complete response
         self.stream = Some(false);
-        let token = self.auth.take();
+        let token = self.api_key;
         let body = self.build();
         debug!(chat_request_body = ?body);
 
@@ -267,7 +267,7 @@ where
 
         // Enable streaming for real-time response
         self.stream = Some(true);
-        let token = self.auth.take();
+        let token = self.api_key;
         let body = self.build();
 
         let response = handler

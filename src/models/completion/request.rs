@@ -26,6 +26,10 @@ pub(crate) struct CompletionRequest<'a, M: Mode> {
     #[builder(start_fn)]
     pool: &'a Pool<M>,
 
+    #[serde(skip)]
+    #[builder(start_fn)]
+    api_key: Option<&'a str>,
+
     /// The text prompt to complete
     #[builder(start_fn)]
     pub prompt: String,
@@ -97,13 +101,14 @@ where
 {
     pub fn send(self) -> Result<CompletionResponse> {
         let mut handler = self.pool.get().expect("Has handler");
-
+        let token = self.api_key;
         let body = self.build();
 
         let response = handler
             .execute()
             .segments(&[COMPLETION_PATH])
             .payload(body)
+            .maybe_token(token)
             .call()?;
 
         let completion_response = response.json()?;
@@ -118,13 +123,14 @@ where
 {
     pub async fn send(self) -> Result<CompletionResponse> {
         let mut handler = self.pool.get().await.expect("Has handler");
-
+        let token = self.api_key;
         let body = self.build();
 
         let response = handler
             .execute()
             .segments(&[COMPLETION_PATH])
             .payload(body)
+            .maybe_token(token)
             .call()
             .await?;
 

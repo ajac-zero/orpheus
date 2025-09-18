@@ -10,21 +10,23 @@ pub struct KeyStore {
 }
 
 impl KeyStore {
-    pub(crate) fn get_api_key(&self) -> Result<String> {
-        Ok(self
+    pub(crate) fn get_api_key(&self) -> Result<&str> {
+        let secret = self
             .api_key
             .as_ref()
             .ok_or_else(Error::missing_api_key)?
-            .expose_secret()
-            .to_string())
+            .expose_secret();
+
+        Ok(secret)
     }
 
-    pub(crate) fn get_provisioning_key(&self) -> Result<String> {
-        Ok(self
+    pub(crate) fn get_provisioning_key(&self) -> Result<&str> {
+        let secret = self
             .provisioning_key
             .as_ref()
             .ok_or_else(Error::missing_provisioning_key)?
-            .expose_secret()
-            .to_string())
+            .expose_secret();
+
+        Ok(secret)
     }
 }

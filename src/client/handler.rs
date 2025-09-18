@@ -27,7 +27,7 @@ impl<M> Handler<M> {
         method: &str,
         content_type: &str,
         payload: impl serde::Serialize,
-        maybe_token: Option<String>,
+        maybe_token: Option<&str>,
         mode: M,
     ) -> Result<Response<M>> {
         let mut request_uri = self.url.clone();
@@ -71,7 +71,7 @@ impl Handler<Sync> {
         #[builder(default = "POST")] method: &str,
         #[builder(default = "application/json")] content_type: &str,
         payload: impl serde::Serialize,
-        token: Option<String>,
+        token: Option<&str>,
     ) -> Result<Response<Sync>> {
         let mode = self.mode.clone();
         let rt = mode.rt.clone();
@@ -95,7 +95,7 @@ impl Handler<Async> {
         #[builder(default = "POST")] method: &str,
         #[builder(default = "application/json")] content_type: &str,
         payload: impl serde::Serialize,
-        token: Option<String>,
+        token: Option<&str>,
     ) -> Result<Response<Async>> {
         self.build_request_and_send(segments, method, content_type, payload, token, self.mode)
             .await

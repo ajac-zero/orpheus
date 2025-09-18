@@ -22,7 +22,7 @@ pub struct KeyProvisioningRequest<'a, M: Mode> {
 
     #[serde(skip)]
     #[builder(start_fn)]
-    provisioning_key: String,
+    provisioning_key: &'a str,
 
     pub name: Option<String>,
 
@@ -51,8 +51,7 @@ where
 {
     pub fn create(self) -> Result<CreateKeyResult> {
         let mut handler = self.pool.get().expect("Has handler");
-
-        let token = self.provisioning_key.clone();
+        let token = self.provisioning_key;
         let body = self.build();
 
         let response = handler
@@ -77,8 +76,7 @@ where
 {
     pub async fn create(self) -> Result<CreateKeyResult> {
         let mut handler = self.pool.get().await.expect("Has handler");
-
-        let token = self.provisioning_key.clone();
+        let token = self.provisioning_key;
         let body = self.build();
 
         let response = handler
@@ -99,8 +97,7 @@ where
 impl<'a, S: State> KeyProvisioningRequestBuilder<'a, Sync, S> {
     pub fn list(self) -> Result<ListKeysResult> {
         let mut handler = self.pool.get().expect("Has handler");
-
-        let token = self.provisioning_key.clone();
+        let token = self.provisioning_key;
         let body = self.build();
 
         let response = handler
@@ -127,7 +124,7 @@ where
 {
     pub fn delete(self) -> Result<DeleteKeyResult> {
         let mut handler = self.pool.get().expect("Has handler");
-        let token = self.provisioning_key.clone();
+        let token = self.provisioning_key;
         let mut body = self.build();
         let hash = body.hash.take().unwrap();
 
