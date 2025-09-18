@@ -26,9 +26,11 @@ fn main() -> anyhow::Result<()> {
 ```
 {% endcode %}
 
+{% code title="output" %}
 ```
 Model says: Hello there! It's great to meet you. How can I assist you today?
 ```
+{% endcode %}
 
 ## Objective
 
@@ -42,26 +44,14 @@ Orpheus aims to be three things:
 
 Orpheus also comes with out-of-the-box support for:
 
-* [Async](features/async-support.md)
-* [Streaming](basics/getting-started/streaming-responses.md)
-* Images and PDF
-* [Model Fallbacks](basics/fallback-models.md)
-* [Web Search](features/plugins.md)
-* [Tool Calling](features/tool-calling/)
-* MCP Client
-* [Structured Outputs](features/structured-output.md)
-* [Provider Selection](basics/configuring-providers/)
-* Prompt Caching
-* Message Transforms
-* API Key Provisioning
-
-## Overview
-
-A quick overview of where to find what in our docs:
-
-1. Getting Started: Learn the basics in less than 15 minutes, including how to easily switch between 100+ models, and how to stream the model response as it is generated.
-2. Features:
-3. Examples:
-4. API Reference:
-
-Alternatively, you can follow the links at the bottom of each page to go through this documentation as a proctored, in-depth guide!
+* ⚡ [Async](https://orpheus.ajac-zero.com/features/async-support)
+* 🌊 [Streaming](https://orpheus.ajac-zero.com/basics/getting-started/streaming-responses)
+* 🖼️ [Images, PDF, and Audio](https://orpheus.ajac-zero.com/features/multimodality)
+* 🔄 [Model Fallbacks](https://orpheus.ajac-zero.com/basics/fallback-models)
+* 🔍 [Web Search](https://orpheus.ajac-zero.com/features/plugins#web-search-plugin)
+* 🛠️ [Tool Calling](https://orpheus.ajac-zero.com/features/tool-calling)
+* 🔌 [MCP](https://orpheus.ajac-zero.com/integrations/mcp)
+* 📋 [Structured Outputs](https://orpheus.ajac-zero.com/features/structured-output)
+* ⚙️ [Provider Selection](https://orpheus.ajac-zero.com/basics/configuring-providers)
+* 💾 [Prompt Caching](https://orpheus.ajac-zero.com/features/caching)
+* 🔧 [Message Transforms](https://orpheus.ajac-zero.com/features/transforms)
