@@ -15,11 +15,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Build
       run: cargo build --verbose
-      
+
     - name: Run tests
       run: cargo test -F all --verbose
       env:
         ORPHEUS_API_KEY: ${{ secrets.ORPHEUS_API_KEY }}
+        ORPHEUS_ADMIN_KEY: ${{ secrets.ORPHEUS_ADMIN_KEY }}

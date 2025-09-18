@@ -38,7 +38,7 @@ impl Mcp {
             }
         });
         let process = TokioChildProcess::new(cmd)?;
-        let service = ().serve(process).await.map_err(|e| Error::init(e.to_string()))?;
+        let service = ().serve(process).await?;
         Ok(Self { service })
     }
 
@@ -60,15 +60,11 @@ impl Mcp {
             if let serde_json::Value::Object(map) = args {
                 request.arguments = Some(map);
             } else {
-                return Err(Error::tool_schema("Expected a JSON object"));
+                return Err(Error::Parsing("Expected a JSON object".into()));
             }
         }
 
-        let result = self
-            .service
-            .call_tool(request)
-            .await
-            .map_err(Error::service)?;
+        let result = self.service.call_tool(request).await?;
 
         Ok(ToolResult(result))
     }
@@ -100,8 +96,7 @@ impl Mcp {
         Ok(self
             .service
             .list_tools(Default::default())
-            .await
-            .map_err(Error::service)?
+            .await?
             .tools
             .into_iter()
             .map(TryInto::try_into)
@@ -109,7 +104,7 @@ impl Mcp {
     }
 
     pub async fn close(self) -> Result<QuitReason> {
-        Ok(self.service.cancel().await.map_err(Error::close)?)
+        Ok(self.service.cancel().await?)
     }
 }
 

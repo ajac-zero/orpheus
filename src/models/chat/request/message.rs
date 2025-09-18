@@ -161,7 +161,7 @@ impl TryFrom<String> for Role {
             "user" => Ok(Role::User),
             "assistant" => Ok(Role::Assistant),
             "tool" => Ok(Role::Tool),
-            _ => Err(Error::parse_error("Invalid role")),
+            other => Err(Error::invalid_role(other)),
         }
     }
 }

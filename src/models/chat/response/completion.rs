@@ -31,9 +31,7 @@ impl ChatCompletion {
             .choices
             .iter()
             .next()
-            .ok_or(Error::malformed_response(
-                "Choices array in response is empty",
-            ))?
+            .ok_or_else(Error::missing_choices_array)?
             .message;
 
         Ok(message)
@@ -56,9 +54,7 @@ impl ChatCompletion {
             .choices
             .into_iter()
             .next()
-            .ok_or(Error::malformed_response(
-                "Responses choices array is empty",
-            ))?
+            .ok_or_else(Error::missing_choices_array)?
             .message)
     }
 

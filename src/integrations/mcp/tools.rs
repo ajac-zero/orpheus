@@ -14,14 +14,14 @@ impl TryFrom<rmcp::model::Tool> for Tool {
         let properties = schema
             .get("properties")
             .map(serde_json::to_string)
-            .ok_or(Error::tool_schema("Missing properties key"))?
+            .ok_or(Error::missing_tool_schema_key("properties"))?
             .and_then(|s| serde_json::from_str::<HashMap<String, ParamType>>(&s))
             .map_err(Error::Serde)?;
 
         let required = schema
             .get("required")
             .map(serde_json::to_string)
-            .ok_or(Error::tool_schema("Missing required key"))?
+            .ok_or(Error::missing_tool_schema_key("required"))?
             .and_then(|s| serde_json::from_str::<Vec<String>>(&s))
             .map_err(Error::Serde)?;
 

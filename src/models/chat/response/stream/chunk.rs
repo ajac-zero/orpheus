@@ -42,9 +42,7 @@ impl ChatStreamChunk {
             .choices
             .iter()
             .next()
-            .ok_or(Error::malformed_response(
-                "Choices array in response is empty",
-            ))?
+            .ok_or_else(Error::missing_choices_array)?
             .delta;
 
         Ok(message)
@@ -55,9 +53,7 @@ impl ChatStreamChunk {
             .choices
             .into_iter()
             .next()
-            .ok_or(Error::malformed_response(
-                "Choices array in response is empty",
-            ))?
+            .ok_or_else(Error::missing_choices_array)?
             .delta;
 
         Ok(message)

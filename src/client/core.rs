@@ -9,7 +9,7 @@ pub(crate) use pool::Pool;
 use secrecy::SecretString;
 use url::Url;
 
-use crate::{Error, Result, client::mode::Mode, constants::*};
+use crate::{Result, client::mode::Mode, constants::*};
 
 /// Core client logic to interface with LLMs.
 /// Designed for the OpenRouter API, but
@@ -62,7 +62,7 @@ impl<M: Mode> OrpheusCore<M> {
     /// let async_client = AsyncOrpheus::from_env().expect("ORPHEUS_API_KEY is set");
     /// ```
     pub fn from_env() -> Result<Self> {
-        let api_key = std::env::var(API_KEY_ENV_VAR).map_err(Error::env)?;
+        let api_key = std::env::var(API_KEY_ENV_VAR)?;
         Ok(Self::new(api_key))
     }
 }

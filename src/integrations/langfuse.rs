@@ -5,7 +5,7 @@ use std::{collections::HashMap, env};
 use base64::prelude::*;
 use opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig, WithHttpConfig};
 
-use crate::{Result, error::ConfigError};
+use crate::Result;
 
 #[derive(Debug)]
 pub struct LangfuseExporter;
@@ -28,8 +28,8 @@ impl LangfuseExporter {
     }
 
     pub fn from_env() -> Result<SpanExporter> {
-        let public_key = env::var("LANGFUSE_PUBLIC_KEY").map_err(ConfigError::Env)?;
-        let secret_key = env::var("LANGFUSE_SECRET_KEY").map_err(ConfigError::Env)?;
+        let public_key = env::var("LANGFUSE_PUBLIC_KEY")?;
+        let secret_key = env::var("LANGFUSE_SECRET_KEY")?;
 
         let authorization = BASE64_STANDARD.encode(format!("{}:{}", public_key, secret_key));
 
