@@ -1,100 +1,79 @@
 use futures_lite::StreamExt;
-use orpheus::{
-    models::{Plugin, Transform},
-    prelude::*,
-};
+use orpheus::prelude::*;
 
-const TEST_MODEL: &str = "google/gemini-2.5-flash-lite";
+const TEST_MODEL: &str = "openai/gpt-4o-mini";
 
 #[test]
 fn simple_request() {
     let client = Orpheus::from_env().unwrap();
 
     let response = client
-        .chat([Message::system("You are a friend"), Message::user("Hello!")])
+        .respond(vec![Message::system("You are a friend"), Message::user("Hello!")])
         .model(TEST_MODEL)
         .send();
-    println!("{:?}", response);
 
     assert!(response.is_ok());
 
-    let chat_response = response.unwrap();
-
-    let choices = chat_response.choices;
-    assert!(!choices.is_empty());
+    let res = response.unwrap();
+    assert!(res.output_text().is_some());
 }
 
 #[test]
 fn stream_request() {
     let client = Orpheus::from_env().unwrap();
 
-    let response = client
-        .chat([Message::system("You are a friend"), Message::user("Hello!")])
+    let stream = client
+        .respond(vec![Message::system("You are a friend"), Message::user("Hello!")])
         .model(TEST_MODEL)
         .stream();
-    println!("{:?}", response);
 
-    assert!(response.is_ok());
+    assert!(stream.is_ok());
 
-    let mut chat_response = response.unwrap();
-    let mut is_finished = false;
+    let mut stream = stream.unwrap();
+    let mut got_text = false;
+    let mut got_completed = false;
 
-    while let Some(Ok(chunk)) = chat_response.next() {
-        assert_eq!(chunk.object, "chat.completion.chunk");
-        assert_eq!(chunk.choices.len(), 1);
-
-        let choice = &chunk.choices[0];
-
-        if choice.finish_reason.is_some() {
-            is_finished = true;
-            assert_eq!(choice.finish_reason, Some("stop".to_string()));
+    while let Some(Ok(event)) = stream.next() {
+        if event.as_text_delta().is_some() {
+            got_text = true;
+        }
+        if event.as_completed().is_some() {
+            got_completed = true;
         }
     }
 
-    assert!(is_finished);
+    assert!(got_text);
+    assert!(got_completed);
 }
 
 #[tokio::test]
 async fn async_stream_request() {
     let client = AsyncOrpheus::from_env().unwrap();
 
-    let response = client
-        .chat([Message::system("You are a friend"), Message::user("Hello!")])
+    let stream = client
+        .respond(vec![Message::system("You are a friend"), Message::user("Hello!")])
         .model(TEST_MODEL)
         .stream()
         .await;
-    println!("{:?}", response);
 
-    assert!(response.is_ok());
+    assert!(stream.is_ok());
 
-    let mut chat_response = response.unwrap();
+    let mut stream = stream.unwrap();
+    let mut accumulated_text = String::new();
+    let mut got_completed = false;
 
-    let mut accumulated_content = String::new();
-    let mut is_finished = false;
-
-    let mut count = 0;
-    while let Some(chunk) = chat_response.next().await {
-        println!("{:?}", chunk);
-        count = count + 1;
-        let chunk = chunk.unwrap();
-        assert_eq!(chunk.object, "chat.completion.chunk");
-        assert_eq!(chunk.choices.len(), 1);
-
-        let choice = &chunk.choices[0];
-        accumulated_content.push_str(&choice.delta.content.to_string());
-
-        if choice.finish_reason.is_some() {
-            is_finished = true;
-            assert_eq!(choice.finish_reason, Some("stop".to_string()));
+    while let Some(event) = stream.next().await {
+        let event = event.unwrap();
+        if let Some(text) = event.as_text_delta() {
+            accumulated_text.push_str(text);
+        }
+        if event.as_completed().is_some() {
+            got_completed = true;
         }
     }
 
-    println!("Processed chunks: {}", count);
-    assert!(is_finished);
-    println!(
-        "Successfully processed streaming chat completion: '{}'",
-        accumulated_content
-    );
+    assert!(got_completed);
+    assert!(!accumulated_text.is_empty());
 }
 
 #[test]
@@ -104,60 +83,15 @@ fn image_request() {
     let image_url = "https://misanimales.com/wp-content/uploads/2022/03/Shih-Poo-Shih-Tzu-1024x680-1-768x510.jpg";
 
     let response = client
-        .chat([
-            Message::system("You are a photography connoseur."),
+        .respond(vec![
+            Message::system("You are a photography connoisseur."),
             Message::user("What do you think of this image?").with_image(image_url),
         ])
         .model(TEST_MODEL)
         .send();
 
-    println!("{:?}", response);
     assert!(response.is_ok());
-
-    let chat_response = response.unwrap();
-
-    let choices = chat_response.choices;
-    assert!(!choices.is_empty());
-}
-
-#[test]
-fn file_request() {
-    let client = Orpheus::from_env().unwrap();
-
-    let pdf_url = "https://bitcoin.org/bitcoin.pdf";
-
-    let response = client
-        .chat([Message::user("Can you tell me the contents of this pdf?")
-            .with_file("bitcoin.pdf", pdf_url)])
-        .model(TEST_MODEL)
-        .send();
-
-    assert!(response.is_ok());
-
-    let chat_response = response.unwrap();
-
-    let choices = chat_response.choices;
-    assert!(!choices.is_empty());
-}
-
-#[test]
-fn web_plugin_request() {
-    let client = Orpheus::from_env().unwrap();
-
-    let web_plugin = Plugin::web().build();
-
-    let response = client
-        .chat("What are the latest crypto news?")
-        .model(TEST_MODEL)
-        .plugins([web_plugin])
-        .send();
-
-    assert!(response.is_ok());
-
-    let chat_response = response.unwrap();
-
-    let choices = chat_response.choices;
-    assert!(!choices.is_empty());
+    assert!(response.unwrap().output_text().is_some());
 }
 
 #[test]
@@ -176,73 +110,39 @@ fn tool_request() {
         .build();
 
     let response = client
-        .chat("Isabella is 12 years old.")
+        .respond("Isabella is 12 years old.")
         .model(TEST_MODEL)
         .tools([tool])
         .send();
-    println!("{:?}", response);
 
     assert!(response.is_ok());
 
-    let chat_response = response.unwrap();
-
-    let choices = chat_response.choices;
-    assert!(!choices.is_empty());
-}
-
-#[test]
-fn request_with_transform() {
-    let client = Orpheus::from_env().unwrap();
-
-    let response = client
-        .chat("Really long text")
-        .model(TEST_MODEL)
-        .transforms([Transform::MiddleOut])
-        .send();
-    println!("{:?}", response);
-
-    assert!(response.is_ok());
-
-    let chat_response = response.unwrap();
-
-    let choices = chat_response.choices;
-    assert!(!choices.is_empty());
+    let res = response.unwrap();
+    let function_calls = res.function_calls();
+    assert!(!function_calls.is_empty());
 }
 
 #[test]
 fn structured_request() {
-    // Initialize client from environment variables (ORPHEUS_API_KEY)
     let client = Orpheus::from_env().unwrap();
 
-    // Define the expected response format for weather data
     let response_format = Format::json("weather")
         .with_schema(|schema| {
             schema
-                .property(
-                    "location",
-                    Param::string().description("City or location name"),
-                )
-                .property(
-                    "temperature",
-                    Param::number().description("Temperature in Celsius"),
-                )
-                .property(
-                    "conditions",
-                    Param::string().description("Weather conditions description"),
-                )
+                .property("location", Param::string().description("City or location name"))
+                .property("temperature", Param::number().description("Temperature in Celsius"))
+                .property("conditions", Param::string().description("Weather conditions description"))
                 .required(["location", "temperature", "conditions"])
         })
         .build();
 
-    // Make a chat request with structured output format
     let response = client
-        .chat("What is the weather like in New York City?")
-        .model("openai/gpt-4o")
-        .response_format(response_format)
+        .respond("What is the weather like in New York City?")
+        .model("openai/gpt-4o-mini")
+        .text_format(response_format)
         .send()
         .unwrap();
 
-    /// Struct that matches our defined schema for easy deserialization
     #[derive(Debug, serde::Deserialize)]
     struct WeatherResponse {
         #[serde(rename = "location")]
@@ -253,49 +153,8 @@ fn structured_request() {
         _conditions: String,
     }
 
-    // Extract the JSON content from the response
-    let content = response.content().unwrap().to_string();
-
-    // Deserialize the structured JSON response into our struct
+    let content = response.output_text().unwrap();
     let weather_response: WeatherResponse = serde_json::from_str(&content).unwrap();
-
-    // Print the parsed response for debugging
     dbg!(weather_response);
 }
 
-#[test]
-fn create_then_delete_key() {
-    let provisioning_key = std::env::var("ORPHEUS_ADMIN_KEY").unwrap();
-
-    let client = Orpheus::builder()
-        .provisioning_key(provisioning_key)
-        .build();
-
-    let response = client
-        .keys()
-        .expect("Has provisioning key")
-        .name("Test-key")
-        .limit(1000)
-        .include_byok_in_limit(true)
-        .create();
-
-    println!("{:?}", response);
-
-    assert!(response.is_ok());
-
-    let key_response = response.unwrap();
-    println!("{:?}", key_response);
-
-    let response = client
-        .keys()
-        .expect("Has provisioning key")
-        .hash(key_response.data.hash)
-        .delete();
-
-    println!("{:?}", response);
-
-    assert!(response.is_ok());
-
-    let key_response = response.unwrap();
-    println!("{:?}", key_response);
-}

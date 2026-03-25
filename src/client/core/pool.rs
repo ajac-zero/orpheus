@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use deadpool::managed;
 use hyper::client::conn::http2;
@@ -21,9 +21,9 @@ pub(crate) struct Pool<M: Mode> {
 }
 
 impl<M: Mode> Pool<M> {
-    pub fn new(url: url::Url) -> Self {
+    pub fn new(url: url::Url, headers: HashMap<String, String>) -> Self {
         let mode = M::new();
-        let mgr = Manager::new(url, mode.clone());
+        let mgr = Manager::new(url, headers, mode.clone());
         let inner = managed::Pool::builder(mgr).build().unwrap();
         Self { inner, mode }
     }
@@ -46,13 +46,14 @@ impl Pool<Async> {
 
 pub struct Manager<M: Mode> {
     url: url::Url,
+    headers: HashMap<String, String>,
     exec: TokioExecutor,
     connector: Option<TlsConnector>,
     mode: M,
 }
 
 impl<M: Mode> Manager<M> {
-    fn new(url: url::Url, mode: M) -> Self {
+    fn new(url: url::Url, headers: HashMap<String, String>, mode: M) -> Self {
         let exec = TokioExecutor::new();
 
         let connector = if url.scheme() == "https" {
@@ -74,6 +75,7 @@ impl<M: Mode> Manager<M> {
 
         Self {
             url,
+            headers,
             exec,
             connector,
             mode,
@@ -122,6 +124,7 @@ impl<M: Mode> managed::Manager for Manager<M> {
 
         Ok(Self::Type {
             url: self.url.clone(),
+            headers: self.headers.clone(),
             sender,
             _handle: handle,
             mode: self.mode.clone(),

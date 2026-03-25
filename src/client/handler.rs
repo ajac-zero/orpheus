@@ -1,5 +1,7 @@
 mod response;
 
+use std::collections::HashMap;
+
 use bon::bon;
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
@@ -15,6 +17,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Handler<M> {
     pub url: url::Url,
+    pub headers: HashMap<String, String>,
     pub sender: http2::SendRequest<Full<Bytes>>,
     pub _handle: JoinHandle<()>,
     pub mode: M,
@@ -35,10 +38,14 @@ impl<M> Handler<M> {
 
         let body = serde_json::to_vec(&payload)?;
 
-        let builder = hyper::Request::builder()
+        let mut builder = hyper::Request::builder()
             .uri(request_uri.as_str())
             .method(method)
             .header(hyper::header::CONTENT_TYPE, content_type);
+
+        for (key, value) in &self.headers {
+            builder = builder.header(key.as_str(), value.as_str());
+        }
 
         let builder = if let Some(token) = maybe_token {
             builder.header(hyper::header::AUTHORIZATION, format!("Bearer {}", token))
@@ -55,7 +62,7 @@ impl<M> Handler<M> {
             let body_bytes = response.collect().await?.to_bytes();
             let error_message = String::from_utf8_lossy(&body_bytes);
 
-            return Err(Error::parse_openrouter_error(status, &error_message));
+            return Err(Error::parse_api_error(status, &error_message));
         }
 
         Ok(Response::new(response, mode))

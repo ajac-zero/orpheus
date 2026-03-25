@@ -8,9 +8,7 @@ pub mod client {
     pub(crate) mod handler;
     pub(crate) mod mode;
     mod methods {
-        mod chat;
-        mod completion;
-        mod keys;
+        mod respond;
     }
 
     pub use core::OrpheusCore;
@@ -22,26 +20,30 @@ pub mod client {
     pub type AsyncOrpheus = OrpheusCore<mode::Async>;
 }
 
-/// Types to be used for specialized request features.
+/// Types for building requests and handling responses.
 pub mod models {
-    pub mod chat;
-    pub mod common;
-    pub mod completion;
-    pub mod keys;
+    pub mod ext;
+    pub mod format;
+    pub mod input;
+    pub mod message;
+    pub mod request;
+    pub mod stream;
+    pub mod tool;
 
-    pub use chat::{
-        Format, History, Message, Param, Parameter, ParsingEngine, Plugin, Tool, ToolCall,
-    };
-    pub use common::{
-        DataCollection, Effort, MaxPrice, Preferences, Provider, Quantization, Reasoning, Sort,
-        Transform, Usage,
-    };
+    pub use ext::ResponseExt;
+    pub use format::Format;
+    pub use input::Input;
+    pub use message::Message;
+    pub use request::ResponseRequestBuilder;
+    pub use stream::{ResponseEvent, ResponseStream};
+    pub use tool::{Param, ParamType, Parameter, Tool, ToolFunctionBuilder};
 }
+
 /// Single import with most commonly used types
 pub mod prelude {
     pub use crate::{
         client::{AsyncOrpheus, Orpheus},
-        models::{Format, Message, Param, Parameter, Tool, ToolCall},
+        models::{Format, Input, Message, Param, ResponseExt, ResponseEvent, Tool},
     };
 }
 
@@ -51,6 +53,9 @@ mod integrations;
 
 #[allow(unused_imports)]
 pub use integrations::*;
+
+/// Re-export the open-responses types for direct access.
+pub use open_responses as responses;
 
 pub type Error = error::OrpheusError;
 pub type Result<T, E = Error> = core::result::Result<T, E>;

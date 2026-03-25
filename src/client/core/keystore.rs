@@ -6,7 +6,6 @@ use crate::{Error, Result};
 #[derive(Debug, Clone, Default, Builder)]
 pub struct KeyStore {
     api_key: Option<SecretString>,
-    provisioning_key: Option<SecretString>,
 }
 
 impl KeyStore {
@@ -15,16 +14,6 @@ impl KeyStore {
             .api_key
             .as_ref()
             .ok_or_else(Error::missing_api_key)?
-            .expose_secret();
-
-        Ok(secret)
-    }
-
-    pub(crate) fn get_provisioning_key(&self) -> Result<&str> {
-        let secret = self
-            .provisioning_key
-            .as_ref()
-            .ok_or_else(Error::missing_provisioning_key)?
             .expose_secret();
 
         Ok(secret)

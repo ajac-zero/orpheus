@@ -8,12 +8,13 @@ fn main() -> anyhow::Result<()> {
     let client = Orpheus::from_env()?;
 
     let response = client
-        .chat("hiii")
-        .model("openai/gpt-4o")
-        .send()?
-        .into_content()?;
+        .respond("hiii")
+        .model("openai/gpt-4o-mini")
+        .send()?;
 
-    tracing::info!("Response: {}", response);
+    if let Some(text) = response.output_text() {
+        tracing::info!("Response: {}", text);
+    }
 
     Ok(())
 }

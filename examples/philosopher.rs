@@ -2,7 +2,7 @@ use std::io::Write;
 
 use clap::Parser;
 use colored::Colorize;
-use orpheus::{models::Effort, prelude::*};
+use orpheus::prelude::*;
 
 #[derive(Parser)]
 struct Cli {
@@ -15,34 +15,32 @@ fn main() -> anyhow::Result<()> {
 
     let client = Orpheus::from_env()?;
 
-    let request = client
-        .chat("Are zebras black with white stripes, or white with black stripes?")
-        .model("google/gemini-2.5-flash-lite-preview-06-17")
-        .with_reasoning(|reasoning| reasoning.effort(Effort::Low));
+    let input = "Are zebras black with white stripes, or white with black stripes?";
 
     if cli.stream {
-        let mut response = request.stream()?;
+        let stream = client
+            .respond(input)
+            .model("openai/gpt-4o-mini")
+            .stream()?;
 
-        while let Some(Ok(chunk)) = response.next() {
-            if let Some(reasoning) = chunk.reasoning()? {
-                print!("{}", reasoning.green());
+        for event in stream {
+            let event = event?;
+            if let Some(text) = event.as_text_delta() {
+                print!("{}", text);
                 std::io::stdout().flush()?;
             }
-
-            println!("{}", chunk.content()?);
-            std::io::stdout().flush()?;
         }
+        println!();
     } else {
-        let response = request.send()?;
+        let response = client
+            .respond(input)
+            .model("openai/gpt-4o-mini")
+            .send()?;
 
-        if let Some(reasoning) = response.reasoning()? {
-            println!("{}", "Reasoning:".green().bold());
-            println!("{}", reasoning);
+        if let Some(text) = response.output_text() {
+            println!("{}", "Response:".blue());
+            println!("{}", text);
         }
-
-        let content = response.content()?;
-        println!("{}", "Response:".blue());
-        println!("{}", content);
     }
 
     Ok(())

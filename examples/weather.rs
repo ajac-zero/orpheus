@@ -17,7 +17,6 @@ struct GetWeather {
 fn main() -> anyhow::Result<()> {
     let client = Orpheus::from_env()?;
 
-    // Define your tool
     let get_weather_tool = Tool::function("get_weather")
         .description("Retrieve current weather for the given location.")
         .with_parameters(|params| {
@@ -43,31 +42,23 @@ fn main() -> anyhow::Result<()> {
     let prompt = "How's the weather in New York?";
     println!("Prompt: {}", prompt);
 
-    let mut messages = vec![
-        Message::system(
-            "You are a weather bot. You can assume coordinates if not provided by the user. Default to celsius.",
-        ),
-        Message::user(prompt),
-    ];
-
     let res = client
-        .chat(&messages)
-        .model("anthropic/claude-sonnet-4")
-        .tools([get_weather_tool]) // Add your tools to the chat request
+        .respond(vec![
+            Message::system("You are a weather bot. You can assume coordinates if not provided by the user. Default to celsius."),
+            Message::user(prompt),
+        ])
+        .model("openai/gpt-4o-mini")
+        .tools([get_weather_tool])
         .send()?;
 
-    messages.push(res.message()?.clone());
+    let function_calls = res.function_calls();
 
-    // `tool_call` is a convenience method to extract the first function call in a response, if is some
-    if let Some(ToolCall::Function { id, function }) = res.tool_call()? {
-        println!("Tool function used: {}", function.name);
+    if let Some(fc) = function_calls.first() {
+        println!("Tool function used: {}", fc.name);
 
-        // The name field can be used to route to the correct logic
-        if function.name == "get_weather" {
-            // The arguments field holds a JSON string following the schema, so we can deserializize it with serde
-            let args: GetWeather = serde_json::from_str(&function.arguments)?;
+        if fc.name == "get_weather" {
+            let args: GetWeather = serde_json::from_str(fc.arguments.as_deref().unwrap_or("{}"))?;
 
-            // Inner tool logic that uses function arguments
             let request_url = format!(
                 "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&hourly=temperature_2m&temperature_unit={}",
                 args.location.latitude, args.location.longitude, args.units
@@ -75,17 +66,20 @@ fn main() -> anyhow::Result<()> {
             let weather_data: Value = reqwest::blocking::get(request_url)?.json()?;
             let content = serde_json::to_string(&weather_data)?;
 
-            // We can then turn the tool result data into a message so the model can see it
-            messages.push(Message::tool(id, content));
+            let mut followup = Input::from(Vec::<Message>::new());
+            followup.push_function_output(&fc.call_id, content);
+
+            let res = client
+                .respond(followup)
+                .model("openai/gpt-4o-mini")
+                .previous_response_id(&res.id)
+                .send()?;
+
+            if let Some(text) = res.output_text() {
+                println!("Response: {}", text);
+            }
         }
     }
-
-    // Let the model generate a final answer, now with the weather data
-    let res = client
-        .chat(&messages)
-        .model("anthropic/claude-sonnet-4")
-        .send()?;
-    println!("Response: {}", res.content()?);
 
     Ok(())
 }
