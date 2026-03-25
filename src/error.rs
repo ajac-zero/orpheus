@@ -48,15 +48,11 @@ pub enum OrpheusError {
     #[error("Tokio task error: {0}")]
     Tokio(#[from] tokio::task::JoinError),
 
-    #[error("Unknown stream event: {0}")]
-    UnknownStreamEvent(String),
+    #[error("Stream closed before producing a result")]
+    StreamClosed,
 }
 
 impl OrpheusError {
-    pub(crate) fn invalid_sse(line: &str) -> Self {
-        OrpheusError::Parsing(format!("Invalid SSE line: {}", line))
-    }
-
     pub(crate) fn missing_api_key() -> Self {
         Self::MissingKey
     }

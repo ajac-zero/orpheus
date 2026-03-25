@@ -33,7 +33,7 @@ fn stream_request() {
     let mut got_text = false;
     let mut got_completed = false;
 
-    while let Some(Ok(event)) = stream.next() {
+    while let Some(Ok(event)) = Iterator::next(&mut stream) {
         if event.as_text_delta().is_some() {
             got_text = true;
         }
@@ -62,7 +62,7 @@ async fn async_stream_request() {
     let mut accumulated_text = String::new();
     let mut got_completed = false;
 
-    while let Some(event) = stream.next().await {
+    while let Some(event) = StreamExt::next(&mut stream).await {
         let event = event.unwrap();
         if let Some(text) = event.as_text_delta() {
             accumulated_text.push_str(text);

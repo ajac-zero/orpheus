@@ -241,7 +241,7 @@ impl<'a> ResponseRequestBuilder<'a, Sync> {
     }
 
     /// Send the request and return a streaming response.
-    pub fn stream(mut self) -> Result<ResponseStream<Sync>> {
+    pub fn stream(mut self) -> Result<ResponseStream> {
         let mut handler = self.pool.get().expect("Has handler");
         self.inner.stream = true;
         let token = self.inner.api_key;
@@ -254,7 +254,10 @@ impl<'a> ResponseRequestBuilder<'a, Sync> {
             .maybe_token(token)
             .call()?;
 
-        Ok(ResponseStream::new(response, handler.mode.clone()))
+        Ok(ResponseStream::spawn(
+            response.inner,
+            Some(handler.mode.rt.clone()),
+        ))
     }
 }
 
@@ -282,7 +285,7 @@ impl<'a> ResponseRequestBuilder<'a, Async> {
     }
 
     /// Asynchronously send the request and return a streaming response.
-    pub async fn stream(mut self) -> Result<ResponseStream<Async>> {
+    pub async fn stream(mut self) -> Result<ResponseStream> {
         let mut handler = self.pool.get().await.expect("Has handler");
         self.inner.stream = true;
         let token = self.inner.api_key;
@@ -296,7 +299,7 @@ impl<'a> ResponseRequestBuilder<'a, Async> {
             .call()
             .await?;
 
-        Ok(ResponseStream::new(response, handler.mode.clone()))
+        Ok(ResponseStream::spawn(response.inner, None))
     }
 }
 
