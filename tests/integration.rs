@@ -1,4 +1,4 @@
-use futures_lite::StreamExt;
+use futures_util::StreamExt;
 use orpheus::prelude::*;
 
 const TEST_MODEL: &str = "openai/gpt-4o-mini";

@@ -2,6 +2,9 @@ use std::sync::Arc;
 
 pub trait Mode: std::marker::Sync + Send + Clone {
     fn new() -> Self;
+    fn runtime(&self) -> Option<Arc<tokio::runtime::Runtime>> {
+        None
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -13,6 +16,10 @@ impl Mode for Sync {
     fn new() -> Self {
         let rt = Arc::new(tokio::runtime::Runtime::new().expect("create tokio runtime"));
         Self { rt }
+    }
+
+    fn runtime(&self) -> Option<Arc<tokio::runtime::Runtime>> {
+        Some(self.rt.clone())
     }
 }
 

@@ -21,8 +21,8 @@ pub enum OrpheusError {
     #[error("String {0} did not parse as valid URL")]
     InvalidUrl(#[from] url::ParseError),
 
-    #[error("Hyper error: {0}")]
-    Hyper(#[from] hyper::Error),
+    #[error("Request error: {0}")]
+    Reqwest(#[from] reqwest::Error),
 
     #[error("Parsing error: {0}")]
     Parsing(String),
@@ -35,9 +35,6 @@ pub enum OrpheusError {
 
     #[error("de/serialization error: {0}")]
     Serde(#[from] serde_json::Error),
-
-    #[error("http error: {0}")]
-    Http(#[from] hyper::http::Error),
 
     #[error("API error {status}: {message}")]
     Api { status: u16, message: String },

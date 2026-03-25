@@ -1,11 +1,9 @@
 mod keystore;
-mod pool;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use bon::bon;
 use keystore::KeyStore;
-pub(crate) use pool::Pool;
 use secrecy::SecretString;
 use url::Url;
 
@@ -23,8 +21,12 @@ use crate::{Result, client::mode::Mode, constants::*};
 /// let async_client = AsyncOrpheus::new("your_api_key");
 /// ```
 pub struct OrpheusCore<M: Mode> {
-    pub(crate) pool: Pool<M>,
+    pub(crate) client: reqwest::Client,
+    pub(crate) base_url: Url,
+    pub(crate) headers: HashMap<String, String>,
+    pub(crate) rt: Option<Arc<tokio::runtime::Runtime>>,
     pub(crate) keystore: KeyStore,
+    _mode: PhantomData<M>,
 }
 
 impl<M: Mode> Default for OrpheusCore<M> {
@@ -82,9 +84,16 @@ impl<M: Mode> OrpheusCore<M> {
             .maybe_api_key(api_key)
             .build();
 
-        let pool = pool::Pool::<M>::new(base_url, headers);
+        let mode = M::new();
 
-        Self { pool, keystore }
+        Self {
+            client: reqwest::Client::new(),
+            base_url,
+            headers,
+            rt: mode.runtime(),
+            keystore,
+            _mode: PhantomData,
+        }
     }
 }
 

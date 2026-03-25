@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 use tracing::debug;
 
 use crate::{
-    Result,
+    Error, Result,
     client::{
-        core::Pool,
+        OrpheusCore,
         mode::{Async, Mode, Sync},
     },
     constants::RESPONSES_PATH,
@@ -83,17 +84,18 @@ struct ResponseRequest<'a> {
 
 /// Public builder for a response request.
 pub struct ResponseRequestBuilder<'a, M: Mode> {
-    pool: &'a Pool<M>,
+    core: &'a OrpheusCore<M>,
     inner: ResponseRequest<'a>,
+    _mode: PhantomData<M>,
 }
 
 impl<'a, M: Mode> ResponseRequestBuilder<'a, M> {
-    pub(crate) fn new(pool: &'a Pool<M>, api_key: Option<&'a str>, input: Input) -> Self {
+    pub(crate) fn new(core: &'a OrpheusCore<M>, input: Input) -> Self {
         let input_value = serde_json::to_value(&input.0).unwrap_or_default();
         Self {
-            pool,
+            core,
             inner: ResponseRequest {
-                api_key,
+                api_key: core.keystore.get_api_key().ok(),
                 model: None,
                 input: input_value,
                 stream: false,
@@ -116,6 +118,7 @@ impl<'a, M: Mode> ResponseRequestBuilder<'a, M> {
                 store: None,
                 top_logprobs: None,
             },
+            _mode: PhantomData,
         }
     }
 
@@ -216,25 +219,44 @@ impl<'a, M: Mode> ResponseRequestBuilder<'a, M> {
         self.inner.top_logprobs = Some(top_logprobs);
         self
     }
+
+    async fn send_request(&self) -> Result<reqwest::Response> {
+        let mut url = self.core.base_url.clone();
+        url.path_segments_mut()
+            .expect("valid base URL")
+            .extend(&RESPONSES_PATH);
+
+        let mut builder = self.core.client.post(url);
+
+        for (key, value) in &self.core.headers {
+            builder = builder.header(key.as_str(), value.as_str());
+        }
+
+        if let Some(token) = self.inner.api_key {
+            builder = builder.header("authorization", format!("Bearer {}", token));
+        }
+
+        let response = builder.json(&self.inner).send().await?;
+
+        if !response.status().is_success() {
+            let status = response.status().as_u16();
+            let body = response.text().await.unwrap_or_default();
+            return Err(Error::parse_api_error(status, &body));
+        }
+
+        Ok(response)
+    }
 }
 
 impl<'a> ResponseRequestBuilder<'a, Sync> {
     /// Send the request and return a complete response.
     pub fn send(mut self) -> Result<open_responses::ResponseResource> {
-        let mut handler = self.pool.get().expect("Has handler");
         self.inner.stream = false;
-        let token = self.inner.api_key;
-        let body = &self.inner;
-        debug!(request_body = ?body);
+        debug!(request_body = ?self.inner);
 
-        let response = handler
-            .execute()
-            .segments(&RESPONSES_PATH)
-            .payload(body)
-            .maybe_token(token)
-            .call()?;
-
-        let resource = response.json::<open_responses::ResponseResource>()?;
+        let rt = self.core.rt.as_ref().expect("sync mode has runtime");
+        let response = rt.block_on(self.send_request())?;
+        let resource: open_responses::ResponseResource = rt.block_on(response.json())?;
         debug!(response = ?resource);
 
         Ok(resource)
@@ -242,43 +264,23 @@ impl<'a> ResponseRequestBuilder<'a, Sync> {
 
     /// Send the request and return a streaming response.
     pub fn stream(mut self) -> Result<ResponseStream> {
-        let mut handler = self.pool.get().expect("Has handler");
         self.inner.stream = true;
-        let token = self.inner.api_key;
-        let body = &self.inner;
 
-        let response = handler
-            .execute()
-            .segments(&RESPONSES_PATH)
-            .payload(body)
-            .maybe_token(token)
-            .call()?;
+        let rt = self.core.rt.clone().expect("sync mode has runtime");
+        let response = rt.block_on(self.send_request())?;
 
-        Ok(ResponseStream::spawn(
-            response.inner,
-            Some(handler.mode.rt.clone()),
-        ))
+        Ok(ResponseStream::spawn(response, Some(rt)))
     }
 }
 
 impl<'a> ResponseRequestBuilder<'a, Async> {
     /// Asynchronously send the request and return a complete response.
     pub async fn send(mut self) -> Result<open_responses::ResponseResource> {
-        let mut handler = self.pool.get().await.expect("Has handler");
         self.inner.stream = false;
-        let token = self.inner.api_key;
-        let body = &self.inner;
-        debug!(request_body = ?body);
+        debug!(request_body = ?self.inner);
 
-        let response = handler
-            .execute()
-            .segments(&RESPONSES_PATH)
-            .payload(body)
-            .maybe_token(token)
-            .call()
-            .await?;
-
-        let resource = response.json::<open_responses::ResponseResource>().await?;
+        let response = self.send_request().await?;
+        let resource: open_responses::ResponseResource = response.json().await?;
         debug!(response = ?resource);
 
         Ok(resource)
@@ -286,20 +288,11 @@ impl<'a> ResponseRequestBuilder<'a, Async> {
 
     /// Asynchronously send the request and return a streaming response.
     pub async fn stream(mut self) -> Result<ResponseStream> {
-        let mut handler = self.pool.get().await.expect("Has handler");
         self.inner.stream = true;
-        let token = self.inner.api_key;
-        let body = &self.inner;
 
-        let response = handler
-            .execute()
-            .segments(&RESPONSES_PATH)
-            .payload(body)
-            .maybe_token(token)
-            .call()
-            .await?;
+        let response = self.send_request().await?;
 
-        Ok(ResponseStream::spawn(response.inner, None))
+        Ok(ResponseStream::spawn(response, None))
     }
 }
 

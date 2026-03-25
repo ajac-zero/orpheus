@@ -5,7 +5,6 @@
 /// Contains definition of request clients.
 pub mod client {
     pub(crate) mod core;
-    pub(crate) mod handler;
     pub(crate) mod mode;
     mod methods {
         mod respond;

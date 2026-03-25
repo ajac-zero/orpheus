@@ -4,9 +4,6 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_lite::{Stream, StreamExt};
-use http_body_util::BodyExt;
-
 use crate::{Error, Result};
 
 /// All possible streaming events from the Open Responses API.
@@ -411,14 +408,17 @@ pub struct ResponseStream {
 
 impl ResponseStream {
     pub(crate) fn spawn(
-        response: hyper::Response<hyper::body::Incoming>,
+        response: reqwest::Response,
         rt: Option<Arc<tokio::runtime::Runtime>>,
     ) -> Self {
+        use futures_core::Stream as FuturesStream;
+        use std::pin::pin;
+
         let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
         let (result_tx, result_rx) = tokio::sync::oneshot::channel();
 
         let producer = async move {
-            let mut stream = response.into_data_stream();
+            let mut stream = pin!(response.bytes_stream());
             let mut buffer = Vec::new();
             let mut result_tx = Some(result_tx);
 
@@ -464,11 +464,15 @@ impl ResponseStream {
                     continue;
                 }
 
-                match stream.next().await {
+                let next = std::future::poll_fn(|cx: &mut std::task::Context<'_>| {
+                    stream.as_mut().poll_next(cx)
+                }).await;
+
+                match next {
                     None => break,
                     Some(Ok(bytes)) => buffer.extend_from_slice(&bytes),
                     Some(Err(e)) => {
-                        let _ = event_tx.send(Err(Error::Hyper(e)));
+                        let _ = event_tx.send(Err(Error::Reqwest(e)));
                         break;
                     }
                 }
@@ -553,7 +557,7 @@ fn resolve_event_type(event_type: Option<&str>, data: &str) -> Result<ResponseEv
     }
 }
 
-impl Stream for ResponseStream {
+impl futures_core::Stream for ResponseStream {
     type Item = Result<ResponseEvent>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

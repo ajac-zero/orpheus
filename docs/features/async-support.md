@@ -36,13 +36,13 @@ Predicting the outcome of a hypothetical fist fight between Albert Einstein and 
 
 ## Async Streaming
 
-This alternative client also supports streaming responses by implementing the `Stream` extension trait from `futures_lite` for the response object.
+This alternative client also supports streaming responses by implementing the `Stream` trait from `futures_core` for the response object.
 
 {% code title="async_streaming.rs" %}
 ```rust
 use std::io::Write;
 
-use futures_lite::StreamExt;
+use futures_util::StreamExt;
 use orpheus::prelude::*;
 
 #[tokio::main]
