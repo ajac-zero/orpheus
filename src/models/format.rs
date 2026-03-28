@@ -1,9 +1,7 @@
 use bon::bon;
 use serde::{Deserialize, Serialize};
 
-use crate::models::tool::{
-    Param, ParamObjectBuilder, param_object_builder,
-};
+use crate::models::tool::{Param, ParamObjectBuilder, param_object_builder};
 
 /// Represents the format specification for structured output responses.
 #[derive(Debug, Clone, Serialize, Deserialize)]

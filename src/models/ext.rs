@@ -23,11 +23,7 @@ impl ResponseExt for ResponseResource {
                 }
             }
         }
-        if text.is_empty() {
-            None
-        } else {
-            Some(text)
-        }
+        if text.is_empty() { None } else { Some(text) }
     }
 
     fn function_calls(&self) -> Vec<&FunctionCall> {

@@ -11,13 +11,12 @@ impl Input {
     }
 
     pub fn push_function_output(&mut self, call_id: impl Into<String>, output: impl Into<String>) {
-        self.0.push(InputItem::FunctionCallOutput(
-            FunctionCallOutputItemParam {
+        self.0
+            .push(InputItem::FunctionCallOutput(FunctionCallOutputItemParam {
                 type_: "function_call_output".into(),
                 call_id: call_id.into(),
                 output: Some(output.into()),
-            },
-        ));
+            }));
     }
 }
 

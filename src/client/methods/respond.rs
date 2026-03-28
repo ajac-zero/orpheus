@@ -1,9 +1,9 @@
 use crate::{
-    client::{OrpheusCore, mode::Mode},
+    client::OrpheusCore,
     models::{Input, request::ResponseRequestBuilder},
 };
 
-impl<'a, M: Mode> OrpheusCore<M> {
+impl<'a, M: open_responses::client::Mode> OrpheusCore<M> {
     /// Create a new response request.
     pub fn respond(&'a self, input: impl Into<Input>) -> ResponseRequestBuilder<'a, M> {
         ResponseRequestBuilder::new(self, input.into())

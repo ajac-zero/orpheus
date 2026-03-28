@@ -5,18 +5,18 @@
 /// Contains definition of request clients.
 pub mod client {
     pub(crate) mod core;
-    pub(crate) mod mode;
     mod methods {
         mod respond;
     }
 
     pub use core::OrpheusCore;
+    pub use open_responses::client::{Async, Sync};
 
     /// Alias for the OrpheusCore client in `Blocking` mode.
-    pub type Orpheus = OrpheusCore<mode::Sync>;
+    pub type Orpheus = OrpheusCore<open_responses::client::Sync>;
 
     /// Alias for the OrpheusCore client in `Async` mode.
-    pub type AsyncOrpheus = OrpheusCore<mode::Async>;
+    pub type AsyncOrpheus = OrpheusCore<open_responses::client::Async>;
 }
 
 /// Types for building requests and handling responses.
@@ -42,12 +42,10 @@ pub mod models {
 pub mod prelude {
     pub use crate::{
         client::{AsyncOrpheus, Orpheus},
-        models::{Format, Input, Message, Param, ResponseExt, ResponseEvent, Tool},
+        models::{Format, Input, Message, Param, ResponseEvent, ResponseExt, Tool},
     };
 }
 
-mod constants;
-mod error;
 mod integrations;
 
 #[allow(unused_imports)]
@@ -56,5 +54,5 @@ pub use integrations::*;
 /// Re-export the open-responses types for direct access.
 pub use open_responses as responses;
 
-pub type Error = error::OrpheusError;
+pub type Error = open_responses::client::Error;
 pub type Result<T, E = Error> = core::result::Result<T, E>;

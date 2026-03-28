@@ -1,7 +1,7 @@
 use open_responses::{
-    AssistantContentPart, AssistantMessageItemParam, DeveloperMessageItemParam,
-    InputContentPart, InputImageContentParamAutoParam, InputItem, InputTextContentParam,
-    OutputTextContentParam, SystemMessageItemParam, UserMessageItemParam,
+    AssistantContentPart, AssistantMessageItemParam, DeveloperMessageItemParam, InputContentPart,
+    InputImageContentParamAutoParam, InputItem, InputTextContentParam, OutputTextContentParam,
+    SystemMessageItemParam, UserMessageItemParam,
 };
 
 /// An ergonomic message builder that converts to `open_responses::InputItem`.

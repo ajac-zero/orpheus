@@ -17,15 +17,11 @@ default = []
 
 [dependencies]
 bon = "3.6.3"
-futures-core = "0.3.32"
-open-responses = { path = "../open-responses" }
-reqwest = { version = "0.12.23", features = ["json", "stream"] }
+open-responses = { path = "../open-responses", features = ["client"] }
 secrecy = "0.10.3"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
-thiserror = "2.0.12"
-tokio = { version = "1.44.1", features = ["rt", "macros", "full"] }
-tracing = "0.1.41"
+tokio = { version = "1.44.1", features = ["macros", "rt-multi-thread"] }
 url = "2.5.4"
 
 [dev-dependencies]

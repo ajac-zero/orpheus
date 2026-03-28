@@ -12,11 +12,7 @@ Use the 'player_win' tool if the player guesses correctly.
 Use the 'game_over' tool if the player runs out of guesses.
 Don't hold back.";
 
-const MODELS: [&str; 3] = [
-    "openai/gpt-4o-mini",
-    "openai/gpt-4o",
-    "openai/gpt-4.1-nano",
-];
+const MODELS: [&str; 3] = ["openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-4.1-nano"];
 
 #[derive(serde::Deserialize)]
 struct GameOverArgs {

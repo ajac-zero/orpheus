@@ -8,7 +8,10 @@ fn simple_request() {
     let client = Orpheus::from_env().unwrap();
 
     let response = client
-        .respond(vec![Message::system("You are a friend"), Message::user("Hello!")])
+        .respond(vec![
+            Message::system("You are a friend"),
+            Message::user("Hello!"),
+        ])
         .model(TEST_MODEL)
         .send();
 
@@ -23,7 +26,10 @@ fn stream_request() {
     let client = Orpheus::from_env().unwrap();
 
     let stream = client
-        .respond(vec![Message::system("You are a friend"), Message::user("Hello!")])
+        .respond(vec![
+            Message::system("You are a friend"),
+            Message::user("Hello!"),
+        ])
         .model(TEST_MODEL)
         .stream();
 
@@ -51,7 +57,10 @@ async fn async_stream_request() {
     let client = AsyncOrpheus::from_env().unwrap();
 
     let stream = client
-        .respond(vec![Message::system("You are a friend"), Message::user("Hello!")])
+        .respond(vec![
+            Message::system("You are a friend"),
+            Message::user("Hello!"),
+        ])
         .model(TEST_MODEL)
         .stream()
         .await;
@@ -129,9 +138,18 @@ fn structured_request() {
     let response_format = Format::json("weather")
         .with_schema(|schema| {
             schema
-                .property("location", Param::string().description("City or location name"))
-                .property("temperature", Param::number().description("Temperature in Celsius"))
-                .property("conditions", Param::string().description("Weather conditions description"))
+                .property(
+                    "location",
+                    Param::string().description("City or location name"),
+                )
+                .property(
+                    "temperature",
+                    Param::number().description("Temperature in Celsius"),
+                )
+                .property(
+                    "conditions",
+                    Param::string().description("Weather conditions description"),
+                )
                 .required(["location", "temperature", "conditions"])
         })
         .build();
@@ -157,4 +175,3 @@ fn structured_request() {
     let weather_response: WeatherResponse = serde_json::from_str(&content).unwrap();
     dbg!(weather_response);
 }
-

@@ -1,13 +1,14 @@
-mod keystore;
-
-use std::{collections::HashMap, marker::PhantomData, sync::Arc};
+use std::collections::HashMap;
 
 use bon::bon;
-use keystore::KeyStore;
 use secrecy::SecretString;
 use url::Url;
 
-use crate::{Result, client::mode::Mode, constants::*};
+use crate::Result;
+
+const DEFAULT_BASE_URL: &str = open_responses::client::DEFAULT_BASE_URL;
+const BASE_URL_ENV_VAR: &str = "ORPHEUS_BASE_URL";
+const API_KEY_ENV_VAR: &str = "ORPHEUS_API_KEY";
 
 /// Core client for the Open Responses API.
 ///
@@ -20,22 +21,17 @@ use crate::{Result, client::mode::Mode, constants::*};
 /// let client = Orpheus::new("your_api_key");
 /// let async_client = AsyncOrpheus::new("your_api_key");
 /// ```
-pub struct OrpheusCore<M: Mode> {
-    pub(crate) client: reqwest::Client,
-    pub(crate) base_url: Url,
-    pub(crate) headers: HashMap<String, String>,
-    pub(crate) rt: Option<Arc<tokio::runtime::Runtime>>,
-    pub(crate) keystore: KeyStore,
-    _mode: PhantomData<M>,
+pub struct OrpheusCore<M: open_responses::client::Mode> {
+    pub(crate) inner: open_responses::client::ClientCore<M>,
 }
 
-impl<M: Mode> Default for OrpheusCore<M> {
+impl<M: open_responses::client::Mode> Default for OrpheusCore<M> {
     fn default() -> Self {
         Self::builder().build()
     }
 }
 
-impl<M: Mode> OrpheusCore<M> {
+impl<M: open_responses::client::Mode> OrpheusCore<M> {
     /// Create a new Orpheus client with the provided key.
     pub fn new(api_key: impl Into<SecretString>) -> Self {
         Self::builder().api_key(api_key).build()
@@ -50,18 +46,15 @@ impl<M: Mode> OrpheusCore<M> {
         let base_url = if let Ok(url) = std::env::var(BASE_URL_ENV_VAR) {
             Url::parse(&url)?
         } else {
-            Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url")
+            Url::parse(DEFAULT_BASE_URL).expect("default base URL is valid")
         };
 
-        Ok(Self::builder()
-            .api_key(api_key)
-            .base_url(base_url)
-            .build())
+        Ok(Self::builder().api_key(api_key).base_url(base_url).build())
     }
 }
 
 #[bon]
-impl<M: Mode> OrpheusCore<M> {
+impl<M: open_responses::client::Mode> OrpheusCore<M> {
     /// Initialize an Orpheus builder to customize the client.
     ///
     /// # Example
@@ -77,27 +70,24 @@ impl<M: Mode> OrpheusCore<M> {
     #[builder(on(SecretString, into))]
     pub fn builder(
         #[builder(field)] headers: HashMap<String, String>,
-        #[builder(default = Url::parse(DEFAULT_BASE_URL).expect("Default is valid Url"))] base_url: Url,
+        #[builder(default = Url::parse(DEFAULT_BASE_URL).expect("default base URL is valid"))]
+        base_url: Url,
         api_key: Option<SecretString>,
     ) -> Self {
-        let keystore = KeyStore::builder()
+        let builder = open_responses::client::ClientCore::<M>::builder()
             .maybe_api_key(api_key)
-            .build();
-
-        let mode = M::new();
+            .base_url(base_url);
+        let builder = headers.into_iter().fold(builder, |builder, (key, value)| {
+            builder.add_header(key, value)
+        });
 
         Self {
-            client: reqwest::Client::new(),
-            base_url,
-            headers,
-            rt: mode.runtime(),
-            keystore,
-            _mode: PhantomData,
+            inner: builder.build(),
         }
     }
 }
 
-impl<M: Mode, S: orpheus_core_builder::State> OrpheusCoreBuilder<M, S> {
+impl<M: open_responses::client::Mode, S: orpheus_core_builder::State> OrpheusCoreBuilder<M, S> {
     pub fn add_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.insert(key.into(), value.into());
         self

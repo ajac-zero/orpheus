@@ -18,10 +18,7 @@ fn main() -> anyhow::Result<()> {
     let input = "Are zebras black with white stripes, or white with black stripes?";
 
     if cli.stream {
-        let stream = client
-            .respond(input)
-            .model("openai/gpt-4o-mini")
-            .stream()?;
+        let stream = client.respond(input).model("openai/gpt-4o-mini").stream()?;
 
         for event in stream {
             let event = event?;
@@ -32,10 +29,7 @@ fn main() -> anyhow::Result<()> {
         }
         println!();
     } else {
-        let response = client
-            .respond(input)
-            .model("openai/gpt-4o-mini")
-            .send()?;
+        let response = client.respond(input).model("openai/gpt-4o-mini").send()?;
 
         if let Some(text) = response.output_text() {
             println!("{}", "Response:".blue());

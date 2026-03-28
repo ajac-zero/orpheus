@@ -111,7 +111,10 @@ pub enum Param {
         properties: HashMap<String, ParamType>,
         #[serde(skip_serializing_if = "Option::is_none")]
         required: Option<Vec<String>>,
-        #[serde(rename = "additionalProperties", skip_serializing_if = "Option::is_none")]
+        #[serde(
+            rename = "additionalProperties",
+            skip_serializing_if = "Option::is_none"
+        )]
         additional_properties: Option<bool>,
     },
     /// Number parameter (floating point numbers)
@@ -260,8 +263,7 @@ impl From<Tool> for open_responses::FunctionToolParam {
                 description,
                 parameters,
             } => {
-                let params_value =
-                    parameters.map(|p| serde_json::to_value(p).unwrap_or_default());
+                let params_value = parameters.map(|p| serde_json::to_value(p).unwrap_or_default());
                 open_responses::FunctionToolParam {
                     type_: "function".into(),
                     name,
