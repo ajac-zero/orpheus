@@ -1,10 +1,21 @@
+use std::env;
 use futures_util::StreamExt;
 use orpheus::prelude::*;
 
 const TEST_MODEL: &str = "openai/gpt-4o-mini";
 
+macro_rules! skip_if_no_env {
+    () => {
+        if env::var("OPENROUTER_API_KEY").is_err() && env::var("OPENAI_API_KEY").is_err() {
+            println!("Skipping: no API key environment variable set");
+            return;
+        }
+    };
+}
+
 #[test]
 fn simple_request() {
+    skip_if_no_env!();
     let client = Orpheus::from_env().unwrap();
 
     let response = client
@@ -23,6 +34,7 @@ fn simple_request() {
 
 #[test]
 fn stream_request() {
+    skip_if_no_env!();
     let client = Orpheus::from_env().unwrap();
 
     let stream = client
@@ -54,6 +66,7 @@ fn stream_request() {
 
 #[tokio::test]
 async fn async_stream_request() {
+    skip_if_no_env!();
     let client = AsyncOrpheus::from_env().unwrap();
 
     let stream = client
@@ -87,6 +100,7 @@ async fn async_stream_request() {
 
 #[test]
 fn image_request() {
+    skip_if_no_env!();
     let client = Orpheus::from_env().unwrap();
 
     let image_url = "https://misanimales.com/wp-content/uploads/2022/03/Shih-Poo-Shih-Tzu-1024x680-1-768x510.jpg";
@@ -105,6 +119,7 @@ fn image_request() {
 
 #[test]
 fn tool_request() {
+    skip_if_no_env!();
     let client = Orpheus::from_env().unwrap();
 
     let tool = Tool::function("extract_info")
@@ -133,6 +148,7 @@ fn tool_request() {
 
 #[test]
 fn structured_request() {
+    skip_if_no_env!();
     let client = Orpheus::from_env().unwrap();
 
     let response_format = Format::json("weather")

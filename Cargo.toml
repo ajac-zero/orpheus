@@ -31,4 +31,5 @@ colored = "3.0.0"
 futures-util = "0.3"
 rand = "0.9.2"
 reqwest = { version = "0.12.23", features = ["blocking", "json"] }
+tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
