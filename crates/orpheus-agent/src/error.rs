@@ -13,6 +13,16 @@ pub enum AgentError {
     DuplicateToolName {
         name: String,
     },
+    BeforeToolHookFailed {
+        name: String,
+        call_id: String,
+        source: BoxError,
+    },
+    AfterToolHookFailed {
+        name: String,
+        call_id: String,
+        source: BoxError,
+    },
     MissingTool {
         name: String,
     },
@@ -38,6 +48,22 @@ impl fmt::Display for AgentError {
             AgentError::DuplicateToolName { name } => {
                 write!(f, "duplicate agent tool registered: {name}")
             }
+            AgentError::BeforeToolHookFailed {
+                name,
+                call_id,
+                source,
+            } => write!(
+                f,
+                "before_tool_call hook failed for `{name}` and call `{call_id}`: {source}"
+            ),
+            AgentError::AfterToolHookFailed {
+                name,
+                call_id,
+                source,
+            } => write!(
+                f,
+                "after_tool_call hook failed for `{name}` and call `{call_id}`: {source}"
+            ),
             AgentError::MissingTool { name } => {
                 write!(f, "model requested an unregistered tool: {name}")
             }
@@ -64,7 +90,9 @@ impl StdError for AgentError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             AgentError::Client(err) => Some(err),
-            AgentError::ToolExecutionFailed { source, .. } => Some(source.as_ref()),
+            AgentError::BeforeToolHookFailed { source, .. }
+            | AgentError::AfterToolHookFailed { source, .. }
+            | AgentError::ToolExecutionFailed { source, .. } => Some(source.as_ref()),
             AgentError::DuplicateToolName { .. }
             | AgentError::MissingTool { .. }
             | AgentError::ToolPanicked { .. }

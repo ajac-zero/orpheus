@@ -1,11 +1,24 @@
 /// High-level lifecycle events emitted while an agent run is in progress.
 #[derive(Debug, Clone)]
 pub enum AgentEvent {
+    TurnStarted {
+        turn: usize,
+    },
+    Response {
+        turn: usize,
+        event: orpheus::models::ResponseEvent,
+    },
     ToolStarted {
         turn: usize,
         call_id: String,
         name: String,
         arguments: String,
+    },
+    ToolBlocked {
+        turn: usize,
+        call_id: String,
+        name: String,
+        output: String,
     },
     ToolFinished {
         turn: usize,

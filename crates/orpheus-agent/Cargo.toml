@@ -8,6 +8,7 @@ repository = "https://github.com/ajac-zero/orpheus"
 license = "MIT"
 
 [dependencies]
+futures-core = "0.3.32"
 orpheus = { path = "../orpheus" }
 
 [dev-dependencies]
