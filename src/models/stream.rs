@@ -1,1 +1,1 @@
-pub use open_responses::client::{ResponseEvent, ResponseStream};
+pub use open_responses::client::{AsyncResponseStream, ResponseEvent, ResponseStream};

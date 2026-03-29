@@ -14,10 +14,12 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = []
+gemini = ["dep:reqwest"]
 
 [dependencies]
 bon = "3.6.3"
 open-responses = { path = "../open-responses", features = ["client"] }
+reqwest = { version = "0.12", features = ["blocking", "json"], optional = true }
 secrecy = "0.10.3"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"

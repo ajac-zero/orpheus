@@ -137,7 +137,7 @@ impl<'a, B: Backend> ResponseRequestBuilder<'a, B> {
     }
 }
 
-impl<'a> ResponseRequestBuilder<'a, crate::backend::OpenResponsesBackend<open_responses::client::Sync>> {
+impl<'a> ResponseRequestBuilder<'a, crate::backend::OpenResponsesBackend> {
     /// Send the request and return a complete response.
     pub fn send(self) -> Result<open_responses::ResponseResource> {
         self.inner.send()
@@ -149,14 +149,36 @@ impl<'a> ResponseRequestBuilder<'a, crate::backend::OpenResponsesBackend<open_re
     }
 }
 
-impl<'a> ResponseRequestBuilder<'a, crate::backend::OpenResponsesBackend<open_responses::client::Async>> {
+impl<'a> ResponseRequestBuilder<'a, crate::backend::AsyncOpenResponsesBackend> {
     /// Asynchronously send the request and return a complete response.
     pub async fn send(self) -> Result<open_responses::ResponseResource> {
         self.inner.send().await
     }
 
     /// Asynchronously send the request and return a streaming response.
-    pub async fn stream(self) -> Result<open_responses::client::ResponseStream> {
+    pub async fn stream(self) -> Result<open_responses::client::AsyncResponseStream> {
+        self.inner.stream().await
+    }
+}
+
+#[cfg(feature = "gemini")]
+impl<'a> ResponseRequestBuilder<'a, crate::backend::GeminiBackend<crate::backend::gemini::Sync>> {
+    pub fn send(self) -> Result<open_responses::ResponseResource> {
+        self.inner.send()
+    }
+
+    pub fn stream(self) -> Result<open_responses::client::ResponseStream> {
+        self.inner.stream()
+    }
+}
+
+#[cfg(feature = "gemini")]
+impl<'a> ResponseRequestBuilder<'a, crate::backend::GeminiBackend<crate::backend::gemini::Async>> {
+    pub async fn send(self) -> Result<open_responses::ResponseResource> {
+        self.inner.send().await
+    }
+
+    pub async fn stream(self) -> Result<open_responses::client::AsyncResponseStream> {
         self.inner.stream().await
     }
 }

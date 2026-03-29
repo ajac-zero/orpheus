@@ -52,7 +52,7 @@ pub trait AsyncRequestBuilder: RequestBuilder {
     fn send(self) -> impl std::future::Future<Output = Result<open_responses::ResponseResource>>;
     fn stream(
         self,
-    ) -> impl std::future::Future<Output = Result<open_responses::client::ResponseStream>>;
+    ) -> impl std::future::Future<Output = Result<open_responses::client::AsyncResponseStream>>;
 }
 
 /// Response marker trait for abstracting over different response types.
@@ -64,3 +64,5 @@ pub trait StreamResponse {}
 impl Response for open_responses::ResponseResource {}
 
 impl StreamResponse for open_responses::client::ResponseStream {}
+
+impl StreamResponse for open_responses::client::AsyncResponseStream {}

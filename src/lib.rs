@@ -15,10 +15,18 @@ pub mod client {
     pub use core::OrpheusCore;
 
     /// Alias for the OrpheusCore client in `Blocking` mode with an Open Responses-compatible backend.
-    pub type Orpheus = OrpheusCore<crate::backend::OpenResponsesBackend<open_responses::client::Sync>>;
+    pub type Orpheus = OrpheusCore<crate::backend::OpenResponsesBackend>;
 
     /// Alias for the OrpheusCore client in `Async` mode with an Open Responses-compatible backend.
-    pub type AsyncOrpheus = OrpheusCore<crate::backend::OpenResponsesBackend<open_responses::client::Async>>;
+    pub type AsyncOrpheus = OrpheusCore<crate::backend::AsyncOpenResponsesBackend>;
+
+    /// Alias for the OrpheusCore client in `Blocking` mode with a Gemini backend.
+    #[cfg(feature = "gemini")]
+    pub type GeminiOrpheus = OrpheusCore<crate::backend::GeminiBackend<crate::backend::gemini::Sync>>;
+
+    /// Alias for the OrpheusCore client in `Async` mode with a Gemini backend.
+    #[cfg(feature = "gemini")]
+    pub type AsyncGeminiOrpheus = OrpheusCore<crate::backend::GeminiBackend<crate::backend::gemini::Async>>;
 }
 
 /// Types for building requests and handling responses.
@@ -36,7 +44,7 @@ pub mod models {
     pub use input::Input;
     pub use message::Message;
     pub use request::ResponseRequestBuilder;
-    pub use stream::{ResponseEvent, ResponseStream};
+    pub use stream::{AsyncResponseStream, ResponseEvent, ResponseStream};
     pub use tool::{Param, ParamType, Parameter, Tool, ToolFunctionBuilder};
 }
 
@@ -46,6 +54,9 @@ pub mod prelude {
         client::{AsyncOrpheus, Orpheus},
         models::{Format, Input, Message, Param, ResponseEvent, ResponseExt, Tool},
     };
+
+    #[cfg(feature = "gemini")]
+    pub use crate::client::{AsyncGeminiOrpheus, GeminiOrpheus};
 }
 
 mod integrations;
