@@ -1,11 +1,12 @@
 use crate::{
+    backend::Backend,
     client::OrpheusCore,
     models::{Input, request::ResponseRequestBuilder},
 };
 
-impl<'a, M: open_responses::client::Mode> OrpheusCore<M> {
+impl<'a, B: Backend> OrpheusCore<B> {
     /// Create a new response request.
-    pub fn respond(&'a self, input: impl Into<Input>) -> ResponseRequestBuilder<'a, M> {
+    pub fn respond(&'a self, input: impl Into<Input>) -> ResponseRequestBuilder<'a, B> {
         ResponseRequestBuilder::new(self, input.into())
     }
 }

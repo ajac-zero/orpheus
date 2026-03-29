@@ -2,6 +2,9 @@
 #![deny(clippy::mod_module_files, clippy::unwrap_used)]
 #![doc = include_str!("../README.md")]
 
+/// Backend implementations for different AI providers.
+pub mod backend;
+
 /// Contains definition of request clients.
 pub mod client {
     pub(crate) mod core;
@@ -10,13 +13,12 @@ pub mod client {
     }
 
     pub use core::OrpheusCore;
-    pub use open_responses::client::{Async, Sync};
 
-    /// Alias for the OrpheusCore client in `Blocking` mode.
-    pub type Orpheus = OrpheusCore<open_responses::client::Sync>;
+    /// Alias for the OrpheusCore client in `Blocking` mode with an Open Responses-compatible backend.
+    pub type Orpheus = OrpheusCore<crate::backend::OpenResponsesBackend<open_responses::client::Sync>>;
 
-    /// Alias for the OrpheusCore client in `Async` mode.
-    pub type AsyncOrpheus = OrpheusCore<open_responses::client::Async>;
+    /// Alias for the OrpheusCore client in `Async` mode with an Open Responses-compatible backend.
+    pub type AsyncOrpheus = OrpheusCore<crate::backend::OpenResponsesBackend<open_responses::client::Async>>;
 }
 
 /// Types for building requests and handling responses.

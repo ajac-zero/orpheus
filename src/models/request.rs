@@ -2,122 +2,142 @@ use std::collections::HashMap;
 
 use crate::{
     Result,
+    backend::{Backend, RequestBuilder as BackendRequestBuilder, SyncRequestBuilder, AsyncRequestBuilder},
     client::OrpheusCore,
     models::{Format, Input, Tool},
 };
 
 /// Public builder for a response request.
-pub struct ResponseRequestBuilder<'a, M: open_responses::client::Mode> {
-    inner: open_responses::client::ResponseRequestBuilder<'a, M>,
+pub struct ResponseRequestBuilder<'a, B: Backend> {
+    inner: <B::Mode as crate::backend::Mode>::RequestBuilder<'a>,
 }
 
-impl<'a, M: open_responses::client::Mode> ResponseRequestBuilder<'a, M> {
-    pub(crate) fn new(core: &'a OrpheusCore<M>, input: Input) -> Self {
+impl<'a, B: Backend> ResponseRequestBuilder<'a, B> {
+    pub(crate) fn new(core: &'a OrpheusCore<B>, input: Input) -> Self {
         Self {
-            inner: core.inner.create_response().input_items(input.0),
+            inner: core.backend.create_request(input),
         }
     }
 
-    pub fn model(mut self, model: impl Into<String>) -> Self {
-        self.inner = self.inner.model(model);
-        self
+    pub fn model(self, model: impl Into<String>) -> Self {
+        Self {
+            inner: self.inner.model(model),
+        }
     }
 
-    pub fn instructions(mut self, instructions: impl Into<String>) -> Self {
-        self.inner = self.inner.instructions(instructions);
-        self
+    pub fn instructions(self, instructions: impl Into<String>) -> Self {
+        Self {
+            inner: self.inner.instructions(instructions),
+        }
     }
 
-    pub fn previous_response_id(mut self, id: impl Into<String>) -> Self {
-        self.inner = self.inner.previous_response_id(id);
-        self
+    pub fn previous_response_id(self, id: impl Into<String>) -> Self {
+        Self {
+            inner: self.inner.previous_response_id(id),
+        }
     }
 
-    pub fn tools(mut self, tools: impl IntoIterator<Item = Tool>) -> Self {
-        self.inner = self.inner.tools(tools.into_iter().map(Into::into));
-        self
+    pub fn tools(self, tools: impl IntoIterator<Item = Tool>) -> Self {
+        Self {
+            inner: self.inner.tools(tools),
+        }
     }
 
-    pub fn tool_choice(mut self, choice: open_responses::ToolChoiceParam) -> Self {
-        self.inner = self.inner.tool_choice(choice);
-        self
+    pub fn tool_choice(self, choice: open_responses::ToolChoiceParam) -> Self {
+        Self {
+            inner: self.inner.tool_choice(choice),
+        }
     }
 
-    pub fn metadata(mut self, metadata: HashMap<String, String>) -> Self {
-        self.inner = self.inner.metadata(metadata);
-        self
+    pub fn metadata(self, metadata: HashMap<String, String>) -> Self {
+        Self {
+            inner: self.inner.metadata(metadata),
+        }
     }
 
-    pub fn text_format(mut self, format: Format) -> Self {
-        self.inner = self.inner.text(format.into());
-        self
+    pub fn text_format(self, format: Format) -> Self {
+        Self {
+            inner: self.inner.text_format(format),
+        }
     }
 
-    pub fn temperature(mut self, temperature: f64) -> Self {
-        self.inner = self.inner.temperature(temperature);
-        self
+    pub fn temperature(self, temperature: f64) -> Self {
+        Self {
+            inner: self.inner.temperature(temperature),
+        }
     }
 
-    pub fn top_p(mut self, top_p: f64) -> Self {
-        self.inner = self.inner.top_p(top_p);
-        self
+    pub fn top_p(self, top_p: f64) -> Self {
+        Self {
+            inner: self.inner.top_p(top_p),
+        }
     }
 
-    pub fn presence_penalty(mut self, presence_penalty: f64) -> Self {
-        self.inner = self.inner.presence_penalty(presence_penalty);
-        self
+    pub fn presence_penalty(self, presence_penalty: f64) -> Self {
+        Self {
+            inner: self.inner.presence_penalty(presence_penalty),
+        }
     }
 
-    pub fn frequency_penalty(mut self, frequency_penalty: f64) -> Self {
-        self.inner = self.inner.frequency_penalty(frequency_penalty);
-        self
+    pub fn frequency_penalty(self, frequency_penalty: f64) -> Self {
+        Self {
+            inner: self.inner.frequency_penalty(frequency_penalty),
+        }
     }
 
-    pub fn parallel_tool_calls(mut self, parallel: bool) -> Self {
-        self.inner = self.inner.parallel_tool_calls(parallel);
-        self
+    pub fn parallel_tool_calls(self, parallel: bool) -> Self {
+        Self {
+            inner: self.inner.parallel_tool_calls(parallel),
+        }
     }
 
-    pub fn max_output_tokens(mut self, max: i64) -> Self {
-        self.inner = self.inner.max_output_tokens(max);
-        self
+    pub fn max_output_tokens(self, max: i64) -> Self {
+        Self {
+            inner: self.inner.max_output_tokens(max),
+        }
     }
 
-    pub fn max_tool_calls(mut self, max: i64) -> Self {
-        self.inner = self.inner.max_tool_calls(max);
-        self
+    pub fn max_tool_calls(self, max: i64) -> Self {
+        Self {
+            inner: self.inner.max_tool_calls(max),
+        }
     }
 
-    pub fn reasoning(mut self, reasoning: open_responses::ReasoningParam) -> Self {
-        self.inner = self.inner.reasoning(reasoning);
-        self
+    pub fn reasoning(self, reasoning: open_responses::ReasoningParam) -> Self {
+        Self {
+            inner: self.inner.reasoning(reasoning),
+        }
     }
 
-    pub fn truncation(mut self, truncation: open_responses::TruncationEnum) -> Self {
-        self.inner = self.inner.truncation(truncation);
-        self
+    pub fn truncation(self, truncation: open_responses::TruncationEnum) -> Self {
+        Self {
+            inner: self.inner.truncation(truncation),
+        }
     }
 
     pub fn include(
-        mut self,
+        self,
         include: impl IntoIterator<Item = open_responses::IncludeEnum>,
     ) -> Self {
-        self.inner = self.inner.include(include);
-        self
+        Self {
+            inner: self.inner.include(include),
+        }
     }
 
-    pub fn store(mut self, store: bool) -> Self {
-        self.inner = self.inner.store(store);
-        self
+    pub fn store(self, store: bool) -> Self {
+        Self {
+            inner: self.inner.store(store),
+        }
     }
 
-    pub fn top_logprobs(mut self, top_logprobs: i64) -> Self {
-        self.inner = self.inner.top_logprobs(top_logprobs);
-        self
+    pub fn top_logprobs(self, top_logprobs: i64) -> Self {
+        Self {
+            inner: self.inner.top_logprobs(top_logprobs),
+        }
     }
 }
 
-impl<'a> ResponseRequestBuilder<'a, open_responses::client::Sync> {
+impl<'a> ResponseRequestBuilder<'a, crate::backend::OpenResponsesBackend<open_responses::client::Sync>> {
     /// Send the request and return a complete response.
     pub fn send(self) -> Result<open_responses::ResponseResource> {
         self.inner.send()
@@ -129,7 +149,7 @@ impl<'a> ResponseRequestBuilder<'a, open_responses::client::Sync> {
     }
 }
 
-impl<'a> ResponseRequestBuilder<'a, open_responses::client::Async> {
+impl<'a> ResponseRequestBuilder<'a, crate::backend::OpenResponsesBackend<open_responses::client::Async>> {
     /// Asynchronously send the request and return a complete response.
     pub async fn send(self) -> Result<open_responses::ResponseResource> {
         self.inner.send().await
@@ -141,7 +161,10 @@ impl<'a> ResponseRequestBuilder<'a, open_responses::client::Async> {
     }
 }
 
-impl<M: open_responses::client::Mode> std::fmt::Debug for ResponseRequestBuilder<'_, M> {
+impl<B: Backend> std::fmt::Debug for ResponseRequestBuilder<'_, B>
+where
+    for<'a> <B::Mode as crate::backend::Mode>::RequestBuilder<'a>: std::fmt::Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.inner.fmt(f)
     }

@@ -1,18 +1,17 @@
 use std::collections::HashMap;
 
-use bon::bon;
 use secrecy::SecretString;
 use url::Url;
 
-use crate::Result;
+use crate::{Result, backend::Backend};
 
 const DEFAULT_BASE_URL: &str = open_responses::client::DEFAULT_BASE_URL;
 const BASE_URL_ENV_VAR: &str = "ORPHEUS_BASE_URL";
 const API_KEY_ENV_VAR: &str = "ORPHEUS_API_KEY";
 
-/// Core client for the Open Responses API.
+/// Core client for AI API interactions.
 ///
-/// To initialize a proper client, use either `Orpheus` or `AsyncOrpheus`.
+/// Generic over backend implementations to support multiple AI providers.
 ///
 /// # Example
 /// ```
@@ -21,20 +20,32 @@ const API_KEY_ENV_VAR: &str = "ORPHEUS_API_KEY";
 /// let client = Orpheus::new("your_api_key");
 /// let async_client = AsyncOrpheus::new("your_api_key");
 /// ```
-pub struct OrpheusCore<M: open_responses::client::Mode> {
-    pub(crate) inner: open_responses::client::ClientCore<M>,
+pub struct OrpheusCore<B: Backend> {
+    pub(crate) backend: B,
 }
 
-impl<M: open_responses::client::Mode> Default for OrpheusCore<M> {
+impl<M> Default for OrpheusCore<crate::backend::OpenResponsesBackend<M>>
+where
+    M: open_responses::client::Mode,
+    crate::backend::OpenResponsesBackend<M>: Backend,
+{
     fn default() -> Self {
-        Self::builder().build()
+        Self {
+            backend: crate::backend::OpenResponsesBackend::builder().build(),
+        }
     }
 }
 
-impl<M: open_responses::client::Mode> OrpheusCore<M> {
+impl<M> OrpheusCore<crate::backend::OpenResponsesBackend<M>>
+where
+    M: open_responses::client::Mode,
+    crate::backend::OpenResponsesBackend<M>: Backend,
+{
     /// Create a new Orpheus client with the provided key.
     pub fn new(api_key: impl Into<SecretString>) -> Self {
-        Self::builder().api_key(api_key).build()
+        Self {
+            backend: crate::backend::OpenResponsesBackend::new(api_key),
+        }
     }
 
     /// Initialize an orpheus client with an API key from the environment.
@@ -49,12 +60,58 @@ impl<M: open_responses::client::Mode> OrpheusCore<M> {
             Url::parse(DEFAULT_BASE_URL).expect("default base URL is valid")
         };
 
-        Ok(Self::builder().api_key(api_key).base_url(base_url).build())
+        Ok(Self {
+            backend: crate::backend::OpenResponsesBackend::builder()
+                .api_key(api_key)
+                .base_url(base_url)
+                .build(),
+        })
+    }
+
+}
+
+/// Builder for `OrpheusCore` backed by `OpenResponsesBackend`.
+pub struct OrpheusCoreBuilder<M: open_responses::client::Mode> {
+    headers: HashMap<String, String>,
+    base_url: Url,
+    api_key: Option<SecretString>,
+    _mode: std::marker::PhantomData<M>,
+}
+
+impl<M> OrpheusCoreBuilder<M>
+where
+    M: open_responses::client::Mode,
+    crate::backend::OpenResponsesBackend<M>: Backend,
+{
+    pub fn api_key(mut self, key: impl Into<SecretString>) -> Self {
+        self.api_key = Some(key.into());
+        self
+    }
+
+    pub fn base_url(mut self, url: Url) -> Self {
+        self.base_url = url;
+        self
+    }
+
+    pub fn add_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn build(self) -> OrpheusCore<crate::backend::OpenResponsesBackend<M>> {
+        let b = crate::backend::OpenResponsesBackend::<M>::builder()
+            .maybe_api_key(self.api_key)
+            .base_url(self.base_url);
+        let backend = self.headers.into_iter().fold(b, |b, (k, v)| b.add_header(k, v)).build();
+        OrpheusCore { backend }
     }
 }
 
-#[bon]
-impl<M: open_responses::client::Mode> OrpheusCore<M> {
+impl<M> OrpheusCore<crate::backend::OpenResponsesBackend<M>>
+where
+    M: open_responses::client::Mode,
+    crate::backend::OpenResponsesBackend<M>: Backend,
+{
     /// Initialize an Orpheus builder to customize the client.
     ///
     /// # Example
@@ -67,29 +124,12 @@ impl<M: open_responses::client::Mode> OrpheusCore<M> {
     ///     .base_url(url::Url::parse("https://api.example.com/v1").expect("Valid Url"))
     ///     .build();
     /// ```
-    #[builder(on(SecretString, into))]
-    pub fn builder(
-        #[builder(field)] headers: HashMap<String, String>,
-        #[builder(default = Url::parse(DEFAULT_BASE_URL).expect("default base URL is valid"))]
-        base_url: Url,
-        api_key: Option<SecretString>,
-    ) -> Self {
-        let builder = open_responses::client::ClientCore::<M>::builder()
-            .maybe_api_key(api_key)
-            .base_url(base_url);
-        let builder = headers.into_iter().fold(builder, |builder, (key, value)| {
-            builder.add_header(key, value)
-        });
-
-        Self {
-            inner: builder.build(),
+    pub fn builder() -> OrpheusCoreBuilder<M> {
+        OrpheusCoreBuilder {
+            headers: HashMap::new(),
+            base_url: Url::parse(DEFAULT_BASE_URL).expect("default base URL is valid"),
+            api_key: None,
+            _mode: std::marker::PhantomData,
         }
-    }
-}
-
-impl<M: open_responses::client::Mode, S: orpheus_core_builder::State> OrpheusCoreBuilder<M, S> {
-    pub fn add_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.headers.insert(key.into(), value.into());
-        self
     }
 }
