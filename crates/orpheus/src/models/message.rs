@@ -99,7 +99,9 @@ impl From<Message> for InputItem {
                 InputItem::UserMessage(UserMessageItemParam {
                     type_: "message".into(),
                     role: "user".into(),
-                    content: Some(content),
+                    content: serde_json::to_value(content).unwrap_or_default(),
+                    id: None,
+                    status: None,
                 })
             }
             Role::System => {
@@ -119,7 +121,9 @@ impl From<Message> for InputItem {
                 InputItem::SystemMessage(SystemMessageItemParam {
                     type_: "message".into(),
                     role: "system".into(),
-                    content: Some(content),
+                    content: serde_json::to_value(content).unwrap_or_default(),
+                    id: None,
+                    status: None,
                 })
             }
             Role::Developer => {
@@ -139,7 +143,9 @@ impl From<Message> for InputItem {
                 InputItem::DeveloperMessage(DeveloperMessageItemParam {
                     type_: "message".into(),
                     role: "developer".into(),
-                    content: Some(content),
+                    content: serde_json::to_value(content).unwrap_or_default(),
+                    id: None,
+                    status: None,
                 })
             }
             Role::Assistant => {
@@ -160,7 +166,9 @@ impl From<Message> for InputItem {
                 InputItem::AssistantMessage(AssistantMessageItemParam {
                     type_: "message".into(),
                     role: "assistant".into(),
-                    content: Some(content),
+                    content: serde_json::to_value(content).unwrap_or_default(),
+                    id: None,
+                    status: None,
                 })
             }
         }

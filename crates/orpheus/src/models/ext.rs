@@ -16,9 +16,7 @@ impl ResponseExt for ResponseResource {
             if let OutputItem::Message(msg) = item {
                 for part in &msg.content {
                     if let ContentPart::OutputText(t) = part {
-                        if let Some(ref s) = t.text {
-                            text.push_str(s);
-                        }
+                        text.push_str(&t.text);
                     }
                 }
             }
