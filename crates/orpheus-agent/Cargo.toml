@@ -1,0 +1,11 @@
+[package]
+name = "orpheus-agent"
+version = "0.1.0"
+edition = "2021"
+description = "An agentic orchestration layer built on top of Orpheus"
+homepage = "https://orpheus.ajac-zero.com"
+repository = "https://github.com/ajac-zero/orpheus"
+license = "MIT"
+
+[dependencies]
+orpheus = { path = "../orpheus" }

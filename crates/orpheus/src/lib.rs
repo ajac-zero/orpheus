@@ -1,6 +1,6 @@
 #![allow(dead_code, clippy::too_many_arguments)]
 #![deny(clippy::mod_module_files, clippy::unwrap_used)]
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../../../README.md")]
 
 /// Contains definition of request clients.
 pub mod client {
