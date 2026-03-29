@@ -1,11 +1,21 @@
 use crate::{
-    client::OrpheusCore,
-    models::{Input, request::ResponseRequestBuilder},
+    client::{AsyncOrpheus, Orpheus},
+    models::{
+        Input,
+        request::{AsyncResponseRequestBuilder, ResponseRequestBuilder},
+    },
 };
 
-impl<'a, M: open_responses::client::Mode> OrpheusCore<M> {
+impl<'a> Orpheus {
     /// Create a new response request.
-    pub fn respond(&'a self, input: impl Into<Input>) -> ResponseRequestBuilder<'a, M> {
+    pub fn respond(&'a self, input: impl Into<Input>) -> ResponseRequestBuilder<'a> {
         ResponseRequestBuilder::new(self, input.into())
+    }
+}
+
+impl<'a> AsyncOrpheus {
+    /// Create a new response request.
+    pub fn respond(&'a self, input: impl Into<Input>) -> AsyncResponseRequestBuilder<'a> {
+        AsyncResponseRequestBuilder::new(self, input.into())
     }
 }

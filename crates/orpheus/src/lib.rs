@@ -9,14 +9,7 @@ pub mod client {
         mod respond;
     }
 
-    pub use core::OrpheusCore;
-    pub use open_responses::client::{Async, Sync};
-
-    /// Alias for the OrpheusCore client in `Blocking` mode.
-    pub type Orpheus = OrpheusCore<open_responses::client::Sync>;
-
-    /// Alias for the OrpheusCore client in `Async` mode.
-    pub type AsyncOrpheus = OrpheusCore<open_responses::client::Async>;
+    pub use core::{AsyncOrpheus, Orpheus};
 }
 
 /// Types for building requests and handling responses.
@@ -33,8 +26,8 @@ pub mod models {
     pub use format::Format;
     pub use input::Input;
     pub use message::Message;
-    pub use request::ResponseRequestBuilder;
-    pub use stream::{ResponseEvent, ResponseStream};
+    pub use request::{AsyncResponseRequestBuilder, ResponseRequestBuilder};
+    pub use stream::{AsyncResponseStream, ResponseEvent, ResponseStream};
     pub use tool::{Param, ParamType, Parameter, Tool, ToolFunctionBuilder};
 }
 

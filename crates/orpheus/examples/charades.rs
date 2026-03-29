@@ -58,10 +58,8 @@ fn main() -> anyhow::Result<()> {
 
             if fc.name == "game_over" {
                 println!("{}", GAME_OVER_BANNER.red().bold());
-                if let Some(ref args_str) = fc.arguments {
-                    let args: GameOverArgs = serde_json::from_str(args_str)?;
-                    println!("Real answer: {}", args.answer);
-                }
+                let args: GameOverArgs = serde_json::from_str(&fc.arguments)?;
+                println!("Real answer: {}", args.answer);
             }
 
             return Ok(());

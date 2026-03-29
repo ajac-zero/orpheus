@@ -9,3 +9,10 @@ license = "MIT"
 
 [dependencies]
 orpheus = { path = "../orpheus" }
+
+[dev-dependencies]
+anyhow = "1.0.99"
+reqwest = { version = "0.12.23", features = ["blocking", "json"] }
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.134"
+tokio = { version = "1.44.1", features = ["macros", "rt-multi-thread"] }

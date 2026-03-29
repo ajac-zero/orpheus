@@ -5,7 +5,7 @@ mod error;
 mod event;
 mod tool;
 
-pub use agent::{Agent, AgentRun, AgentTurn, ToolExecution};
+pub use agent::{Agent, AgentRun, AgentTurn, AsyncAgent, ToolExecution};
 pub use error::{AgentError, BoxError, Result};
 pub use event::AgentEvent;
 pub use orpheus;
@@ -15,7 +15,7 @@ pub use tool::{AgentTool, AgentToolCall, AgentToolOutput};
 pub mod prelude {
     pub use crate::{
         Agent, AgentError, AgentEvent, AgentRun, AgentTool, AgentToolCall, AgentToolOutput,
-        ToolExecution,
+        AsyncAgent, ToolExecution,
     };
     pub use orpheus::prelude::*;
 }
