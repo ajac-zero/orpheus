@@ -67,6 +67,7 @@ impl From<Format> for open_responses::TextParam {
                             strict: Some(strict),
                         },
                     )),
+                    verbosity: None,
                 }
             }
         }

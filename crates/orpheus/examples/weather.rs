@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
         println!("Tool function used: {}", fc.name);
 
         if fc.name == "get_weather" {
-            let args: GetWeather = serde_json::from_str(fc.arguments.as_deref().unwrap_or("{}"))?;
+            let args: GetWeather = serde_json::from_str(&fc.arguments)?;
 
             let request_url = format!(
                 "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&hourly=temperature_2m&temperature_unit={}",

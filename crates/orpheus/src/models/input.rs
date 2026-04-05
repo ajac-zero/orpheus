@@ -15,7 +15,9 @@ impl Input {
             .push(InputItem::FunctionCallOutput(FunctionCallOutputItemParam {
                 type_: "function_call_output".into(),
                 call_id: call_id.into(),
-                output: Some(output.into()),
+                output: serde_json::Value::String(output.into()),
+                id: None,
+                status: None,
             }));
     }
 }
