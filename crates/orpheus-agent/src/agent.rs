@@ -150,9 +150,18 @@ impl<'a> Agent<'a> {
 
     /// Run the agent loop until the model stops requesting tools or max turns is reached.
     pub fn run(&self, input: impl Into<Input>) -> Result<AgentRun> {
+        self.run_with_previous_response_id(input, None)
+    }
+
+    /// Run the agent loop starting from an existing response id.
+    pub fn run_with_previous_response_id(
+        &self,
+        input: impl Into<Input>,
+        previous_response_id: Option<&str>,
+    ) -> Result<AgentRun> {
         let tool_registry = build_tool_registry(&self.config)?;
         let mut input = input.into();
-        let mut previous_response_id = None;
+        let mut previous_response_id = previous_response_id.map(ToOwned::to_owned);
         let mut turns = Vec::new();
 
         for turn in 1..=self.config.max_turns {
@@ -213,9 +222,18 @@ impl<'a> Agent<'a> {
 
     /// Run the agent loop while forwarding low-level response stream events through `AgentEvent`.
     pub fn run_streaming(&self, input: impl Into<Input>) -> Result<AgentRun> {
+        self.run_streaming_with_previous_response_id(input, None)
+    }
+
+    /// Run the streaming agent loop starting from an existing response id.
+    pub fn run_streaming_with_previous_response_id(
+        &self,
+        input: impl Into<Input>,
+        previous_response_id: Option<&str>,
+    ) -> Result<AgentRun> {
         let tool_registry = build_tool_registry(&self.config)?;
         let mut input = input.into();
-        let mut previous_response_id = None;
+        let mut previous_response_id = previous_response_id.map(ToOwned::to_owned);
         let mut turns = Vec::new();
 
         for turn in 1..=self.config.max_turns {
@@ -387,9 +405,18 @@ impl<'a> AsyncAgent<'a> {
 
     /// Run the agent loop until the model stops requesting tools or max turns is reached.
     pub async fn run(&self, input: impl Into<Input>) -> Result<AgentRun> {
+        self.run_with_previous_response_id(input, None).await
+    }
+
+    /// Run the agent loop starting from an existing response id.
+    pub async fn run_with_previous_response_id(
+        &self,
+        input: impl Into<Input>,
+        previous_response_id: Option<&str>,
+    ) -> Result<AgentRun> {
         let tool_registry = build_tool_registry(&self.config)?;
         let mut input = input.into();
-        let mut previous_response_id = None;
+        let mut previous_response_id = previous_response_id.map(ToOwned::to_owned);
         let mut turns = Vec::new();
 
         for turn in 1..=self.config.max_turns {
@@ -452,9 +479,18 @@ impl<'a> AsyncAgent<'a> {
 
     /// Run the agent loop while forwarding low-level response stream events through `AgentEvent`.
     pub async fn run_streaming(&self, input: impl Into<Input>) -> Result<AgentRun> {
+        self.run_streaming_with_previous_response_id(input, None).await
+    }
+
+    /// Run the streaming agent loop starting from an existing response id.
+    pub async fn run_streaming_with_previous_response_id(
+        &self,
+        input: impl Into<Input>,
+        previous_response_id: Option<&str>,
+    ) -> Result<AgentRun> {
         let tool_registry = build_tool_registry(&self.config)?;
         let mut input = input.into();
-        let mut previous_response_id = None;
+        let mut previous_response_id = previous_response_id.map(ToOwned::to_owned);
         let mut turns = Vec::new();
 
         for turn in 1..=self.config.max_turns {

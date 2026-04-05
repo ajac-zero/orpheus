@@ -3,4 +3,5 @@ resolver = "2"
 members = [
     "crates/orpheus",
     "crates/orpheus-agent",
+    "crates/orpheus-coding-agent",
 ]
